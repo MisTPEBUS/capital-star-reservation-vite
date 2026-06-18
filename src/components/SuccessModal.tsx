@@ -1,0 +1,56 @@
+import type { ReservationResult } from '../types/reservation';
+
+interface SuccessModalProps {
+  result: ReservationResult | null;
+  onClose: () => void;
+}
+
+export function SuccessModal({ result, onClose }: SuccessModalProps) {
+  if (!result) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/55 px-4 pb-4 pt-12 backdrop-blur-sm md:items-center md:pb-12">
+      <section className="w-full max-w-[520px] overflow-hidden rounded-panel bg-white shadow-soft ring-1 ring-white/70">
+        <div className="bg-gradient-to-br from-bus-900 via-bus-700 to-bus-500 p-6 text-white">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-star-300 text-3xl font-black text-bus-900 shadow-card">
+            ✓
+          </div>
+          <h2 className="mt-4 text-center text-2xl font-black tracking-tight">預約成功</h2>
+          <p className="mt-2 text-center text-sm leading-6 text-bus-100">
+            系統已建立乘車預約，請於上車時出示會員活動碼。
+          </p>
+        </div>
+
+        <div className="p-5 md:p-6">
+          <div className="rounded-card bg-cream p-4 ring-1 ring-star-100">
+            <DetailRow label="乘客" value={result.passengerName} />
+            <DetailRow label="活動碼" value={result.activeCode} mono />
+            <DetailRow label="班次" value={`${result.scheduleCode}｜${result.departureTime}`} />
+            <DetailRow label="日期" value={result.openDate} />
+            <DetailRow label="上車地點" value={result.pickupStopName} />
+            <DetailRow label="預約時間" value={result.bookedAt} />
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-5 h-12 w-full rounded-2xl bg-bus-900 text-base font-black text-white outline-none transition hover:bg-bus-700 focus-visible:ring-4 focus-visible:ring-bus-100"
+          >
+            完成
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DetailRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-star-100 py-3 last:border-b-0">
+      <p className="text-sm font-bold text-ink-500">{label}</p>
+      <p className={`text-right text-sm font-black text-ink-900 ${mono ? 'font-mono tracking-[0.16em]' : ''}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
