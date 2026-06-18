@@ -11,6 +11,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@line/liff": "^2.29.0",
     "@vitejs/plugin-react": "latest",
     "react": "latest",
     "react-dom": "latest",
