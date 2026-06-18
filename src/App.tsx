@@ -5,6 +5,7 @@ import { BookingForm } from "./components/BookingForm";
 import { MemberCard } from "./components/MemberCard";
 import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
+import { AuthProfile, getAuthProfile } from "./api/auth";
 import {
   availableDates,
   openSchedules,
@@ -41,6 +42,8 @@ function App() {
   const [liffProfile, setLiffProfile] = useState<LiffProfile | null>(null);
   const [liffLoading, setLiffLoading] = useState(true);
   const [liffError, setLiffError] = useState("");
+  const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
+  const [authProfileError, setAuthProfileError] = useState("");
 
   const [selection, setSelection] = useState<BookingSelection>({
     routeId: route.routeId,
@@ -73,9 +76,17 @@ function App() {
 
   const displayPassengerProfile = {
     ...passengerProfile,
-    displayName: liffProfile?.displayName ?? passengerProfile.displayName,
+    userId: authProfile?.userId ?? passengerProfile.userId,
+    displayName:
+      authProfile?.displayName ??
+      liffProfile?.displayName ??
+      passengerProfile.displayName,
     pictureUrl: liffProfile?.pictureUrl ?? "",
     lineUserId: liffProfile?.lineUserId ?? passengerProfile.userId,
+    activeCode: authProfile?.activeCode ?? passengerProfile.activeCode,
+    phoneNumber: authProfile?.phone ?? passengerProfile.phoneNumber,
+    email: authProfile?.email ?? passengerProfile.email,
+    status: authProfile?.status ?? passengerProfile.status,
   };
 
   useEffect(() => {
@@ -101,6 +112,29 @@ function App() {
     bootLiff();
   }, []);
 
+  useEffect(() => {
+    async function loadAuthProfile() {
+      if (!liffProfile?.lineUserId) return;
+
+      try {
+        setAuthProfileError("");
+
+        const profile = await getAuthProfile(liffProfile.lineUserId);
+
+        setAuthProfile(profile);
+      } catch (error) {
+        console.error("AUTH_PROFILE_ERROR:", error);
+
+        const message =
+          error instanceof Error ? error.message : "會員資料讀取失敗";
+
+        setAuthProfileError(message);
+      }
+    }
+
+    loadAuthProfile();
+  }, [liffProfile?.lineUserId]);
+
   const handleReserve = (schedule: OpenSchedule) => {
     setReservationResult({
       reservationId: `RSV-${Date.now()}`,
@@ -108,7 +142,7 @@ function App() {
       departureTime: schedule.departureTime,
       openDate: schedule.openDate,
       pickupStopName: selectedStop.stopName,
-      activeCode: passengerProfile.activeCode,
+      activeCode: displayPassengerProfile.activeCode,
       passengerName: displayPassengerProfile.displayName,
       bookedAt: formatNow(),
     });
@@ -142,11 +176,9 @@ function App() {
 
   return (
     <div>
-      <p>LINE 顯示名稱：{liffProfile?.displayName}</p>
-      <p>LINE User ID：{liffProfile?.lineUserId}</p>
       <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-4 py-4 text-ink-900 md:px-6 md:py-8">
         <div className="mx-auto w-full max-w-[820px]">
-          <header className="overflow-hidden rounded-panel bg-bus-900 text-white shadow-soft ring-1 ring-white/60">
+          <header className="hidden overflow-hidden rounded-panel bg-bus-900 text-white shadow-soft ring-1 ring-white/60">
             <div className="grid gap-0 md:grid-cols-[1.08fr_0.92fr] md:items-stretch">
               <div className="p-5 md:p-7">
                 <div className="inline-flex rounded-full bg-white/12 px-3 py-1 text-xs font-black uppercase tracking-[0.24em] text-star-300 ring-1 ring-white/15">
@@ -178,9 +210,15 @@ function App() {
           </header>
 
           <div className="mt-5 grid gap-5 pb-10">
-            <MemberCard passenger={passengerProfile} route={route} />
+            <MemberCard passenger={displayPassengerProfile} route={route} />
 
-            <section className="overflow-hidden rounded-panel bg-white shadow-card ring-1 ring-bus-100/80">
+            {authProfileError && (
+              <div className="rounded-panel bg-white p-4 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20">
+                {authProfileError}
+              </div>
+            )}
+
+            <section className="hidden overflow-hidden rounded-panel bg-white shadow-card ring-1 ring-bus-100/80">
               <div className="grid md:grid-cols-[180px_1fr] md:items-center">
                 <img
                   src={busSide}

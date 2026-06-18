@@ -13,6 +13,7 @@
   "dependencies": {
     "@line/liff": "^2.29.0",
     "@vitejs/plugin-react": "latest",
+    "axios": "^1.18.0",
     "react": "latest",
     "react-dom": "latest",
     "typescript": "latest",

@@ -6,12 +6,12 @@ import type {
 
 export const passengerProfile: PassengerProfile = {
   userId: "usr_mock_0001",
-  displayName: "王小明",
-  activeCode: "A7K2M5P9",
+  displayName: "Lobinda",
+  activeCode: "66797168",
   phoneNumber: "0912-345-678",
   email: null,
   status: "ACTIVE",
-  membershipLabel: "旅遊預約會員",
+  membershipLabel: "預約會員",
 };
 
 export const routes: RouteInfo[] = [

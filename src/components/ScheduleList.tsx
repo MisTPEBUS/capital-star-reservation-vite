@@ -105,8 +105,7 @@ export function ScheduleList({ schedules, onReserve }: ScheduleListProps) {
                     </div>
 
                     <p className="mt-1 truncate text-xs font-bold leading-5 text-ink-500">
-                      {schedule.note}｜總量 {schedule.quota}・已約{" "}
-                      {schedule.reservedCount}
+                      {schedule.note}
                     </p>
                   </div>
 
