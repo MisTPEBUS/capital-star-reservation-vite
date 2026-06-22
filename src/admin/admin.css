@@ -1,0 +1,128 @@
+/* Import this stylesheet from the admin entry point only. */
+@tailwind components;
+
+@layer components {
+  .admin-shell {
+    @apply min-h-screen bg-admin-bg text-admin-text antialiased;
+  }
+
+  .admin-page-container {
+    @apply mx-auto w-full max-w-7xl px-4 py-6 md:px-6;
+  }
+
+  .admin-panel {
+    @apply rounded-adminPanel border border-admin-border bg-admin-surface shadow-adminPanel;
+  }
+
+  .admin-panel-header {
+    @apply mb-5 rounded-adminPanel border border-admin-border bg-admin-surface p-5 shadow-adminPanel;
+  }
+
+  .admin-panel-body {
+    @apply rounded-adminPanel border border-admin-border bg-admin-surface p-4 shadow-adminPanel;
+  }
+
+  .admin-stat-card {
+    @apply rounded-adminCard bg-admin-elevated p-4;
+  }
+
+  .admin-stat-label {
+    @apply text-xs text-admin-muted;
+  }
+
+  .admin-stat-value {
+    @apply mt-1 text-2xl font-bold;
+  }
+
+  .admin-section-title {
+    @apply text-lg font-semibold;
+  }
+
+  .admin-page-kicker {
+    @apply text-sm text-admin-muted;
+  }
+
+  .admin-page-title {
+    @apply mt-1 text-3xl font-bold tracking-tight;
+  }
+
+  .admin-page-description {
+    @apply mt-2 text-sm text-admin-muted;
+  }
+
+  .admin-trip-list {
+    @apply space-y-3;
+  }
+
+  .admin-trip-card {
+    @apply w-full rounded-adminCard border p-4 text-left transition duration-200 ease-out;
+    @apply focus-visible:ring-2 focus-visible:ring-adminStatus-enabled/70 focus-visible:ring-offset-2 focus-visible:ring-offset-admin-bg;
+  }
+
+  .admin-trip-card[data-is-enable='true'] {
+    border-color: rgb(52 211 153 / 0.45);
+    background: rgb(16 185 129 / 0.1);
+  }
+
+  .admin-trip-card[data-is-enable='true']:hover {
+    background: rgb(16 185 129 / 0.16);
+  }
+
+  .admin-trip-card[data-is-enable='false'] {
+    border-color: rgb(71 85 105 / 0.9);
+    background: rgb(30 41 59 / 0.65);
+    opacity: 0.58;
+  }
+
+  .admin-trip-card[data-is-enable='false']:hover {
+    opacity: 0.78;
+  }
+
+  .admin-trip-index {
+    @apply flex h-11 w-11 items-center justify-center rounded-adminControl bg-admin-bg text-sm font-bold text-admin-softText;
+  }
+
+  .admin-trip-time {
+    @apply text-xl font-bold;
+  }
+
+  .admin-trip-route {
+    @apply mt-1 text-sm text-admin-muted;
+  }
+
+  .admin-status-text {
+    @apply text-sm font-semibold;
+  }
+
+  .admin-trip-card[data-is-enable='true'] .admin-status-text {
+    color: theme('colors.adminStatus.enabledText');
+  }
+
+  .admin-trip-card[data-is-enable='false'] .admin-status-text {
+    color: theme('colors.admin.muted');
+  }
+
+  .admin-switch-track {
+    @apply relative h-8 w-14 rounded-full transition;
+  }
+
+  .admin-switch-thumb {
+    @apply absolute left-1 top-1 h-6 w-6 rounded-full bg-white transition;
+  }
+
+  .admin-trip-card[data-is-enable='true'] .admin-switch-track {
+    background: theme('colors.adminStatus.enabled');
+  }
+
+  .admin-trip-card[data-is-enable='false'] .admin-switch-track {
+    background: theme('colors.adminStatus.disabled');
+  }
+
+  .admin-trip-card[data-is-enable='true'] .admin-switch-thumb {
+    transform: translateX(24px);
+  }
+
+  .admin-trip-card[data-is-enable='false'] .admin-switch-thumb {
+    transform: translateX(0);
+  }
+}
