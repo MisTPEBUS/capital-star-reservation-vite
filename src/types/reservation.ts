@@ -59,4 +59,5 @@ export interface ReservationResult {
   activeCode: string;
   passengerName: string;
   bookedAt: string;
+  qrCode?: string;
 }

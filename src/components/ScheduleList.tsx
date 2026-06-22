@@ -3,10 +3,23 @@ import { SectionTitle } from "./SectionTitle";
 
 interface ScheduleListProps {
   schedules: OpenSchedule[];
+  isLoading?: boolean;
+  errorMessage?: string;
+  reservationErrorMessage?: string;
+  canReserve?: boolean;
+  reservingScheduleId?: string | null;
   onReserve: (schedule: OpenSchedule) => void;
 }
 
-export function ScheduleList({ schedules, onReserve }: ScheduleListProps) {
+export function ScheduleList({
+  schedules,
+  isLoading = false,
+  errorMessage = "",
+  reservationErrorMessage = "",
+  canReserve = true,
+  reservingScheduleId = null,
+  onReserve,
+}: ScheduleListProps) {
   return (
     <section className="rounded-panel bg-white p-4 shadow-card ring-1 ring-bus-100/80 md:p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -24,7 +37,34 @@ export function ScheduleList({ schedules, onReserve }: ScheduleListProps) {
         </div>
       </div>
 
-      {schedules.length === 0 ? (
+      {reservationErrorMessage && (
+        <div className="mb-4 rounded-card bg-coral/10 p-4 text-sm font-bold text-coral ring-1 ring-coral/20">
+          {reservationErrorMessage}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="rounded-card bg-ink-50 p-6 text-center ring-1 ring-ink-100">
+          <p className="text-base font-black text-ink-800">正在讀取班次</p>
+          <p className="mt-2 text-sm text-ink-500">請稍候。</p>
+        </div>
+      ) : errorMessage ? (
+        <div className="rounded-card bg-coral/10 p-6 text-center ring-1 ring-coral/20">
+          <p className="text-base font-black text-coral">班次資料讀取失敗</p>
+          <p className="mt-2 text-sm font-bold text-ink-600">
+            {errorMessage}
+          </p>
+        </div>
+      ) : !canReserve ? (
+        <div className="rounded-card bg-ink-50 p-6 text-center ring-1 ring-ink-100">
+          <p className="text-base font-black text-ink-800">
+            目前無法預約班次
+          </p>
+          <p className="mt-2 text-sm text-ink-500">
+            你已有進行中的預約或此日期尚未開放。
+          </p>
+        </div>
+      ) : schedules.length === 0 ? (
         <div className="rounded-card bg-ink-50 p-6 text-center ring-1 ring-ink-100">
           <p className="text-base font-black text-ink-800">
             目前沒有符合條件的班次
@@ -38,7 +78,10 @@ export function ScheduleList({ schedules, onReserve }: ScheduleListProps) {
           {schedules.map((schedule) => {
             const isFull = schedule.availableSeats <= 0;
             const isReserved = schedule.userReservation === "RESERVED";
-            const disabled = isFull || isReserved;
+            const isReserving =
+              reservingScheduleId === schedule.dailyOpenScheduleId;
+            const disabled =
+              isFull || isReserved || !canReserve || reservingScheduleId !== null;
 
             return (
               <article
@@ -119,7 +162,13 @@ export function ScheduleList({ schedules, onReserve }: ScheduleListProps) {
                         : "bg-bus-900 text-white shadow-sm hover:bg-bus-700 active:scale-[0.98]"
                     }`}
                   >
-                    {isReserved ? "已預約" : isFull ? "已滿" : "預約"}
+                    {isReserving
+                      ? "處理中"
+                      : isReserved
+                        ? "已預約"
+                        : isFull
+                          ? "已滿"
+                          : "預約"}
                   </button>
                 </div>
               </article>

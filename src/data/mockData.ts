@@ -22,24 +22,24 @@ export const routes: RouteInfo[] = [
     description: "Capital Star 藍色旅遊車款，適合活動接駁與景點預約。",
     stops: [
       {
-        stopId: "stop_yilan_transfer",
-        stopName: "壯圍",
-        stopType: "MAIN_STATION",
-        address: "宜蘭縣宜蘭市校舍路",
-        shortLabel: "宜蘭",
-      },
-      {
-        stopId: "stop_luodong",
+        stopId: "06ebaefd-4b77-41a1-ac51-740372345b84",
         stopName: "頭城",
         stopType: "TRANSIT",
-        address: "宜蘭縣羅東鎮傳藝路",
-        shortLabel: "羅東",
+        address: "宜蘭縣頭城鎮",
+        shortLabel: "頭城",
       },
       {
-        stopId: "stop_wujie_tourism",
-        stopName: "五結轉運站",
+        stopId: "440e3872-ea19-44f2-b27e-1db0bc9702c7",
+        stopName: "壯圍",
         stopType: "MAIN_STATION",
-        address: "宜蘭縣五結鄉五濱路",
+        address: "宜蘭縣壯圍鄉",
+        shortLabel: "壯圍",
+      },
+      {
+        stopId: "596e0845-8463-4004-a6f8-a9e0a907f17b",
+        stopName: "五結",
+        stopType: "MAIN_STATION",
+        address: "宜蘭縣五結鄉",
         shortLabel: "五結",
       },
     ],
@@ -208,7 +208,24 @@ export const openSchedules: OpenSchedule[] = [
   },
 ];
 
-export const availableDates = [
-  { value: "2026-06-19", label: "06/19 週五" },
-  { value: "2026-06-20", label: "06/20 週六" },
-];
+function toLocalDateValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+export function getAvailableDates() {
+  const today = new Date();
+
+  return [0, 1].map((offset) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() + offset);
+
+    return {
+      value: toLocalDateValue(date),
+      label: `${date.getMonth() + 1}/${date.getDate()}`,
+    };
+  });
+}

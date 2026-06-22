@@ -29,6 +29,7 @@ export function SuccessModal({ result, onClose }: SuccessModalProps) {
             <DetailRow label="日期" value={result.openDate} />
             <DetailRow label="上車地點" value={result.pickupStopName} />
             <DetailRow label="預約時間" value={result.bookedAt} />
+            {result.qrCode && <DetailRow label="QR Code" value={result.qrCode} mono />}
           </div>
 
           <button
