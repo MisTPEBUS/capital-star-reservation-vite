@@ -6,12 +6,9 @@ import { MemberCard } from "./components/MemberCard";
 import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
 import { AuthProfile, getAuthProfile } from "./api/auth";
-import {
-  availableDates,
-  openSchedules,
-  passengerProfile,
-  routes,
-} from "./data/mockData";
+import { createReservation } from "./api/reservations";
+import { getSchedules } from "./api/schedules";
+import { getAvailableDates, passengerProfile, routes } from "./data/mockData";
 import type {
   BookingSelection,
   OpenSchedule,
@@ -21,6 +18,7 @@ import type {
 import { initLiff, LiffProfile } from "./liff/liffClient";
 
 const route = routes[0];
+const defaultPickupStopId = "440e3872-ea19-44f2-b27e-1db0bc9702c7";
 
 const getPeriod = (time: string): TimePeriod => {
   const hour = Number(time.split(":")[0]);
@@ -30,15 +28,16 @@ const getPeriod = (time: string): TimePeriod => {
   return "EVENING";
 };
 
-const formatNow = () => {
+const formatDateTime = (value: string | Date) => {
   return new Intl.DateTimeFormat("zh-TW", {
     dateStyle: "short",
     timeStyle: "short",
     hour12: false,
-  }).format(new Date());
+  }).format(new Date(value));
 };
 
 function App() {
+  const availableDates = useMemo(() => getAvailableDates(), []);
   const [liffProfile, setLiffProfile] = useState<LiffProfile | null>(null);
   const [liffLoading, setLiffLoading] = useState(true);
   const [liffError, setLiffError] = useState("");
@@ -47,32 +46,31 @@ function App() {
 
   const [selection, setSelection] = useState<BookingSelection>({
     routeId: route.routeId,
-    pickupStopId: route.stops[0].stopId,
+    pickupStopId: defaultPickupStopId,
     openDate: availableDates[0].value,
     timePeriod: "ALL",
   });
+  const [schedules, setSchedules] = useState<OpenSchedule[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [schedulesError, setSchedulesError] = useState("");
+  const [canReserve, setCanReserve] = useState(true);
+  const [reservationError, setReservationError] = useState("");
+  const [reservingScheduleId, setReservingScheduleId] = useState<string | null>(
+    null,
+  );
 
   const [reservationResult, setReservationResult] =
     useState<ReservationResult | null>(null);
 
   const filteredSchedules = useMemo(() => {
-    return openSchedules
-      .filter((schedule) => schedule.routeId === selection.routeId)
-      .filter((schedule) => schedule.openDate === selection.openDate)
-      .filter((schedule) =>
-        schedule.pickupStopIds.includes(selection.pickupStopId),
-      )
+    return schedules
       .filter(
         (schedule) =>
           selection.timePeriod === "ALL" ||
           getPeriod(schedule.departureTime) === selection.timePeriod,
       )
       .sort((a, b) => a.departureTime.localeCompare(b.departureTime));
-  }, [selection]);
-
-  const selectedStop =
-    route.stops.find((stop) => stop.stopId === selection.pickupStopId) ??
-    route.stops[0];
+  }, [schedules, selection.timePeriod]);
 
   const displayPassengerProfile = {
     ...passengerProfile,
@@ -135,17 +133,134 @@ function App() {
     loadAuthProfile();
   }, [liffProfile?.lineUserId]);
 
-  const handleReserve = (schedule: OpenSchedule) => {
-    setReservationResult({
-      reservationId: `RSV-${Date.now()}`,
-      scheduleCode: schedule.scheduleCode,
-      departureTime: schedule.departureTime,
-      openDate: schedule.openDate,
-      pickupStopName: selectedStop.stopName,
-      activeCode: displayPassengerProfile.activeCode,
-      passengerName: displayPassengerProfile.displayName,
-      bookedAt: formatNow(),
-    });
+  const loadSchedules = async () => {
+    if (liffLoading || !liffProfile?.lineUserId) return;
+
+    try {
+      setSchedulesLoading(true);
+      setSchedulesError("");
+
+      const result = await getSchedules({
+        date: selection.openDate,
+        pickupStopId: selection.pickupStopId,
+        lineUserId: liffProfile.lineUserId,
+      });
+
+      setSchedules(result.schedules);
+      setCanReserve(result.canReserve);
+    } catch (error) {
+      console.error("SCHEDULES_ERROR:", error);
+
+      const message =
+        error instanceof Error ? error.message : "班次資料讀取失敗";
+
+      setSchedules([]);
+      setCanReserve(false);
+      setSchedulesError(message);
+    } finally {
+      setSchedulesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadCurrentSchedules() {
+      if (liffLoading || !liffProfile?.lineUserId) return;
+
+      try {
+        setSchedulesLoading(true);
+        setSchedulesError("");
+
+        const result = await getSchedules({
+          date: selection.openDate,
+          pickupStopId: selection.pickupStopId,
+          lineUserId: liffProfile.lineUserId,
+        });
+
+        if (!isCurrent) return;
+
+        setSchedules(result.schedules);
+        setCanReserve(result.canReserve);
+      } catch (error) {
+        if (!isCurrent) return;
+
+        console.error("SCHEDULES_ERROR:", error);
+
+        const message =
+          error instanceof Error ? error.message : "班次資料讀取失敗";
+
+        setSchedules([]);
+        setCanReserve(false);
+        setSchedulesError(message);
+      } finally {
+        if (isCurrent) {
+          setSchedulesLoading(false);
+        }
+      }
+    }
+
+    loadCurrentSchedules();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    liffLoading,
+    liffProfile?.lineUserId,
+    selection.openDate,
+    selection.pickupStopId,
+  ]);
+
+  const handleReserve = async (schedule: OpenSchedule) => {
+    if (!liffProfile?.lineUserId) {
+      setReservationError("無法取得 LINE 使用者資料，請重新開啟頁面。");
+      return;
+    }
+
+    if (!authProfile?.userId) {
+      setReservationError("會員資料尚未載入完成，請稍後再試。");
+      return;
+    }
+
+    try {
+      setReservationError("");
+      setReservingScheduleId(schedule.dailyOpenScheduleId);
+
+      const reservation = await createReservation({
+        userId: authProfile.userId,
+        routeId: schedule.routeId,
+        departureTime: schedule.departureTime,
+        openDate: schedule.openDate,
+        pickupStopId: selection.pickupStopId,
+        lineUserId: liffProfile.lineUserId,
+      });
+
+      setReservationResult({
+        reservationId: reservation.reservationId,
+        scheduleCode: `${reservation.routeNumber}-${reservation.departureTime.slice(
+          0,
+          5,
+        )}`,
+        departureTime: reservation.departureTime.slice(0, 5),
+        openDate: reservation.openDate,
+        pickupStopName: reservation.pickupStop.stopName,
+        activeCode: displayPassengerProfile.activeCode,
+        passengerName: displayPassengerProfile.displayName,
+        bookedAt: formatDateTime(reservation.bookedAt),
+        qrCode: reservation.qrCode,
+      });
+
+      await loadSchedules();
+    } catch (error) {
+      console.error("CREATE_RESERVATION_ERROR:", error);
+
+      const message = error instanceof Error ? error.message : "預約建立失敗";
+
+      setReservationError(message);
+    } finally {
+      setReservingScheduleId(null);
+    }
   };
 
   if (liffLoading) {
@@ -258,6 +373,11 @@ function App() {
 
             <ScheduleList
               schedules={filteredSchedules}
+              isLoading={schedulesLoading}
+              errorMessage={schedulesError}
+              reservationErrorMessage={reservationError}
+              canReserve={canReserve}
+              reservingScheduleId={reservingScheduleId}
               onReserve={handleReserve}
             />
           </div>
