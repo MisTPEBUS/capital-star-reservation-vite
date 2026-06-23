@@ -5,8 +5,13 @@ import { BookingForm } from "./components/BookingForm";
 import { MemberCard } from "./components/MemberCard";
 import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
+import { UpcomingReservationCard } from "./components/UpcomingReservationCard";
 import { AuthProfile, getAuthProfile } from "./api/auth";
-import { createReservation } from "./api/reservations";
+import {
+  createReservation,
+  getUpcomingReservations,
+  UpcomingReservation,
+} from "./api/reservations";
 import { getSchedules } from "./api/schedules";
 import { getAvailableDates, passengerProfile, routes } from "./data/mockData";
 import type {
@@ -36,6 +41,24 @@ const formatDateTime = (value: string | Date) => {
   }).format(new Date(value));
 };
 
+const getReservationDepartureTimestamp = (reservation: UpcomingReservation) => {
+  const dateMatch = reservation.openDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const timeMatch = reservation.departureTime.match(/^(\d{1,2}):(\d{2})/);
+
+  if (!dateMatch || !timeMatch) return Number.NaN;
+
+  const [, year, month, day] = dateMatch;
+  const [, hour, minute] = timeMatch;
+
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+  ).getTime();
+};
+
 function App() {
   const availableDates = useMemo(() => getAvailableDates(), []);
   const [liffProfile, setLiffProfile] = useState<LiffProfile | null>(null);
@@ -43,6 +66,9 @@ function App() {
   const [liffError, setLiffError] = useState("");
   const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
   const [authProfileError, setAuthProfileError] = useState("");
+  const [upcomingReservations, setUpcomingReservations] = useState<
+    UpcomingReservation[]
+  >([]);
 
   const [selection, setSelection] = useState<BookingSelection>({
     routeId: route.routeId,
@@ -71,6 +97,18 @@ function App() {
       )
       .sort((a, b) => a.departureTime.localeCompare(b.departureTime));
   }, [schedules, selection.timePeriod]);
+
+  const activeUpcomingReservation = useMemo(() => {
+    const now = Date.now();
+
+    return (
+      upcomingReservations.find(
+        (reservation) =>
+          reservation.status === "RESERVED" &&
+          getReservationDepartureTimestamp(reservation) > now,
+      ) ?? null
+    );
+  }, [upcomingReservations]);
 
   const displayPassengerProfile = {
     ...passengerProfile,
@@ -132,6 +170,46 @@ function App() {
 
     loadAuthProfile();
   }, [liffProfile?.lineUserId]);
+
+  const loadUpcomingReservations = async (userId: string) => {
+    try {
+      const reservations = await getUpcomingReservations(userId);
+      setUpcomingReservations(reservations);
+    } catch (error) {
+      console.error("UPCOMING_RESERVATIONS_ERROR:", error);
+      setUpcomingReservations([]);
+    }
+  };
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadCurrentUpcomingReservations() {
+      if (!authProfile?.userId) {
+        setUpcomingReservations([]);
+        return;
+      }
+
+      try {
+        const reservations = await getUpcomingReservations(authProfile.userId);
+
+        if (isCurrent) {
+          setUpcomingReservations(reservations);
+        }
+      } catch (error) {
+        if (!isCurrent) return;
+
+        console.error("UPCOMING_RESERVATIONS_ERROR:", error);
+        setUpcomingReservations([]);
+      }
+    }
+
+    loadCurrentUpcomingReservations();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [authProfile?.userId]);
 
   const loadSchedules = async () => {
     if (liffLoading || !liffProfile?.lineUserId) return;
@@ -251,7 +329,10 @@ function App() {
         qrCode: reservation.qrCode,
       });
 
-      await loadSchedules();
+      await Promise.all([
+        loadSchedules(),
+        loadUpcomingReservations(authProfile.userId),
+      ]);
     } catch (error) {
       console.error("CREATE_RESERVATION_ERROR:", error);
 
@@ -326,6 +407,15 @@ function App() {
 
           <div className="mt-5 grid gap-5 pb-10">
             <MemberCard passenger={displayPassengerProfile} route={route} />
+            <UpcomingReservationCard
+              reservation={activeUpcomingReservation}
+              userId={authProfile?.userId ?? null}
+              onCancelled={async () => {
+                if (authProfile?.userId) {
+                  await loadUpcomingReservations(authProfile.userId);
+                }
+              }}
+            />
 
             {authProfileError && (
               <div className="rounded-panel bg-white p-4 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20">

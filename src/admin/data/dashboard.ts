@@ -1,0 +1,70 @@
+import type { AdminScheduleSummary } from "../types/admin";
+
+export const dashboardSchedules: AdminScheduleSummary[] = [
+  {
+    dailyOpenScheduleId: "dashboard-0600",
+    scheduleName: "CS1571-0600-A",
+    openDate: "2026-06-22",
+    departureTime: "06:00",
+    quota: 30,
+    reservedCount: 18,
+    cancelledCount: 0,
+    availableSeats: 12,
+    pickupStopSummaries: [
+      { pickupStopName: "壯圍", reservedCount: 18 },
+    ],
+    reservations: [
+      { reservationId: "r-001", sequence: 1, lineDisplayName: "小明", activeCode: "16486670", phone: "0912-345-678", pickupStopName: "壯圍", bookedAt: "2026-06-22 08:10", status: "RESERVED" },
+      { reservationId: "r-002", sequence: 2, lineDisplayName: "怡君", activeCode: "16486671", phone: "0921-456-789", pickupStopName: "頭城", bookedAt: "2026-06-22 08:18", status: "RESERVED" },
+      { reservationId: "r-003", sequence: 3, lineDisplayName: "冠宇", activeCode: "16486672", phone: "0933-567-890", pickupStopName: "壯圍", bookedAt: "2026-06-22 08:26", status: "CANCELLED" },
+      { reservationId: "r-004", sequence: 4, lineDisplayName: "阿晴", activeCode: "16486673", phone: "0966-678-901", pickupStopName: "壯圍", bookedAt: "2026-06-22 08:36", status: "RESERVED" },
+    ],
+  },
+  {
+    dailyOpenScheduleId: "dashboard-0600-second",
+    scheduleName: "CS1571-0600-B",
+    openDate: "2026-06-22",
+    departureTime: "06:00",
+    quota: 12,
+    reservedCount: 6,
+    cancelledCount: 1,
+    availableSeats: 6,
+    pickupStopSummaries: [{ pickupStopName: "頭城", reservedCount: 6 }],
+    reservations: [
+      { reservationId: "r-011", sequence: 1, lineDisplayName: "安琪", activeCode: "16486680", phone: "0911-456-789", pickupStopName: "頭城", bookedAt: "2026-06-22 08:15", status: "RESERVED" },
+      { reservationId: "r-012", sequence: 2, lineDisplayName: "Derek", activeCode: "16486681", phone: "0913-567-890", pickupStopName: "頭城", bookedAt: "2026-06-22 08:29", status: "RESERVED" },
+    ],
+  },
+  {
+    dailyOpenScheduleId: "dashboard-0620",
+    scheduleName: "CS1571-0620-A",
+    openDate: "2026-06-22",
+    departureTime: "06:20",
+    quota: 30,
+    reservedCount: 30,
+    cancelledCount: 0,
+    availableSeats: 0,
+    pickupStopSummaries: [{ pickupStopName: "壯圍", reservedCount: 30 }],
+    reservations: [
+      { reservationId: "r-005", sequence: 1, lineDisplayName: "小林", activeCode: "16486674", phone: "0977-789-012", pickupStopName: "壯圍", bookedAt: "2026-06-22 08:44", status: "RESERVED" },
+      { reservationId: "r-006", sequence: 2, lineDisplayName: "Mia", activeCode: "16486675", phone: "0988-890-123", pickupStopName: "壯圍", bookedAt: "2026-06-22 08:52", status: "RESERVED" },
+      { reservationId: "r-007", sequence: 3, lineDisplayName: "志豪", activeCode: "16486676", phone: "0955-901-234", pickupStopName: "壯圍", bookedAt: "2026-06-22 09:04", status: "RESERVED" },
+    ],
+  },
+  {
+    dailyOpenScheduleId: "dashboard-0720",
+    scheduleName: "CS1571-0720-A",
+    openDate: "2026-06-22",
+    departureTime: "07:20",
+    quota: 30,
+    reservedCount: 30,
+    cancelledCount: 0,
+    availableSeats: 0,
+    pickupStopSummaries: [{ pickupStopName: "壯圍", reservedCount: 30 }],
+    reservations: [
+      { reservationId: "r-008", sequence: 1, lineDisplayName: "Yuki", activeCode: "16486677", phone: "0944-012-345", pickupStopName: "壯圍", bookedAt: "2026-06-22 09:15", status: "RESERVED" },
+      { reservationId: "r-009", sequence: 2, lineDisplayName: "子晴", activeCode: "16486678", phone: "0935-123-456", pickupStopName: "壯圍", bookedAt: "2026-06-22 09:24", status: "RESERVED" },
+      { reservationId: "r-010", sequence: 3, lineDisplayName: "建宏", activeCode: "16486679", phone: "0928-234-567", pickupStopName: "壯圍", bookedAt: "2026-06-22 09:31", status: "RESERVED" },
+    ],
+  },
+];
