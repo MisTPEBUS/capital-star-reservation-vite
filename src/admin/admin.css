@@ -1,3 +1,4 @@
+@config "../../tailwind.config.js";
 /* Import this stylesheet from the admin entry point only. */
 @tailwind components;
 
@@ -59,22 +60,22 @@
     @apply focus-visible:ring-2 focus-visible:ring-adminStatus-enabled/70 focus-visible:ring-offset-2 focus-visible:ring-offset-admin-bg;
   }
 
-  .admin-trip-card[data-is-enable='true'] {
+  .admin-trip-card[data-is-enable="true"] {
     border-color: rgb(52 211 153 / 0.45);
     background: rgb(16 185 129 / 0.1);
   }
 
-  .admin-trip-card[data-is-enable='true']:hover {
+  .admin-trip-card[data-is-enable="true"]:hover {
     background: rgb(16 185 129 / 0.16);
   }
 
-  .admin-trip-card[data-is-enable='false'] {
+  .admin-trip-card[data-is-enable="false"] {
     border-color: rgb(71 85 105 / 0.9);
     background: rgb(30 41 59 / 0.65);
     opacity: 0.58;
   }
 
-  .admin-trip-card[data-is-enable='false']:hover {
+  .admin-trip-card[data-is-enable="false"]:hover {
     opacity: 0.78;
   }
 
@@ -94,12 +95,20 @@
     @apply text-sm font-semibold;
   }
 
-  .admin-trip-card[data-is-enable='true'] .admin-status-text {
-    color: theme('colors.adminStatus.enabledText');
+  .admin-trip-card[data-is-enable="true"] .admin-status-text {
+    @apply text-adminStatus-enabledText;
   }
 
-  .admin-trip-card[data-is-enable='false'] .admin-status-text {
-    color: theme('colors.admin.muted');
+  .admin-trip-card[data-is-enable="false"] .admin-status-text {
+    @apply text-admin-muted;
+  }
+
+  .admin-trip-card[data-is-enable="true"] .admin-switch-track {
+    @apply bg-adminStatus-enabled;
+  }
+
+  .admin-trip-card[data-is-enable="false"] .admin-switch-track {
+    @apply bg-adminStatus-disabled;
   }
 
   .admin-switch-track {
@@ -110,19 +119,64 @@
     @apply absolute left-1 top-1 h-6 w-6 rounded-full bg-white transition;
   }
 
-  .admin-trip-card[data-is-enable='true'] .admin-switch-track {
-    background: theme('colors.adminStatus.enabled');
-  }
-
-  .admin-trip-card[data-is-enable='false'] .admin-switch-track {
-    background: theme('colors.adminStatus.disabled');
-  }
-
-  .admin-trip-card[data-is-enable='true'] .admin-switch-thumb {
+  .admin-trip-card[data-is-enable="true"] .admin-switch-thumb {
     transform: translateX(24px);
   }
 
-  .admin-trip-card[data-is-enable='false'] .admin-switch-thumb {
+  .admin-trip-card[data-is-enable="false"] .admin-switch-thumb {
     transform: translateX(0);
   }
+}
+
+/* The light theme is scoped to the admin shell and never affects the passenger site. */
+.admin-shell[data-theme="light"] {
+  background: #f4f7fb;
+  color: #172033;
+}
+
+.admin-shell[data-theme="light"] > aside,
+.admin-shell[data-theme="light"] > div > header,
+.admin-shell[data-theme="light"] .admin-panel,
+.admin-shell[data-theme="light"] .admin-panel-header,
+.admin-shell[data-theme="light"] .admin-panel-body {
+  background-color: #ffffff;
+  border-color: #dbe4ec;
+}
+
+.admin-shell[data-theme="light"] .admin-stat-card {
+  background-color: #eaf0f6;
+}
+
+.admin-shell[data-theme="light"] > aside a,
+.admin-shell[data-theme="light"] > div > header a,
+.admin-shell[data-theme="light"] > div > header button {
+  border-color: #b7c5d1;
+  color: #40516a;
+}
+
+.admin-shell[data-theme="light"] .admin-page-title,
+.admin-shell[data-theme="light"] .admin-section-title,
+.admin-shell[data-theme="light"] .admin-stat-value,
+.admin-shell[data-theme="light"] .admin-panel-body h2,
+.admin-shell[data-theme="light"] .admin-panel-body td:first-child,
+.admin-shell[data-theme="light"] .admin-panel-body td p:first-child {
+  color: #172033;
+}
+
+.admin-shell[data-theme="light"] .admin-panel-body table,
+.admin-shell[data-theme="light"] .admin-panel-body td,
+.admin-shell[data-theme="light"] > aside a {
+  color: #40516a;
+}
+
+.admin-shell[data-theme="light"] .admin-page-kicker,
+.admin-shell[data-theme="light"] .admin-page-description,
+.admin-shell[data-theme="light"] .admin-stat-label,
+.admin-shell[data-theme="light"] .admin-panel-body p,
+.admin-shell[data-theme="light"] .admin-panel-body thead {
+  color: #66768a;
+}
+
+.admin-shell[data-theme="light"] .shadow-adminPanel {
+  box-shadow: 0 18px 42px -18px rgb(15 23 42 / 0.2);
 }

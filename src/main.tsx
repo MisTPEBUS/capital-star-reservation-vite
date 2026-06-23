@@ -10,7 +10,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <HashRouter>
       <Routes>
         <Route path="/" element={<App />} />
-        <Route path="/admin/login" element={<AdminApp />} />
+        <Route path="/admin/*" element={<AdminApp />} />
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>
     </HashRouter>
