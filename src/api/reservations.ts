@@ -19,6 +19,17 @@ interface ReservationStop {
   sequence: number;
 }
 
+export interface UpcomingReservation {
+  reservationId: string;
+  routeId: string;
+  routeNumber: string;
+  departureTime: string;
+  openDate: string;
+  pickupStop: ReservationStop;
+  status: "RESERVED" | "CANCELLED";
+  bookedAt: string;
+}
+
 export interface CreateReservationResult {
   reservationId: string;
   dailyOpenScheduleId: string;
@@ -88,6 +99,36 @@ export async function createReservation({
     );
 
     return response.data.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+}
+
+export async function getUpcomingReservations(userId: string) {
+  try {
+    const response = await apiClient.get<ApiResponse<UpcomingReservation[]>>(
+      "/api/v1/reservations/upcoming",
+      {
+        params: {
+          userId,
+        },
+      },
+    );
+
+    return response.data.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+}
+
+export async function cancelReservation(reservationId: string, userId: string) {
+  try {
+    await apiClient.delete<ApiResponse<null>>(
+      `/api/v1/reservations/${reservationId}`,
+      {
+        params: { userId },
+      },
+    );
   } catch (error) {
     throw new Error(getApiErrorMessage(error));
   }

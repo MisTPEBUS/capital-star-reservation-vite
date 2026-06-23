@@ -6,9 +6,15 @@ import {
   useRef,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  LoginVerificationCode,
+  requestLoginVerificationCode,
+  verifyLoginCode,
+} from "../../api/admin/auth";
+import { hasValidAdminSession, saveAdminSession } from "../../api/admin/session";
 
 const OTP_LENGTH = 4;
-const OTP_DURATION_SECONDS = 5 * 60;
 
 type DialogState =
   | { type: "success"; message: string }
@@ -23,36 +29,60 @@ function formatCountdown(seconds: number) {
 }
 
 export function LoginPage() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<"activityCode" | "otp">("activityCode");
   const [activityCode, setActivityCode] = useState("");
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
-  const [remainingSeconds, setRemainingSeconds] =
-    useState(OTP_DURATION_SECONDS);
+  const [verification, setVerification] =
+    useState<LoginVerificationCode | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [isRequestingCode, setIsRequestingCode] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
-    if (step !== "otp" || remainingSeconds === 0) return;
+    if (hasValidAdminSession()) {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [navigate]);
 
-    const timer = window.setInterval(() => {
-      setRemainingSeconds((value) => Math.max(value - 1, 0));
-    }, 1000);
+  useEffect(() => {
+    if (step !== "otp" || !verification) return;
 
+    const updateRemainingSeconds = () => {
+      const milliseconds = new Date(verification.expiresAt).getTime() - Date.now();
+      setRemainingSeconds(Math.max(0, Math.ceil(milliseconds / 1000)));
+    };
+
+    updateRemainingSeconds();
+    const timer = window.setInterval(updateRemainingSeconds, 1000);
     return () => window.clearInterval(timer);
-  }, [remainingSeconds, step]);
+  }, [step, verification]);
 
-  const sendCode = (event: FormEvent<HTMLFormElement>) => {
+  const sendCode = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!activityCode.trim()) {
-      setDialog({ type: "error", message: "請輸入活動碼。" });
+    if (!/^\d{8}$/.test(activityCode)) {
+      setDialog({ type: "error", message: "請輸入 8 碼活動碼。" });
       return;
     }
 
-    setOtp(Array(OTP_LENGTH).fill(""));
-    setRemainingSeconds(OTP_DURATION_SECONDS);
-    setStep("otp");
-    window.setTimeout(() => otpRefs.current[0]?.focus(), 0);
+    setIsRequestingCode(true);
+    try {
+      const nextVerification = await requestLoginVerificationCode(activityCode);
+      setVerification(nextVerification);
+      setOtp(Array(OTP_LENGTH).fill(""));
+      setStep("otp");
+      window.setTimeout(() => otpRefs.current[0]?.focus(), 0);
+    } catch (error) {
+      setDialog({
+        type: "error",
+        message: error instanceof Error ? error.message : "建立驗證碼失敗。",
+      });
+    } finally {
+      setIsRequestingCode(false);
+    }
   };
 
   const updateOtp = (index: number, value: string) => {
@@ -92,7 +122,7 @@ export function LoginPage() {
     otpRefs.current[Math.min(pastedDigits.length, OTP_LENGTH) - 1]?.focus();
   };
 
-  const verifyCode = (event: FormEvent<HTMLFormElement>) => {
+  const verifyCode = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (otp.some((digit) => !digit)) {
@@ -100,18 +130,57 @@ export function LoginPage() {
       return;
     }
 
-    setDialog({
-      type: "success",
-      message: "驗證碼格式正確，登入 API 串接後將在此建立管理者工作階段。",
-    });
+    if (remainingSeconds === 0) {
+      setDialog({ type: "error", message: "驗證碼已過期，請重新發送。" });
+      return;
+    }
+
+    if (!verification) {
+      setDialog({ type: "error", message: "找不到驗證資訊，請重新發送驗證碼。" });
+      return;
+    }
+
+    setIsVerifyingCode(true);
+    try {
+      const session = await verifyLoginCode(otp.join(""), verification.userId);
+      saveAdminSession(session);
+      navigate("/admin/dashboard", { replace: true });
+    } catch (error) {
+      setDialog({
+        type: "error",
+        message: error instanceof Error ? error.message : "驗證登入失敗。",
+      });
+    } finally {
+      setIsVerifyingCode(false);
+    }
   };
 
-  const resendCode = () => {
-    if (remainingSeconds > 0) return;
+  const resendCode = async () => {
+    if (remainingSeconds > 0 || isRequestingCode) return;
 
-    setOtp(Array(OTP_LENGTH).fill(""));
-    setRemainingSeconds(OTP_DURATION_SECONDS);
-    otpRefs.current[0]?.focus();
+    setIsRequestingCode(true);
+    try {
+      const nextVerification = await requestLoginVerificationCode(activityCode);
+      setVerification(nextVerification);
+      setOtp(Array(OTP_LENGTH).fill(""));
+      window.setTimeout(() => otpRefs.current[0]?.focus(), 0);
+    } catch (error) {
+      setDialog({
+        type: "error",
+        message: error instanceof Error ? error.message : "建立驗證碼失敗。",
+      });
+    } finally {
+      setIsRequestingCode(false);
+    }
+  };
+
+  const closeDialog = () => {
+    if (dialog?.type === "success") {
+      navigate("/admin/dashboard");
+      return;
+    }
+
+    setDialog(null);
   };
 
   return (
@@ -145,7 +214,7 @@ export function LoginPage() {
               id="activity-code"
               className="mt-2 h-14 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-4 text-center text-lg font-bold tracking-[0.15em] text-admin-text outline-none transition placeholder:text-admin-muted focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15"
               inputMode="numeric"
-              maxLength={20}
+              maxLength={8}
               placeholder="請輸入數字"
               value={activityCode}
               onChange={(event) =>
@@ -155,8 +224,9 @@ export function LoginPage() {
             <button
               className="mt-6 h-14 w-full rounded-adminControl bg-adminStatus-enabled px-4 font-bold text-admin-bg transition hover:bg-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled"
               type="submit"
+              disabled={isRequestingCode}
             >
-              取得驗證碼
+              {isRequestingCode ? "取得中..." : "取得驗證碼"}
             </button>
           </form>
         ) : (
@@ -198,18 +268,21 @@ export function LoginPage() {
             <button
               className="mt-8 h-14 w-full rounded-adminControl bg-adminStatus-enabled px-4 font-bold text-admin-bg transition hover:bg-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled"
               type="submit"
+              disabled={isVerifyingCode || remainingSeconds === 0}
             >
-              驗證登入
+              {isVerifyingCode ? "驗證中..." : "驗證登入"}
             </button>
             <button
               className="mt-4 w-full py-2 text-sm font-medium text-adminStatus-enabled disabled:cursor-not-allowed disabled:text-admin-muted"
-              disabled={remainingSeconds > 0}
+              disabled={remainingSeconds > 0 || isRequestingCode}
               type="button"
               onClick={resendCode}
             >
               {remainingSeconds > 0
                 ? `可於 ${formatCountdown(remainingSeconds)} 後重新發送`
-                : "重新發送驗證碼"}
+                : isRequestingCode
+                  ? "重新發送中..."
+                  : "重新發送驗證碼"}
             </button>
           </form>
         )}
@@ -246,7 +319,7 @@ export function LoginPage() {
             <button
               className="mt-6 h-12 w-full rounded-adminControl bg-admin-elevated font-semibold text-admin-text transition hover:bg-admin-borderStrong"
               type="button"
-              onClick={() => setDialog(null)}
+              onClick={closeDialog}
             >
               確定
             </button>
