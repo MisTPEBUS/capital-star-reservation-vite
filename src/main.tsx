@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import App from './App';
 import AdminApp from './admin/AdminApp';
+import { UpcomingReservationPage } from './pages/UpcomingReservationPage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -10,6 +11,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <HashRouter>
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/ticket" element={<UpcomingReservationPage />} />
         <Route path="/admin/*" element={<AdminApp />} />
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>

@@ -6,6 +6,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { ScheduleManagementPage } from "./pages/ScheduleManagementPage";
 import { UserPermissionsPage } from "./pages/UserPermissionsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { DispatchManagementPage } from "./pages/DispatchManagementPage";
+import { RouteManagementPage } from "./pages/RouteManagementPage";
 
 export default function AdminApp() {
   return (
@@ -15,6 +17,22 @@ export default function AdminApp() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="employees" element={<UserPermissionsPage />} />
         <Route path="schedules" element={<ScheduleManagementPage />} />
+        <Route
+          path="dispatch/reservations"
+          element={<DispatchManagementPage title="營運預約班次" />}
+        />
+        <Route
+          path="dispatch/stops"
+          element={<DispatchManagementPage title="站位設定" />}
+        />
+        <Route
+          path="dispatch/routes"
+          element={<RouteManagementPage />}
+        />
+        <Route
+          path="dispatch/schedules"
+          element={<DispatchManagementPage title="班次設定" />}
+        />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate replace to="login" />} />

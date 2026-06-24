@@ -19,7 +19,7 @@ export function AdminLayout() {
 
   return (
     <div
-      className="admin-shell min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)]"
+      className="admin-shell min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)] lg:items-start"
       data-theme={theme}
     >
       <Sidebar />

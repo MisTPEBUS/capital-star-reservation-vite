@@ -35,8 +35,8 @@ export function BookingForm({
   return (
     <section className="rounded-panel bg-white p-5 shadow-card ring-1 ring-bus-100/80 md:p-6">
       <SectionTitle
-        eyebrow="Section 2"
-        title="選擇預約條件"
+        eyebrow="選擇預約條件"
+        title=""
         description="選擇上車站與搭乘日期，系統會依條件顯示可預約班次。"
       />
 
@@ -45,8 +45,8 @@ export function BookingForm({
         <div>
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-sm font-black text-ink-800">上車地點</p>
-              <p className="mt-1 text-xs font-bold text-ink-500">
+              <p className="text-xl font-black text-ink-800">上車地點</p>
+              <p className="mt-1 text-lg font-bold text-ink-500">
                 請選擇你的上車站
               </p>
             </div>
@@ -68,11 +68,11 @@ export function BookingForm({
                       : "bg-ink-50 text-ink-800 ring-1 ring-bus-100 hover:bg-bus-50"
                   }`}
                 >
-                  <span className="block text-base font-black">
+                  <span className="block text-3xl font-black">
                     {stop.stopName}
                   </span>
                   <span
-                    className={`mt-1 block text-xs font-bold ${
+                    className={`mt-1 block text-lg font-bold ${
                       isActive ? "text-bus-50" : "text-ink-500"
                     }`}
                   >
@@ -87,8 +87,8 @@ export function BookingForm({
         {/* 日期 */}
         <div>
           <div>
-            <p className="text-sm font-black text-ink-800">日期</p>
-            <p className="mt-1 text-xs font-bold text-ink-500">
+            <p className="text-xl font-black text-ink-800">日期</p>
+            <p className="mt-1 text-lg font-bold text-ink-500">
               選擇預計搭乘日期
             </p>
           </div>
@@ -109,9 +109,9 @@ export function BookingForm({
                       : "bg-ink-50 text-ink-800 ring-1 ring-bus-100 hover:bg-bus-50"
                   }`}
                 >
-                  <span className="block text-sm font-black">{date.label}</span>
+                  <span className="block text-xl font-black">{date.label}</span>
                   <span
-                    className={`mt-1 block text-xs font-bold ${
+                    className={`mt-1 block text-lg font-bold ${
                       isActive ? "text-bus-50" : "text-ink-500"
                     }`}
                   >
@@ -125,8 +125,8 @@ export function BookingForm({
 
         {/* 時間 */}
         <div>
-          <p className="text-sm font-black text-ink-800">時間</p>
-          <p className="mt-1 text-xs font-bold text-ink-500">
+          <p className="text-xl font-black text-ink-800">時間</p>
+          <p className="mt-1 text-lg font-bold text-ink-500">
             篩選想搭乘的出發時段
           </p>
 
@@ -140,7 +140,7 @@ export function BookingForm({
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => update("timePeriod", period.value)}
-                  className={`min-h-12 rounded-2xl px-3 text-sm font-black outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
+                  className={`min-h-12 rounded-2xl px-3 text-xl font-black outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
                     isActive
                       ? "bg-bus-600 text-white shadow-card"
                       : "bg-ink-50 text-ink-700 ring-1 ring-bus-100 hover:bg-bus-50"
