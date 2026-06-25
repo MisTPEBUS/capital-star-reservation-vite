@@ -9,15 +9,7 @@ import {
   type RouteStop,
   updateRoute,
 } from "../../api/admin/routes";
-
-const availableStops: RouteStop[] = [
-  { stopId: "stop-yilan", stopName: "宜蘭轉運站", stopType: "STATION", address: "宜蘭縣宜蘭市", latitude: null, longitude: null, sequence: 0 },
-  { stopId: "stop-zhuangwei", stopName: "壯圍", stopType: "ROADSIDE", address: "宜蘭縣壯圍鄉", latitude: null, longitude: null, sequence: 0 },
-  { stopId: "stop-wujie", stopName: "五結", stopType: "ROADSIDE", address: "宜蘭縣五結鄉", latitude: null, longitude: null, sequence: 0 },
-  { stopId: "stop-luodong", stopName: "羅東轉運站", stopType: "STATION", address: "宜蘭縣羅東鎮", latitude: null, longitude: null, sequence: 0 },
-  { stopId: "stop-jiaoxi", stopName: "礁溪轉運站", stopType: "STATION", address: "宜蘭縣礁溪鄉", latitude: null, longitude: null, sequence: 0 },
-  { stopId: "stop-toucheng", stopName: "頭城", stopType: "ROADSIDE", address: "宜蘭縣頭城鎮", latitude: null, longitude: null, sequence: 0 },
-];
+import { type AdminStop, getStops } from "../../api/admin/stops";
 
 const emptyPayload: RoutePayload = {
   routeNumber: "",
@@ -37,7 +29,9 @@ export function RouteManagementPage() {
   const [editingRoute, setEditingRoute] = useState<AdminRoute | null>(null);
   const [form, setForm] = useState<RoutePayload>(emptyPayload);
   const [stationRoute, setStationRoute] = useState<AdminRoute | null>(null);
+  const [availableStops, setAvailableStops] = useState<AdminStop[]>([]);
   const [selectedStopIds, setSelectedStopIds] = useState<string[]>([]);
+  const [isStopsLoading, setIsStopsLoading] = useState(false);
 
   const loadRoutes = async () => {
     try {
@@ -137,10 +131,23 @@ export function RouteManagementPage() {
     }
   };
 
-  const openStationSettings = (route: AdminRoute) => {
+  const openStationSettings = async (route: AdminRoute) => {
     setStationRoute(route);
     setSelectedStopIds(route.stops.map((stop) => stop.stopId));
     setNotice(null);
+
+    try {
+      setIsStopsLoading(true);
+      setAvailableStops(await getStops());
+    } catch (error) {
+      setStationRoute(null);
+      setNotice({
+        type: "error",
+        message: error instanceof Error ? error.message : "讀取站位清單失敗。",
+      });
+    } finally {
+      setIsStopsLoading(false);
+    }
   };
 
   const saveStationSettings = () => {
@@ -148,7 +155,17 @@ export function RouteManagementPage() {
 
     const stops = availableStops
       .filter((stop) => selectedStopIds.includes(stop.stopId))
-      .map((stop, index) => ({ ...stop, sequence: index + 1 }));
+      .map(
+        (stop, index): RouteStop => ({
+          stopId: stop.stopId,
+          stopName: stop.stopName,
+          stopType: stop.stopType,
+          address: stop.address,
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+          sequence: index + 1,
+        }),
+      );
 
     setRoutes((current) =>
       current.map((route) =>
@@ -293,9 +310,13 @@ export function RouteManagementPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5" role="dialog" aria-modal="true" aria-labelledby="route-stop-title">
           <div className="w-full max-w-lg rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-6 shadow-adminPanel">
             <h2 className="text-xl font-bold text-admin-text" id="route-stop-title">設定站位：{stationRoute.routeNumber} {stationRoute.routeName}</h2>
-            <p className="mt-2 text-sm leading-6 text-admin-muted">勾選此路線可使用的站位。站位資料目前為假資料，送出後只會暫存於本頁。</p>
+            <p className="mt-2 text-sm leading-6 text-admin-muted">勾選此路線可使用的站位。清單讀取自站位設定 API；route-stop API 尚未提供，送出後仍只會暫存於本頁。</p>
             <div className="mt-5 max-h-72 space-y-2 overflow-y-auto">
-              {availableStops.map((stop) => {
+              {isStopsLoading ? (
+                <p className="py-8 text-center text-sm text-admin-muted">讀取站位清單中…</p>
+              ) : availableStops.length === 0 ? (
+                <p className="py-8 text-center text-sm text-admin-muted">目前沒有可設定的站位。</p>
+              ) : availableStops.map((stop) => {
                 const checked = selectedStopIds.includes(stop.stopId);
                 return (
                   <button
