@@ -8,6 +8,7 @@ import { UserPermissionsPage } from "./pages/UserPermissionsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { DispatchManagementPage } from "./pages/DispatchManagementPage";
 import { RouteManagementPage } from "./pages/RouteManagementPage";
+import { StopManagementPage } from "./pages/StopManagementPage";
 
 export default function AdminApp() {
   return (
@@ -23,7 +24,7 @@ export default function AdminApp() {
         />
         <Route
           path="dispatch/stops"
-          element={<DispatchManagementPage title="站位設定" />}
+          element={<StopManagementPage />}
         />
         <Route
           path="dispatch/routes"
