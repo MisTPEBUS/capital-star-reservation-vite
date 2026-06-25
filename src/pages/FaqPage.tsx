@@ -1,0 +1,212 @@
+import { type MouseEvent, useEffect } from "react";
+import { Link } from "react-router-dom";
+
+interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+const faqSections: Array<{
+  title: string;
+  description: string;
+  items: FaqItem[];
+}> = [
+  {
+    title: "開始使用",
+    description: "從 LINE 開啟服務後，幾個步驟就能完成預約。",
+    items: [
+      {
+        question: "第一次使用需要先做什麼？",
+        answer:
+          "請從 LINE 開啟首都客運預約服務。系統會確認您的 LINE 身分並建立或讀取乘客資料；完成後即可查看可預約的班次。",
+      },
+      {
+        question: "身分識別碼是什麼？需要自行設定嗎？",
+        answer:
+          "身分識別碼是系統提供的 8 位乘客識別碼，會用於乘車憑證與工作人員核對。您不需要自行設定，請在需要時出示憑證即可。",
+      },
+      {
+        question: "為什麼無法看到可預約的班次？",
+        answer:
+          "請先確認選擇的日期與上車站。若仍沒有班次，可能是該日尚未開放、已超過預約截止時間，或目前沒有符合條件的營運班次。",
+      },
+    ],
+  },
+  {
+    title: "預約與乘車",
+    description: "了解如何選擇班次、使用乘車憑證與處理取消。",
+    items: [
+      {
+        question: "如何完成預約？",
+        answer:
+          "依序選擇上車站、日期與可預約班次，再按下預約按鈕。系統會確認座位數、預約截止時間與您的預約狀態；成功後會立即顯示乘車憑證。",
+      },
+      {
+        question: "預約成功後要在哪裡查看乘車憑證？",
+        answer:
+          "首頁會顯示下一筆有效預約。點選「預約乘車憑證」即可放大查看班次、上車站、乘車序號與乘車碼；請於上車時出示給工作人員。",
+      },
+      {
+        question: "可以取消已預約的班次嗎？",
+        answer:
+          "可以。在班次出發前，開啟下一筆預約的乘車憑證並選擇取消預約。取消成功後座位會釋出，您可以重新選擇其他可預約班次。",
+      },
+      {
+        question: "同一天可以預約多個班次嗎？",
+        answer:
+          "為避免重複占用座位，系統通常只保留同日的一筆有效預約。取消原有預約後，才可以改預約同日的其他班次。",
+      },
+    ],
+  },
+  {
+    title: "常見狀況",
+    description: "遇到異常時，先依下列方式確認。",
+    items: [
+      {
+        question: "乘車憑證沒有顯示，該怎麼辦？",
+        answer:
+          "請確認網路連線後重新開啟服務。若班次已出發、預約已取消，或沒有未來的有效預約，乘車憑證不會顯示。",
+      },
+      {
+        question: "預約時出現失敗訊息怎麼處理？",
+        answer:
+          "請依畫面訊息確認座位是否已額滿、是否已過截止時間，或您是否已有同日預約。若問題持續，請稍後重新整理並再試一次。",
+      },
+      {
+        question: "系統會保存哪些資料？",
+        answer:
+          "系統使用 LINE 識別資訊建立乘客資料，並保存預約所需的基本資料與預約紀錄。資料僅用於身份核對、班次安排與乘車服務。",
+      },
+    ],
+  },
+];
+
+export function FaqPage() {
+  useEffect(() => {
+    const previousFontSize = document.documentElement.style.fontSize;
+    document.documentElement.style.fontSize = "112.5%";
+
+    return () => {
+      document.documentElement.style.fontSize = previousFontSize;
+    };
+  }, []);
+
+  const toggleFaqCard = (event: MouseEvent<HTMLDetailsElement>) => {
+    const target = event.target as HTMLElement;
+    if (
+      target.closest("summary, a, button, input, textarea, select, label") ||
+      window.getSelection()?.toString().trim()
+    ) {
+      return;
+    }
+
+    event.currentTarget.open = !event.currentTarget.open;
+  };
+
+  return (
+    <main className="min-h-screen overflow-hidden bg-ink-50 px-4 py-8 pb-28 text-ink-900 sm:px-6 lg:px-8 lg:py-12 lg:pb-32">
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute left-1/2 top-[-180px] h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-bus-100 blur-3xl" />
+        <div className="absolute bottom-[-180px] right-[-100px] h-80 w-80 rounded-full bg-star-100/70 blur-3xl" />
+      </div>
+
+      <div className="mx-auto max-w-4xl">
+        <header className="rounded-xl border border-bus-500 bg-white/85 p-6 shadow-card backdrop-blur sm:p-9">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="max-w-2xl">
+              <p className="text-sm font-black tracking-[0.2em] text-bus-600">
+                首都客運
+              </p>
+              <h1 className="mt-3 text-3xl font-black tracking-tight text-ink-900 sm:text-4xl">
+                預約系統使用說明
+              </h1>
+              <p className="mt-4 text-lg leading-8 text-ink-500">
+                透過 LINE
+                即可查詢班次、完成預約並出示乘車憑證。以下整理乘客最常遇到的操作與問題。
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-7 grid gap-3 border-t border-ink-100 pt-6 sm:grid-cols-3">
+            {[
+              ["1", "選擇日期與上車站"],
+              ["2", "預約可用班次"],
+              ["3", "出示乘車憑證"],
+            ].map(([step, label]) => (
+              <div className="flex items-center gap-3" key={step}>
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-bus-700 text-sm font-black text-white">
+                  {step}
+                </span>
+                <p className="text-sm font-bold text-ink-700">{label}</p>
+              </div>
+            ))}
+          </div>
+        </header>
+
+        <div className="mt-8 space-y-10">
+          {faqSections.map((section) => (
+            <section key={section.title}>
+              <div className="mb-4">
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-bus-600">
+                  {section.title}
+                </h2>
+                <p className="mt-2 text-lg leading-7 text-ink-400">
+                  {section.description}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {section.items.map((item) => (
+                  <details
+                    className="group cursor-pointer rounded-xl border-2 border-blue-400 bg-white p-2 shadow-[0_1px_0_rgba(15,23,42,0.08),0_10px_26px_rgba(15,23,42,0.05)] transition hover:border-bus-300 open:border-bus-600 open:ring-2 open:ring-bus-600/25"
+                    key={item.question}
+                    onClick={toggleFaqCard}
+                  >
+                    <summary className="flex cursor-pointer  pb-0 list-none items-center justify-between gap-4 rounded-2xl p-2 text-left outline-none transition hover:bg-ink-50 focus-visible:bg-ink-50 focus-visible:ring-4 focus-visible:ring-bus-500/20">
+                      <span className="text-lg font-black text-ink-900">
+                        {item.question}
+                      </span>
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-ink-300 bg-white text-xl font-black text-ink-700 transition group-open:rotate-45 group-open:border-bus-600 group-open:text-bus-600">
+                        +
+                      </span>
+                    </summary>
+                    <div className="mt-2 border-t border-ink-100 px-2  text-base leading-8 text-ink-500">
+                      {item.answer}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <footer className="mt-10 rounded-card border-2 border-bus-500 bg-bus-900 px-6 py-7 text-center text-white shadow-soft">
+          <p className="text-xl font-black">需要協助嗎？</p>
+          <p className="mt-2 text-base leading-7 text-bus-100">
+            若依照說明仍無法完成操作，請聯繫活動承辦人員並提供身分識別碼與預約日期，以便協助查詢。
+          </p>
+          <div className="mx-auto mt-6 max-w-2xl border-t border-white/20 pt-6 text-left">
+            <p className="text-lg font-black">
+              首都客運客服中心（24H 全年無休）
+            </p>
+            <p className="mt-2 text-xl font-black text-star-300">
+              免付費專線：0800-000-866
+            </p>
+            <div className="mt-5 grid gap-2 text-base text-bus-100 sm:grid-cols-2">
+              <p>礁溪站　服務電話：03-988-0700</p>
+              <p>宜蘭站　服務電話：03-937-3600</p>
+              <p>羅東站　服務電話：03-955-6585</p>
+            </div>
+          </div>
+        </footer>
+      </div>
+
+      <Link
+        className="fixed bottom-5 left-1/2 z-40 w-[calc(100%-2rem)] -translate-x-1/2 rounded-xl border-2 border-white/20 bg-bus-700 px-6 py-3 text-center text-base font-black text-white shadow-card transition hover:bg-bus-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-bus-300/40 md:w-[calc(100%-3rem)] lg:w-auto"
+        to="/"
+      >
+        前往預約首頁
+      </Link>
+    </main>
+  );
+}

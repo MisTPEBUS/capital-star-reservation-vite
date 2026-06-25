@@ -4,6 +4,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import App from './App';
 import AdminApp from './admin/AdminApp';
 import { UpcomingReservationPage } from './pages/UpcomingReservationPage';
+import { FaqPage } from './pages/FaqPage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -12,6 +13,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/ticket" element={<UpcomingReservationPage />} />
+        <Route path="/faq" element={<FaqPage />} />
         <Route path="/admin/*" element={<AdminApp />} />
         <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>
