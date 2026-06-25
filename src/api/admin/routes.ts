@@ -10,6 +10,7 @@ interface ApiResponse<T> {
 export type RouteStatus = "ACTIVE" | "INACTIVE";
 
 export interface RouteStop {
+  routeStopId?: string;
   stopId: string;
   stopName: string;
   stopType: string;
@@ -17,6 +18,7 @@ export interface RouteStop {
   latitude: number | null;
   longitude: number | null;
   sequence: number;
+  status?: string;
 }
 
 export interface AdminRoute {
@@ -35,6 +37,11 @@ export interface RoutePayload {
   status: RouteStatus;
 }
 
+export interface RouteStopPayload {
+  stopId: string;
+  sequence: number;
+}
+
 function getErrorMessage(error: unknown) {
   if (axios.isAxiosError<ApiResponse<unknown>>(error)) {
     return error.response?.data?.message || "路線操作失敗，請稍後再試。";
@@ -44,7 +51,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function unwrapResponse<T>(response: ApiResponse<T>) {
-  if (response.code !== 0 || !response.data) {
+  if (![0, 200].includes(response.code) || !response.data) {
     throw new Error(response.message || "路線操作失敗，請稍後再試。");
   }
 
@@ -77,6 +84,21 @@ export async function updateRoute(routeId: string, payload: RoutePayload) {
     const response = await apiClient.put<ApiResponse<AdminRoute>>(
       `/api/v1/admin/routes/${routeId}`,
       payload,
+    );
+    return unwrapResponse(response.data);
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+export async function updateRouteStops(
+  routeId: string,
+  stops: RouteStopPayload[],
+) {
+  try {
+    const response = await apiClient.put<ApiResponse<AdminRoute>>(
+      `/api/v1/admin/routes/${routeId}/stops`,
+      { stops },
     );
     return unwrapResponse(response.data);
   } catch (error) {

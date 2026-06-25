@@ -10,6 +10,8 @@ interface BookingFormProps {
   dates: { value: string; label: string }[];
   selection: BookingSelection;
   onChange: (next: BookingSelection) => void;
+  isStopsLoading?: boolean;
+  stopsError?: string;
 }
 
 const timePeriods: { value: TimePeriod; label: string }[] = [
@@ -24,6 +26,8 @@ export function BookingForm({
   dates,
   selection,
   onChange,
+  isStopsLoading = false,
+  stopsError = "",
 }: BookingFormProps) {
   const update = <K extends keyof BookingSelection>(
     key: K,
@@ -53,7 +57,19 @@ export function BookingForm({
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
-            {stops.map((stop) => {
+            {isStopsLoading ? (
+              <div className="rounded-2xl bg-ink-50 px-4 py-5 text-lg font-black text-ink-500 ring-1 ring-bus-100 md:col-span-2">
+                讀取上車站中…
+              </div>
+            ) : stopsError ? (
+              <div className="rounded-2xl bg-coral/10 px-4 py-5 text-lg font-black text-coral ring-1 ring-coral/20 md:col-span-2">
+                {stopsError}
+              </div>
+            ) : stops.length === 0 ? (
+              <div className="rounded-2xl bg-ink-50 px-4 py-5 text-lg font-black text-ink-500 ring-1 ring-bus-100 md:col-span-2">
+                目前沒有可預約上車站
+              </div>
+            ) : stops.map((stop) => {
               const isActive = selection.pickupStopId === stop.stopId;
 
               return (

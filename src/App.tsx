@@ -13,17 +13,33 @@ import {
   UpcomingReservation,
 } from "./api/reservations";
 import { getSchedules } from "./api/schedules";
-import { getAvailableDates, passengerProfile, routes } from "./data/mockData";
+import { type AdminStop, getStops } from "./api/admin/stops";
+import { getAvailableDates, passengerProfile } from "./data/mockData";
 import type {
   BookingSelection,
   OpenSchedule,
+  PickupStop,
   ReservationResult,
+  RouteInfo,
   TimePeriod,
 } from "./types/reservation";
 import { initLiff, LiffProfile } from "./liff/liffClient";
 
-const route = routes[0];
-const defaultPickupStopId = "440e3872-ea19-44f2-b27e-1db0bc9702c7";
+const route: RouteInfo = {
+  routeId: "route_yilan_wujie",
+  routeNumber: "1571",
+  routeName: "宜蘭 — 五結旅遊線",
+  description: "Capital Star 藍色旅遊車款，適合活動接駁與景點預約。",
+  stops: [],
+};
+
+const toPickupStop = (stop: AdminStop): PickupStop => ({
+  stopId: stop.stopId,
+  stopName: stop.stopName,
+  stopType: stop.stopType === "STATION" ? "MAIN_STATION" : "ROADSIDE",
+  address: stop.address ?? "",
+  shortLabel: stop.stopName,
+});
 
 const getPeriod = (time: string): TimePeriod => {
   const hour = Number(time.split(":")[0]);
@@ -69,10 +85,13 @@ function App() {
   const [upcomingReservations, setUpcomingReservations] = useState<
     UpcomingReservation[]
   >([]);
+  const [pickupStops, setPickupStops] = useState<PickupStop[]>([]);
+  const [pickupStopsLoading, setPickupStopsLoading] = useState(true);
+  const [pickupStopsError, setPickupStopsError] = useState("");
 
   const [selection, setSelection] = useState<BookingSelection>({
     routeId: route.routeId,
-    pickupStopId: defaultPickupStopId,
+    pickupStopId: "",
     openDate: availableDates[0].value,
     timePeriod: "ALL",
   });
@@ -87,6 +106,14 @@ function App() {
 
   const [reservationResult, setReservationResult] =
     useState<ReservationResult | null>(null);
+
+  const displayRoute = useMemo<RouteInfo>(
+    () => ({
+      ...route,
+      stops: pickupStops,
+    }),
+    [pickupStops],
+  );
 
   const filteredSchedules = useMemo(() => {
     return schedules
@@ -146,6 +173,59 @@ function App() {
     }
 
     bootLiff();
+  }, []);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadPickupStops() {
+      try {
+        setPickupStopsLoading(true);
+        setPickupStopsError("");
+
+        const stops = await getStops();
+        const activeStops = stops
+          .filter((stop) => stop.status === "ACTIVE")
+          .map(toPickupStop);
+
+        if (!isCurrent) return;
+
+        setPickupStops(activeStops);
+        setSelection((current) => {
+          const hasCurrentStop = activeStops.some(
+            (stop) => stop.stopId === current.pickupStopId,
+          );
+
+          return {
+            ...current,
+            pickupStopId: hasCurrentStop
+              ? current.pickupStopId
+              : activeStops[0]?.stopId ?? "",
+          };
+        });
+      } catch (error) {
+        if (!isCurrent) return;
+
+        console.error("PICKUP_STOPS_ERROR:", error);
+
+        const message =
+          error instanceof Error ? error.message : "上車站資料讀取失敗";
+
+        setPickupStops([]);
+        setSelection((current) => ({ ...current, pickupStopId: "" }));
+        setPickupStopsError(message);
+      } finally {
+        if (isCurrent) {
+          setPickupStopsLoading(false);
+        }
+      }
+    }
+
+    loadPickupStops();
+
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -212,7 +292,11 @@ function App() {
   }, [authProfile?.userId]);
 
   const loadSchedules = async () => {
-    if (liffLoading || !liffProfile?.lineUserId) return;
+    if (liffLoading || !liffProfile?.lineUserId || !selection.pickupStopId) {
+      setSchedules([]);
+      setCanReserve(false);
+      return;
+    }
 
     try {
       setSchedulesLoading(true);
@@ -244,7 +328,11 @@ function App() {
     let isCurrent = true;
 
     async function loadCurrentSchedules() {
-      if (liffLoading || !liffProfile?.lineUserId) return;
+      if (liffLoading || !liffProfile?.lineUserId || !selection.pickupStopId) {
+        setSchedules([]);
+        setCanReserve(false);
+        return;
+      }
 
       try {
         setSchedulesLoading(true);
@@ -388,8 +476,8 @@ function App() {
                 </p>
 
                 <div className="mt-5 grid grid-cols-3 gap-2">
-                  <HeroMetric label="路線" value={route.routeNumber} />
-                  <HeroMetric label="站點" value={`${route.stops.length}`} />
+                  <HeroMetric label="路線" value={displayRoute.routeNumber} />
+                  <HeroMetric label="站點" value={`${displayRoute.stops.length}`} />
                   <HeroMetric label="截止" value="18:00" />
                 </div>
               </div>
@@ -406,7 +494,7 @@ function App() {
           </header>
 
           <div className="mt-5 grid gap-5 pb-10">
-            <MemberCard passenger={displayPassengerProfile} route={route} />
+            <MemberCard passenger={displayPassengerProfile} route={displayRoute} />
             <UpcomingReservationCard
               reservation={activeUpcomingReservation}
               userId={authProfile?.userId ?? null}
@@ -435,13 +523,13 @@ function App() {
                     Route Preview
                   </p>
                   <h2 className="mt-1 text-xl font-black text-ink-900">
-                    {route.routeName}
+                    {displayRoute.routeName}
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-ink-500">
-                    {route.description}
+                    {displayRoute.description}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {route.stops.map((stop) => (
+                    {displayRoute.stops.map((stop) => (
                       <span
                         key={stop.stopId}
                         className="rounded-full bg-bus-50 px-3 py-1 text-xs font-black text-bus-700 ring-1 ring-bus-100"
@@ -455,10 +543,12 @@ function App() {
             </section>
 
             <BookingForm
-              stops={route.stops}
+              stops={pickupStops}
               dates={availableDates}
               selection={selection}
               onChange={setSelection}
+              isStopsLoading={pickupStopsLoading}
+              stopsError={pickupStopsError}
             />
 
             <ScheduleList

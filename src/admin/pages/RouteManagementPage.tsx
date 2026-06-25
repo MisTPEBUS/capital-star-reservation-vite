@@ -8,6 +8,7 @@ import {
   type RouteStatus,
   type RouteStop,
   updateRoute,
+  updateRouteStops,
 } from "../../api/admin/routes";
 import { type AdminStop, getStops } from "../../api/admin/stops";
 
@@ -19,6 +20,10 @@ const emptyPayload: RoutePayload = {
 };
 
 type Notice = { type: "success" | "error"; message: string } | null;
+type SelectedStop = Pick<
+  RouteStop,
+  "stopId" | "stopName" | "stopType" | "address" | "latitude" | "longitude" | "status"
+>;
 
 export function RouteManagementPage() {
   const [routes, setRoutes] = useState<AdminRoute[]>([]);
@@ -30,8 +35,10 @@ export function RouteManagementPage() {
   const [form, setForm] = useState<RoutePayload>(emptyPayload);
   const [stationRoute, setStationRoute] = useState<AdminRoute | null>(null);
   const [availableStops, setAvailableStops] = useState<AdminStop[]>([]);
-  const [selectedStopIds, setSelectedStopIds] = useState<string[]>([]);
+  const [selectedStops, setSelectedStops] = useState<SelectedStop[]>([]);
   const [isStopsLoading, setIsStopsLoading] = useState(false);
+  const [isUpdatingRouteStops, setIsUpdatingRouteStops] = useState(false);
+  const [stationError, setStationError] = useState<string | null>(null);
 
   const loadRoutes = async () => {
     try {
@@ -133,7 +140,20 @@ export function RouteManagementPage() {
 
   const openStationSettings = async (route: AdminRoute) => {
     setStationRoute(route);
-    setSelectedStopIds(route.stops.map((stop) => stop.stopId));
+    setSelectedStops(
+      [...route.stops]
+        .sort((a, b) => a.sequence - b.sequence)
+        .map((stop) => ({
+          stopId: stop.stopId,
+          stopName: stop.stopName,
+          stopType: stop.stopType,
+          address: stop.address,
+          latitude: stop.latitude,
+          longitude: stop.longitude,
+          status: stop.status,
+        })),
+    );
+    setStationError(null);
     setNotice(null);
 
     try {
@@ -150,32 +170,70 @@ export function RouteManagementPage() {
     }
   };
 
-  const saveStationSettings = () => {
+  const saveStationSettings = async () => {
     if (!stationRoute) return;
 
-    const stops = availableStops
-      .filter((stop) => selectedStopIds.includes(stop.stopId))
-      .map(
-        (stop, index): RouteStop => ({
-          stopId: stop.stopId,
-          stopName: stop.stopName,
-          stopType: stop.stopType,
-          address: stop.address,
-          latitude: stop.latitude,
-          longitude: stop.longitude,
-          sequence: index + 1,
-        }),
-      );
+    const stopsPayload = selectedStops.map((stop, index) => ({
+      stopId: stop.stopId,
+      sequence: index + 1,
+    }));
 
-    setRoutes((current) =>
-      current.map((route) =>
-        route.routeId === stationRoute.routeId ? { ...route, stops } : route,
-      ),
-    );
-    setStationRoute(null);
-    setNotice({
-      type: "success",
-      message: "站位設定已更新（目前為前端暫存，待 route-stop API 提供後即可寫入後端）。",
+    try {
+      setIsUpdatingRouteStops(true);
+      setStationError(null);
+      const updatedRoute = await updateRouteStops(stationRoute.routeId, stopsPayload);
+      setRoutes((current) =>
+        current.map((route) =>
+          route.routeId === stationRoute.routeId
+            ? {
+                ...route,
+                ...updatedRoute,
+                description: updatedRoute.description ?? route.description,
+                stops: updatedRoute.stops ?? [],
+              }
+            : route,
+        ),
+      );
+      setStationRoute(null);
+      setNotice({ type: "success", message: "路線站位設定已更新。" });
+    } catch (error) {
+      setStationError(
+        error instanceof Error ? error.message : "更新路線站位設定失敗。",
+      );
+    } finally {
+      setIsUpdatingRouteStops(false);
+    }
+  };
+
+  const addSelectedStop = (stop: AdminStop) => {
+    setSelectedStops((current) => {
+      if (current.some((item) => item.stopId === stop.stopId)) {
+        return current;
+      }
+
+      return [...current, stop];
+    });
+  };
+
+  const removeSelectedStop = (stopId: string) => {
+    setSelectedStops((current) => current.filter((stop) => stop.stopId !== stopId));
+  };
+
+  const moveSelectedStop = (stopId: string, direction: "up" | "down") => {
+    setSelectedStops((current) => {
+      const currentIndex = current.findIndex((stop) => stop.stopId === stopId);
+      if (currentIndex === -1) return current;
+
+      const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+      if (nextIndex < 0 || nextIndex >= current.length) return current;
+
+      const nextStops = [...current];
+      [nextStops[currentIndex], nextStops[nextIndex]] = [
+        nextStops[nextIndex],
+        nextStops[currentIndex],
+      ];
+
+      return nextStops;
     });
   };
 
@@ -308,54 +366,112 @@ export function RouteManagementPage() {
 
       {stationRoute && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5" role="dialog" aria-modal="true" aria-labelledby="route-stop-title">
-          <div className="w-full max-w-lg rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-6 shadow-adminPanel">
+          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-6 shadow-adminPanel">
             <h2 className="text-xl font-bold text-admin-text" id="route-stop-title">設定站位：{stationRoute.routeNumber} {stationRoute.routeName}</h2>
-            <p className="mt-2 text-sm leading-6 text-admin-muted">勾選此路線可使用的站位。清單讀取自站位設定 API；route-stop API 尚未提供，送出後仍只會暫存於本頁。</p>
-            <div className="mt-5 max-h-72 space-y-2 overflow-y-auto">
-              {isStopsLoading ? (
-                <p className="py-8 text-center text-sm text-admin-muted">讀取站位清單中…</p>
-              ) : availableStops.length === 0 ? (
-                <p className="py-8 text-center text-sm text-admin-muted">目前沒有可設定的站位。</p>
-              ) : availableStops.map((stop) => {
-                const checked = selectedStopIds.includes(stop.stopId);
-                return (
-                  <button
-                    aria-pressed={checked}
-                    className={`flex w-full items-center justify-between gap-3 rounded-adminControl border px-4 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
-                      checked
-                        ? "border-adminStatus-enabled bg-adminStatus-enabled/10 text-admin-text ring-1 ring-adminStatus-enabled/30"
-                        : "border-admin-border text-admin-softText hover:border-admin-borderStrong hover:bg-admin-elevated"
-                    }`}
-                    key={stop.stopId}
-                    type="button"
-                    onClick={() =>
-                      setSelectedStopIds((current) =>
-                        checked
-                          ? current.filter((id) => id !== stop.stopId)
-                          : [...current, stop.stopId],
-                      )
-                    }
-                  >
-                    <span>
-                      <span className="block font-medium">{stop.stopName}</span>
-                      <span className="mt-1 block text-xs text-admin-muted">
-                        {stop.stopType === "STATION" ? "轉運站" : "路邊站"}
-                      </span>
-                    </span>
-                    <span
-                      className={`text-xs font-bold ${
-                        checked ? "text-adminStatus-enabled" : "text-admin-muted"
-                      }`}
+            <p className="mt-2 text-sm leading-6 text-admin-muted">左側加入站位，右側用上移、下移調整順序。送出時會依右側排序寫入路線與站位關聯。</p>
+            {stationError && (
+              <p className="mt-4 rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200" role="alert">
+                {stationError}
+              </p>
+            )}
+            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+              <section className="rounded-adminPanel border border-admin-border bg-admin-bg p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold text-admin-text">可加入站位</h3>
+                  <span className="text-xs text-admin-muted">{availableStops.length} 筆</span>
+                </div>
+                <div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">
+                  {isStopsLoading ? (
+                    <p className="py-8 text-center text-sm text-admin-muted">讀取站位清單中…</p>
+                  ) : availableStops.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-admin-muted">目前沒有可設定的站位。</p>
+                  ) : availableStops.map((stop) => {
+                    const isSelected = selectedStops.some((item) => item.stopId === stop.stopId);
+                    return (
+                      <button
+                        aria-pressed={isSelected}
+                        className={`flex w-full items-center justify-between gap-3 rounded-adminControl border px-4 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
+                          isSelected
+                            ? "border-adminStatus-enabled/60 bg-adminStatus-enabled/10 text-admin-text"
+                            : "border-admin-border text-admin-softText hover:border-admin-borderStrong hover:bg-admin-elevated"
+                        }`}
+                        disabled={isSelected}
+                        key={stop.stopId}
+                        type="button"
+                        onClick={() => addSelectedStop(stop)}
+                      >
+                        <span>
+                          <span className="block font-medium">{stop.stopName}</span>
+                          <span className="mt-1 block text-xs text-admin-muted">
+                            {stop.stopType === "STATION" ? "轉運站" : "路邊站"}
+                          </span>
+                        </span>
+                        <span className={`text-xs font-bold ${isSelected ? "text-adminStatus-enabled" : "text-admin-muted"}`}>
+                          {isSelected ? "已加入" : "加入"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="rounded-adminPanel border border-admin-border bg-admin-bg p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold text-admin-text">已選站位順序</h3>
+                  <span className="text-xs text-admin-muted">{selectedStops.length} 筆</span>
+                </div>
+                <div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">
+                  {selectedStops.length === 0 ? (
+                    <div className="rounded-adminControl border border-dashed border-admin-borderStrong px-4 py-8 text-center text-sm leading-6 text-admin-muted">
+                      尚未選擇站位。若直接送出，將會清空此路線目前的站位設定。
+                    </div>
+                  ) : selectedStops.map((stop, index) => (
+                    <div
+                      className="grid gap-3 rounded-adminControl border border-admin-borderStrong bg-admin-surface px-4 py-3 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center"
+                      key={stop.stopId}
                     >
-                      {checked ? "已選取" : "點選設定"}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span className="grid h-8 w-8 place-items-center rounded-full bg-adminStatus-enabled/15 text-sm font-black text-adminStatus-enabled">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-admin-text">{stop.stopName}</p>
+                        <p className="mt-1 text-xs text-admin-muted">
+                          {stop.stopType === "STATION" ? "轉運站" : "路邊站"}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          className="rounded-adminControl border border-admin-borderStrong px-3 py-2 text-xs font-semibold text-admin-softText disabled:cursor-not-allowed disabled:opacity-40"
+                          disabled={index === 0}
+                          type="button"
+                          onClick={() => moveSelectedStop(stop.stopId, "up")}
+                        >
+                          上移
+                        </button>
+                        <button
+                          className="rounded-adminControl border border-admin-borderStrong px-3 py-2 text-xs font-semibold text-admin-softText disabled:cursor-not-allowed disabled:opacity-40"
+                          disabled={index === selectedStops.length - 1}
+                          type="button"
+                          onClick={() => moveSelectedStop(stop.stopId, "down")}
+                        >
+                          下移
+                        </button>
+                        <button
+                          className="rounded-adminControl border border-red-400/40 px-3 py-2 text-xs font-semibold text-red-300"
+                          type="button"
+                          onClick={() => removeSelectedStop(stop.stopId)}
+                        >
+                          移除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
             <div className="mt-6 flex justify-end gap-3">
-              <button className="h-11 rounded-adminControl border border-admin-borderStrong px-5 text-sm font-semibold text-admin-softText" type="button" onClick={() => setStationRoute(null)}>取消</button>
-              <button className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg" type="button" onClick={saveStationSettings}>儲存站位設定</button>
+              <button className="h-11 rounded-adminControl border border-admin-borderStrong px-5 text-sm font-semibold text-admin-softText disabled:opacity-60" disabled={isUpdatingRouteStops} type="button" onClick={() => setStationRoute(null)}>取消</button>
+              <button className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg disabled:opacity-60" disabled={isUpdatingRouteStops || isStopsLoading} type="button" onClick={saveStationSettings}>{isUpdatingRouteStops ? "儲存中…" : "儲存站位設定"}</button>
             </div>
           </div>
         </div>
