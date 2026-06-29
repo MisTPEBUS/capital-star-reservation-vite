@@ -40,6 +40,7 @@ export function LoginPage() {
   const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const isVerifyingCodeRef = useRef(false);
 
   useEffect(() => {
     if (hasValidAdminSession()) {
@@ -85,6 +86,41 @@ export function LoginPage() {
     }
   };
 
+  const submitOtp = async (nextOtp: string[]) => {
+    if (isVerifyingCodeRef.current) return;
+
+    if (nextOtp.some((digit) => !digit)) {
+      setDialog({ type: "error", message: "請輸入完整四位驗證碼。" });
+      return;
+    }
+
+    if (!verification) {
+      setDialog({ type: "error", message: "找不到驗證資訊，請重新發送驗證碼。" });
+      return;
+    }
+
+    if (new Date(verification.expiresAt).getTime() <= Date.now()) {
+      setDialog({ type: "error", message: "驗證碼已過期，請重新發送。" });
+      return;
+    }
+
+    isVerifyingCodeRef.current = true;
+    setIsVerifyingCode(true);
+    try {
+      const session = await verifyLoginCode(nextOtp.join(""), verification.userId);
+      saveAdminSession(session);
+      navigate("/admin/dashboard", { replace: true });
+    } catch (error) {
+      setDialog({
+        type: "error",
+        message: error instanceof Error ? error.message : "驗證登入失敗。",
+      });
+    } finally {
+      isVerifyingCodeRef.current = false;
+      setIsVerifyingCode(false);
+    }
+  };
+
   const updateOtp = (index: number, value: string) => {
     const digit = value.replace(/\D/g, "").slice(-1);
     const nextOtp = [...otp];
@@ -93,6 +129,10 @@ export function LoginPage() {
 
     if (digit && index < OTP_LENGTH - 1) {
       otpRefs.current[index + 1]?.focus();
+    }
+
+    if (digit && nextOtp.every(Boolean)) {
+      void submitOtp(nextOtp);
     }
   };
 
@@ -120,39 +160,15 @@ export function LoginPage() {
     );
     setOtp(nextOtp);
     otpRefs.current[Math.min(pastedDigits.length, OTP_LENGTH) - 1]?.focus();
+
+    if (nextOtp.every(Boolean)) {
+      void submitOtp(nextOtp);
+    }
   };
 
   const verifyCode = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (otp.some((digit) => !digit)) {
-      setDialog({ type: "error", message: "請輸入完整四位驗證碼。" });
-      return;
-    }
-
-    if (remainingSeconds === 0) {
-      setDialog({ type: "error", message: "驗證碼已過期，請重新發送。" });
-      return;
-    }
-
-    if (!verification) {
-      setDialog({ type: "error", message: "找不到驗證資訊，請重新發送驗證碼。" });
-      return;
-    }
-
-    setIsVerifyingCode(true);
-    try {
-      const session = await verifyLoginCode(otp.join(""), verification.userId);
-      saveAdminSession(session);
-      navigate("/admin/dashboard", { replace: true });
-    } catch (error) {
-      setDialog({
-        type: "error",
-        message: error instanceof Error ? error.message : "驗證登入失敗。",
-      });
-    } finally {
-      setIsVerifyingCode(false);
-    }
+    void submitOtp(otp);
   };
 
   const resendCode = async () => {

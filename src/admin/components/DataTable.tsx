@@ -5,6 +5,14 @@ interface DataTableProps {
 }
 
 export function DataTable({ reservations }: DataTableProps) {
+  if (reservations.length === 0) {
+    return (
+      <div className="rounded-adminControl border border-dashed border-admin-borderStrong px-4 py-10 text-center text-sm text-admin-muted">
+        目前沒有乘客預約資料。
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[760px] text-left text-sm">
@@ -16,6 +24,7 @@ export function DataTable({ reservations }: DataTableProps) {
             <th className="px-4 py-3 font-semibold">活動碼</th>
             <th className="px-4 py-3 font-semibold">上車站</th>
             <th className="px-4 py-3 font-semibold">預約時間</th>
+            <th className="px-4 py-3 font-semibold">取消時間</th>
             <th className="px-4 py-3 font-semibold">狀態</th>
           </tr>
         </thead>
@@ -31,6 +40,7 @@ export function DataTable({ reservations }: DataTableProps) {
               <td className="px-4 py-4 font-mono">{reservation.activeCode}</td>
               <td className="px-4 py-4">{reservation.pickupStopName}</td>
               <td className="px-4 py-4">{reservation.bookedAt}</td>
+              <td className="px-4 py-4">{reservation.cancelledAt || "-"}</td>
               <td className="px-4 py-4">
                 <span className={reservation.status === "RESERVED" ? "font-semibold text-adminStatus-enabled" : "font-semibold text-admin-muted"}>
                   {reservation.status === "RESERVED" ? "已預約" : "已取消"}
