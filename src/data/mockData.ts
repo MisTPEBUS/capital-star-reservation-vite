@@ -7,7 +7,7 @@ import type {
 export const passengerProfile: PassengerProfile = {
   userId: "usr_mock_0001",
   displayName: "Lobinda",
-  activeCode: "66797168",
+  activeCode: "XXXXXXXX",
   phoneNumber: "0912-345-678",
   email: null,
   status: "ACTIVE",

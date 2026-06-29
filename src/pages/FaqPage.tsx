@@ -187,7 +187,7 @@ export function FaqPage() {
           </p>
           <div className="mx-auto mt-6 max-w-2xl border-t border-white/20 pt-6 text-left">
             <p className="text-lg font-black">
-              首都客運客服中心（24H 全年無休）
+              首都客運客服中心（05:30~24:00）
             </p>
             <p className="mt-2 text-xl font-black text-star-300">
               免付費專線：0800-000-866
