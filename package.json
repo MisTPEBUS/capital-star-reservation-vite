@@ -12,9 +12,11 @@
   },
   "dependencies": {
     "@line/liff": "^2.29.0",
+    "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-react": "latest",
     "axios": "^1.18.0",
     "exceljs": "^4.4.0",
+    "qrcode": "^1.5.4",
     "react": "latest",
     "react-dom": "latest",
     "react-router-dom": "^7.18.0",
