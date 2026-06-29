@@ -32,7 +32,7 @@ export default function AdminApp() {
         />
         <Route
           path="dispatch/schedules"
-          element={<DispatchManagementPage title="班次設定" />}
+          element={<ScheduleManagementPage />}
         />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

@@ -24,6 +24,7 @@ function getDepartureTimestamp(reservation: UpcomingReservation) {
 
 export function UpcomingReservationPage() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [identityCode, setIdentityCode] = useState<string | null>(null);
   const [reservation, setReservation] = useState<UpcomingReservation | null>(
     null,
   );
@@ -52,6 +53,7 @@ export function UpcomingReservationPage() {
       .sort((left, right) => getDepartureTimestamp(left) - getDepartureTimestamp(right))[0];
 
     setUserId(profile.userId);
+    setIdentityCode(profile.activeCode);
     setReservation(nextReservation ?? null);
   }, []);
 
@@ -75,6 +77,7 @@ export function UpcomingReservationPage() {
         <UpcomingReservationCard
           reservation={reservation}
           userId={userId}
+          identityCode={identityCode}
           onCancelled={loadReservation}
         />
       </div>

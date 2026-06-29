@@ -498,6 +498,7 @@ function App() {
             <UpcomingReservationCard
               reservation={activeUpcomingReservation}
               userId={authProfile?.userId ?? null}
+              identityCode={displayPassengerProfile.activeCode}
               onCancelled={async () => {
                 if (authProfile?.userId) {
                   await loadUpcomingReservations(authProfile.userId);

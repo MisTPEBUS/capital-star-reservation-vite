@@ -40,7 +40,9 @@ interface GetSchedulesParams {
   lineUserId: string;
 }
 
-function normalizeReservationStatus(userReservation: unknown): ReservationStatus {
+function normalizeReservationStatus(
+  userReservation: unknown,
+): ReservationStatus {
   if (!userReservation) return null;
   return "RESERVED";
 }
@@ -96,7 +98,7 @@ export async function getSchedules({
 }: GetSchedulesParams): Promise<SchedulesResult> {
   try {
     const response = await apiClient.get<ApiResponse<SchedulesApiData>>(
-      "/api/v1/schedules",
+      "/api/v1/daily-open-schedules",
       {
         headers: {
           "X-Line-User-Id": lineUserId,

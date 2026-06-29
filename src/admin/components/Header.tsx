@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { clearAdminSession, getAdminSession } from "../../api/admin/session";
 
 interface HeaderProps {
   theme: "dark" | "light";
@@ -6,6 +7,8 @@ interface HeaderProps {
 }
 
 export function Header({ theme, onThemeToggle }: HeaderProps) {
+  const session = getAdminSession();
+  const displayName = session?.displayName || session?.userId || "管理者";
   const today = new Intl.DateTimeFormat("zh-TW", {
     dateStyle: "full",
   }).format(new Date());
@@ -24,11 +27,12 @@ export function Header({ theme, onThemeToggle }: HeaderProps) {
           {theme === "dark" ? "淺色模式" : "深色模式"}
         </button>
         <span className="hidden text-sm text-admin-softText sm:inline">
-          Lobinda
+          {displayName}
         </span>
         <Link
           className="rounded-adminControl border border-admin-borderStrong px-3 py-2 text-sm font-semibold text-admin-softText transition hover:bg-admin-elevated hover:text-admin-text"
           to="/admin/login"
+          onClick={clearAdminSession}
         >
           登出
         </Link>

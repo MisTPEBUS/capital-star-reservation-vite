@@ -29,10 +29,14 @@ export interface LoginSession {
   role: string;
 }
 
+type LoginSessionResponse = LoginSession & {
+  displayname?: string | null;
+};
+
 function isLoginSession(value: unknown): value is LoginSession {
   if (!value || typeof value !== "object") return false;
 
-  const session = value as Partial<LoginSession>;
+  const session = value as Partial<LoginSessionResponse>;
   return (
     typeof session.accessToken === "string" &&
     typeof session.tokenType === "string" &&
@@ -93,7 +97,12 @@ export async function verifyLoginCode(code: string, userId: string) {
       throw new Error("登入回應資料不完整，請重新登入");
     }
 
-    return response.data.data;
+    const session = response.data.data as LoginSessionResponse;
+
+    return {
+      ...session,
+      displayName: session.displayName ?? session.displayname ?? null,
+    };
   } catch (error) {
     if (axios.isAxiosError<ApiErrorResponse>(error)) {
       const { message, errors } = error.response?.data ?? {};

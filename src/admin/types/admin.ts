@@ -6,7 +6,8 @@ export interface AdminReservationListItem {
   phone: string;
   pickupStopName: string;
   bookedAt: string;
-  status: "RESERVED" | "CANCELLED";
+  cancelledAt?: string;
+  status: "RESERVED" | "CANCELLED" | string;
 }
 
 export interface PickupStopReservationSummary {

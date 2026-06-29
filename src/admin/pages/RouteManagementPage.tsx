@@ -32,6 +32,7 @@ export function RouteManagementPage() {
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [editingRoute, setEditingRoute] = useState<AdminRoute | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<RoutePayload>(emptyPayload);
   const [stationRoute, setStationRoute] = useState<AdminRoute | null>(null);
   const [availableStops, setAvailableStops] = useState<AdminStop[]>([]);
@@ -62,6 +63,7 @@ export function RouteManagementPage() {
     setEditingRoute(null);
     setForm(emptyPayload);
     setNotice(null);
+    setIsFormOpen(true);
   };
 
   const openEditForm = (route: AdminRoute) => {
@@ -73,6 +75,14 @@ export function RouteManagementPage() {
       status: route.status,
     });
     setNotice(null);
+    setIsFormOpen(true);
+  };
+
+  const closeForm = () => {
+    if (isSaving) return;
+    setIsFormOpen(false);
+    setEditingRoute(null);
+    setForm(emptyPayload);
   };
 
   const saveRoute = async (event: FormEvent<HTMLFormElement>) => {
@@ -108,6 +118,7 @@ export function RouteManagementPage() {
       }
       setEditingRoute(null);
       setForm(emptyPayload);
+      setIsFormOpen(false);
     } catch (error) {
       setNotice({
         type: "error",
@@ -267,65 +278,6 @@ export function RouteManagementPage() {
         </p>
       )}
 
-      <section className="admin-panel-body">
-        <h2 className="admin-section-title">{editingRoute ? "修改路線" : "新增路線"}</h2>
-        <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={saveRoute}>
-          <label className="text-sm font-medium text-admin-softText">
-            路線編號
-            <input
-              className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-              value={form.routeNumber}
-              onChange={(event) => setForm((current) => ({ ...current, routeNumber: event.target.value }))}
-            />
-          </label>
-          <label className="text-sm font-medium text-admin-softText">
-            路線名稱
-            <input
-              className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-              value={form.routeName}
-              onChange={(event) => setForm((current) => ({ ...current, routeName: event.target.value }))}
-            />
-          </label>
-          <label className="text-sm font-medium text-admin-softText md:col-span-2">
-            路線說明
-            <textarea
-              className="mt-2 min-h-24 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 py-2 text-admin-text outline-none focus:border-adminStatus-enabled"
-              value={form.description ?? ""}
-              onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-            />
-          </label>
-          <label className="text-sm font-medium text-admin-softText">
-            狀態
-            <select
-              className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-              value={form.status}
-              onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as RouteStatus }))}
-            >
-              <option value="ACTIVE">啟用</option>
-              <option value="INACTIVE">停用</option>
-            </select>
-          </label>
-          <div className="flex items-end gap-3">
-            <button
-              className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg disabled:opacity-60"
-              disabled={isSaving}
-              type="submit"
-            >
-              {isSaving ? "儲存中…" : editingRoute ? "儲存修改" : "新增路線"}
-            </button>
-            {editingRoute && (
-              <button
-                className="h-11 rounded-adminControl border border-admin-borderStrong px-5 text-sm font-semibold text-admin-softText"
-                type="button"
-                onClick={openCreateForm}
-              >
-                取消修改
-              </button>
-            )}
-          </div>
-        </form>
-      </section>
-
       <section className="admin-panel-body overflow-hidden p-0">
         <div className="flex items-center justify-between border-b border-admin-border px-5 py-4">
           <h2 className="admin-section-title">路線清單</h2>
@@ -363,6 +315,74 @@ export function RouteManagementPage() {
           </div>
         )}
       </section>
+
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5" role="dialog" aria-modal="true" aria-labelledby="route-form-title">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-6 shadow-adminPanel">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-admin-text" id="route-form-title">{editingRoute ? "修改路線" : "新增路線"}</h2>
+                <p className="mt-1 text-sm text-admin-muted">設定路線編號、名稱、說明與啟用狀態。</p>
+              </div>
+              <button
+                aria-label="關閉"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-admin-borderStrong text-xl font-semibold leading-none text-admin-softText transition hover:border-adminStatus-enabled hover:text-adminStatus-enabled"
+                type="button"
+                onClick={closeForm}
+              >
+                ×
+              </button>
+            </div>
+            <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={saveRoute}>
+              <label className="text-sm font-medium text-admin-softText">
+                路線編號
+                <input
+                  className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  value={form.routeNumber}
+                  onChange={(event) => setForm((current) => ({ ...current, routeNumber: event.target.value }))}
+                />
+              </label>
+              <label className="text-sm font-medium text-admin-softText">
+                路線名稱
+                <input
+                  className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  value={form.routeName}
+                  onChange={(event) => setForm((current) => ({ ...current, routeName: event.target.value }))}
+                />
+              </label>
+              <label className="text-sm font-medium text-admin-softText md:col-span-2">
+                路線說明
+                <textarea
+                  className="mt-2 min-h-24 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 py-2 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  value={form.description ?? ""}
+                  onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                />
+              </label>
+              <label className="text-sm font-medium text-admin-softText">
+                狀態
+                <select
+                  className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  value={form.status}
+                  onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as RouteStatus }))}
+                >
+                  <option value="ACTIVE">啟用</option>
+                  <option value="INACTIVE">停用</option>
+                </select>
+              </label>
+              <div className="flex items-end justify-end gap-3 md:col-span-2">
+                <button className="h-11 rounded-adminControl border border-admin-borderStrong px-5 text-sm font-semibold text-admin-softText disabled:opacity-60" disabled={isSaving} type="button" onClick={closeForm}>取消</button>
+                <button
+                  className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg disabled:opacity-60"
+                  disabled={isSaving}
+                  type="submit"
+                >
+                  {isSaving ? "儲存中…" : editingRoute ? "儲存修改" : "新增路線"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {stationRoute && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5" role="dialog" aria-modal="true" aria-labelledby="route-stop-title">

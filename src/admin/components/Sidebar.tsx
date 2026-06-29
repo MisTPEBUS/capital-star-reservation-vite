@@ -4,14 +4,14 @@ import { NavLink, useLocation } from "react-router-dom";
 const navigation = [
   { to: "/admin/dashboard", label: "首頁總覽" },
   { to: "/admin/employees", label: "使用者權限" },
-  { to: "/admin/settings", label: "系統設定" },
+  /*  { to: "/admin/settings", label: "系統設定" }, */
 ];
 
 const dispatchNavigation = [
-  { to: "/admin/dispatch/reservations", label: "營運預約班次" },
+  { to: "/admin/dispatch/schedules", label: "營運預約班次" },
+  /* { to: "/admin/dispatch/reservations", label: "營運預約班次" }, */
   { to: "/admin/dispatch/stops", label: "站位設定" },
   { to: "/admin/dispatch/routes", label: "路線設定" },
-  { to: "/admin/dispatch/schedules", label: "班次設定" },
 ];
 
 export function Sidebar() {
@@ -27,7 +27,9 @@ export function Sidebar() {
           <p className="text-xs font-bold tracking-[0.22em] text-adminStatus-enabled">
             CAPITAL STAR
           </p>
-          <p className="mt-1 text-base font-bold text-admin-text">後台管理系統</p>
+          <p className="mt-1 text-base font-bold text-admin-text">
+            後台管理系統
+          </p>
         </div>
       </div>
       <nav className="flex gap-1 overflow-x-auto border-t border-admin-border px-3 py-3 lg:block lg:space-y-1 lg:border-t-0 lg:px-4 lg:py-4">

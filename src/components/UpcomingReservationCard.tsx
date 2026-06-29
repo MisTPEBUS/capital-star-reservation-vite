@@ -8,6 +8,7 @@ import { SectionTitle } from "./SectionTitle";
 interface UpcomingReservationCardProps {
   reservation: UpcomingReservation | null;
   userId: string | null;
+  identityCode: string | null;
   onCancelled: () => Promise<void>;
 }
 
@@ -51,6 +52,7 @@ const getStopTypeText = (stopType: string) => {
 export function UpcomingReservationCard({
   reservation,
   userId,
+  identityCode,
   onCancelled,
 }: UpcomingReservationCardProps) {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
@@ -255,6 +257,13 @@ export function UpcomingReservationCard({
               </p>
             </div>
           </div>
+
+          <div className="mt-4 rounded-2xl border border-[#D7B94A] bg-[#FFF8D6] p-4">
+            <p className="font-black text-[#C9151E]">使用者身分識別碼</p>
+            <p className="mt-1 break-all text-xl font-black text-[#1F1A17]">
+              {identityCode || "-"}
+            </p>
+          </div>
         </div>
 
         <div className="relative border-t-2 border-dashed border-[#D7B94A] bg-[#F6DF79] px-5 py-4">
@@ -268,7 +277,7 @@ export function UpcomingReservationCard({
               </p>
             </div>
 
-            <span className="rounded-full bg-[#C9151E] px-3 py-1 text-base font-black text-white">
+            <span className="hidden rounded-full bg-[#C9151E] px-3 py-1 text-base font-black text-white">
               {reservation.routeNumber}
             </span>
           </div>
