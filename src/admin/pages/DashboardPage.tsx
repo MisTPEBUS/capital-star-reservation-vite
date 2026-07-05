@@ -7,6 +7,8 @@ import {
 } from "../../api/admin/dashboard";
 import { DataTable } from "../components/DataTable";
 
+type DashboardViewMode = "CARDS" | "SPLIT";
+
 function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
   nextDate.setDate(nextDate.getDate() + days);
@@ -59,6 +61,7 @@ function getStatusText(status: string) {
 
 export function DashboardPage() {
   const [openDate, setOpenDate] = useState(getTodayValue());
+  const [viewMode, setViewMode] = useState<DashboardViewMode>("SPLIT");
   const [schedules, setSchedules] = useState<DashboardDailyOpenSchedule[]>([]);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
   const [reservations, setReservations] = useState<DashboardReservation[]>([]);
@@ -382,136 +385,235 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="admin-section-title">當日開放預約班次</h2>
-            <p className="mt-1 text-sm text-admin-muted">{openDate}</p>
-          </div>
-          {isSchedulesLoading && (
-            <span className="text-sm font-semibold text-admin-muted">讀取中…</span>
-          )}
-        </div>
-
-        {schedulesError ? (
-          <p className="rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
-            {schedulesError}
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-adminPanel border border-admin-border bg-admin-surface p-3 shadow-adminPanel">
+        <div>
+          <h2 className="admin-section-title">當日開放預約班次</h2>
+          <p className="mt-1 text-sm text-admin-muted">
+            {openDate} {isSchedulesLoading ? "讀取中…" : ""}
           </p>
-        ) : schedules.length === 0 && !isSchedulesLoading ? (
-          <div className="rounded-adminPanel border border-dashed border-admin-borderStrong bg-admin-surface px-5 py-10 text-center text-sm text-admin-muted">
-            此日期沒有開放預約班次。
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {schedules.map((schedule) => {
-              const isSelected =
-                schedule.dailyOpenScheduleId === selectedScheduleId;
-
-              return (
-                <button
-                  key={schedule.dailyOpenScheduleId}
-                  aria-pressed={isSelected}
-                  className={`rounded-adminCard border p-5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
-                    isSelected
-                      ? "border-adminStatus-enabled bg-adminStatus-enabled/10 ring-1 ring-adminStatus-enabled/30"
-                      : "border-admin-border bg-admin-elevated hover:border-admin-borderStrong"
-                  }`}
-                  type="button"
-                  onClick={() =>
-                    setSelectedScheduleId(schedule.dailyOpenScheduleId)
-                  }
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-4xl font-bold leading-none text-admin-text">
-                        {formatDepartureTime(schedule.departureTime)}
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-admin-softText">
-                        {schedule.routeNumber}｜{schedule.routeName}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-bold ${
-                        schedule.status === "ACTIVE"
-                          ? "bg-adminStatus-enabled/10 text-adminStatus-enabled"
-                          : "bg-admin-bg text-admin-muted"
-                      }`}
-                    >
-                      {getStatusText(schedule.status)}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-admin-border pt-4 text-sm">
-                    <div>
-                      <p className="text-admin-muted">名額</p>
-                      <p className="font-bold text-admin-text">{schedule.quota}</p>
-                    </div>
-                    <div>
-                      <p className="text-admin-muted">已預約</p>
-                      <p className="font-bold text-admin-text">{schedule.reservedCount}</p>
-                    </div>
-                    <div>
-                      <p className="text-admin-muted">已取消</p>
-                      <p className="font-bold text-admin-text">{schedule.cancelledCount}</p>
-                    </div>
-                    <div>
-                      <p className="text-admin-muted">剩餘</p>
-                      <p className="font-bold text-admin-text">{schedule.availableSeats}</p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
+        </div>
+        <div className="flex rounded-adminControl border border-admin-borderStrong bg-admin-bg p-1 text-sm font-bold">
+          <button
+            className={`h-9 rounded-adminControl px-4 transition ${
+              viewMode === "CARDS"
+                ? "bg-adminStatus-enabled text-admin-bg"
+                : "text-admin-softText hover:text-adminStatus-enabled"
+            }`}
+            type="button"
+            onClick={() => setViewMode("CARDS")}
+          >
+            卡片總覽
+          </button>
+          <button
+            className={`h-9 rounded-adminControl px-4 transition ${
+              viewMode === "SPLIT"
+                ? "bg-adminStatus-enabled text-admin-bg"
+                : "text-admin-softText hover:text-adminStatus-enabled"
+            }`}
+            type="button"
+            onClick={() => setViewMode("SPLIT")}
+          >
+            左右對照
+          </button>
+        </div>
       </section>
 
-      <section className="admin-panel-body">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="admin-section-title">
-              {selectedSchedule
-                ? `${formatDepartureTime(selectedSchedule.departureTime)} 預約清單`
-                : "預約清單"}
-            </h2>
-            {selectedSchedule && (
-              <p className="mt-1 text-sm text-admin-muted">
-                {getScheduleName(selectedSchedule)}
+      {schedulesError ? (
+        <p className="rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+          {schedulesError}
+        </p>
+      ) : schedules.length === 0 && !isSchedulesLoading ? (
+        <div className="rounded-adminPanel border border-dashed border-admin-borderStrong bg-admin-surface px-5 py-10 text-center text-sm text-admin-muted">
+          此日期沒有開放預約班次。
+        </div>
+      ) : viewMode === "CARDS" ? (
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {schedules.map((schedule) => {
+            const isSelected =
+              schedule.dailyOpenScheduleId === selectedScheduleId;
+
+            return (
+              <button
+                key={schedule.dailyOpenScheduleId}
+                aria-pressed={isSelected}
+                className={`rounded-adminCard border p-5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
+                  isSelected
+                    ? "border-adminStatus-enabled bg-adminStatus-enabled/10 ring-1 ring-adminStatus-enabled/30"
+                    : "border-admin-border bg-admin-elevated hover:border-admin-borderStrong"
+                }`}
+                type="button"
+                onClick={() => {
+                  setSelectedScheduleId(schedule.dailyOpenScheduleId);
+                  setViewMode("SPLIT");
+                }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-4xl font-bold leading-none text-admin-text">
+                      {formatDepartureTime(schedule.departureTime)}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-admin-softText">
+                      {schedule.routeNumber}｜{schedule.routeName}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs font-bold ${
+                      schedule.status === "ACTIVE"
+                        ? "bg-adminStatus-enabled/10 text-adminStatus-enabled"
+                        : "bg-admin-bg text-admin-muted"
+                    }`}
+                  >
+                    {getStatusText(schedule.status)}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-4 gap-2 border-t border-admin-border pt-4 text-sm">
+                  <div>
+                    <p className="text-admin-muted">名額</p>
+                    <p className="font-bold text-admin-text">{schedule.quota}</p>
+                  </div>
+                  <div>
+                    <p className="text-admin-muted">預約</p>
+                    <p className="font-bold text-admin-text">{schedule.reservedCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-admin-muted">取消</p>
+                    <p className="font-bold text-admin-text">{schedule.cancelledCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-admin-muted">剩餘</p>
+                    <p className="font-bold text-admin-text">{schedule.availableSeats}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </section>
+      ) : (
+        <section className="grid items-start gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="admin-panel-body">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-admin-text">班次</h3>
+                <p className="mt-1 text-sm text-admin-muted">點選左側班次，右側立即更新。</p>
+              </div>
+              <span className="text-sm font-semibold text-admin-muted">
+                {schedules.length} 班
+              </span>
+            </div>
+
+            <div className="max-h-[calc(100vh-330px)] min-h-[420px] space-y-2 overflow-auto pr-1">
+              {schedules.map((schedule) => {
+                const isSelected =
+                  schedule.dailyOpenScheduleId === selectedScheduleId;
+
+                return (
+                  <button
+                    key={schedule.dailyOpenScheduleId}
+                    aria-pressed={isSelected}
+                    className={`w-full rounded-adminControl border px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
+                      isSelected
+                        ? "border-adminStatus-enabled bg-adminStatus-enabled/10"
+                        : "border-admin-border bg-admin-elevated hover:border-admin-borderStrong"
+                    }`}
+                    type="button"
+                    onClick={() =>
+                      setSelectedScheduleId(schedule.dailyOpenScheduleId)
+                    }
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-2xl font-bold leading-none text-admin-text">
+                          {formatDepartureTime(schedule.departureTime)}
+                        </p>
+                        <p className="mt-2 truncate text-sm font-semibold text-admin-softText">
+                          {schedule.routeNumber}｜{schedule.routeName}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
+                          schedule.status === "ACTIVE"
+                            ? "bg-adminStatus-enabled/10 text-adminStatus-enabled"
+                            : "bg-admin-bg text-admin-muted"
+                        }`}
+                      >
+                        {getStatusText(schedule.status)}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <p className="text-admin-muted">已預約</p>
+                        <p className="mt-1 font-bold text-admin-text">
+                          {schedule.reservedCount}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-admin-muted">剩餘</p>
+                        <p className="mt-1 font-bold text-admin-text">
+                          {schedule.availableSeats}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-admin-muted">名額</p>
+                        <p className="mt-1 font-bold text-admin-text">
+                          {schedule.quota}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <section className="admin-panel-body min-w-0">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="admin-section-title">
+                  {selectedSchedule
+                    ? `${formatDepartureTime(selectedSchedule.departureTime)} 預約乘客清單`
+                    : "預約乘客清單"}
+                </h2>
+                {selectedSchedule && (
+                  <p className="mt-1 text-sm text-admin-muted">
+                    {getScheduleName(selectedSchedule)}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm text-admin-muted">
+                  已預約 {selectedSchedule?.reservedCount ?? 0} 人
+                </span>
+                <button
+                  className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!selectedSchedule || reservationRows.length === 0}
+                  type="button"
+                  onClick={downloadReservationExcel}
+                >
+                  下載 Excel
+                </button>
+              </div>
+            </div>
+
+            {reservationsError && (
+              <p className="mt-4 rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+                {reservationsError}
               </p>
             )}
-          </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-admin-muted">
-              已預約 {selectedSchedule?.reservedCount ?? 0} 人
-            </span>
-            <button
-              className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!selectedSchedule || reservationRows.length === 0}
-              type="button"
-              onClick={downloadReservationExcel}
-            >
-              下載 Excel
-            </button>
-          </div>
-        </div>
-
-        {reservationsError && (
-          <p className="mt-4 rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
-            {reservationsError}
-          </p>
-        )}
-
-        <div className="mt-4">
-          {isReservationsLoading ? (
-            <div className="rounded-adminControl border border-admin-border px-4 py-10 text-center text-sm text-admin-muted">
-              讀取預約清單中…
+            <div className="mt-4 max-h-[calc(100vh-330px)] min-h-[420px] overflow-auto rounded-adminControl border border-admin-border">
+              {isReservationsLoading ? (
+                <div className="px-4 py-10 text-center text-sm text-admin-muted">
+                  讀取預約清單中…
+                </div>
+              ) : (
+                <DataTable reservations={reservationRows} />
+              )}
             </div>
-          ) : (
-            <DataTable reservations={reservationRows} />
-          )}
-        </div>
-      </section>
+          </section>
+        </section>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { type MouseEvent, useEffect } from "react";
+import { type MouseEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 interface FaqItem {
@@ -82,8 +82,31 @@ const faqSections: Array<{
 ];
 
 export function FaqPage() {
+  const [keyword, setKeyword] = useState("");
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  const filteredSections = useMemo(() => {
+    if (!normalizedKeyword) return faqSections;
+
+    return faqSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => {
+          const question = item.question.toLowerCase();
+          const answer = item.answer.toLowerCase();
+
+          return (
+            question.includes(normalizedKeyword) ||
+            answer.includes(normalizedKeyword)
+          );
+        }),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [normalizedKeyword]);
+  const hasResults = filteredSections.length > 0;
+
   useEffect(() => {
     const previousFontSize = document.documentElement.style.fontSize;
+    document.title = "使用說明 — Capital Star";
     document.documentElement.style.fontSize = "112.5%";
 
     return () => {
@@ -141,10 +164,31 @@ export function FaqPage() {
               </div>
             ))}
           </div>
+
+          <div className="mt-6 border-t border-ink-100 pt-6">
+            <label className="block text-sm font-black tracking-[0.16em] text-bus-600">
+              搜尋問題
+            </label>
+            <input
+              type="search"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="輸入關鍵字"
+              className="mt-2 h-12 w-full rounded-xl border-2 border-bus-100 bg-white px-4 text-base font-bold text-ink-900 outline-none transition placeholder:text-ink-300 focus:border-bus-600 focus:ring-4 focus:ring-bus-500/20"
+            />
+          </div>
         </header>
 
         <div className="mt-8 space-y-10">
-          {faqSections.map((section) => (
+          {!hasResults && (
+            <div className="rounded-xl border-2 border-bus-100 bg-white p-6 text-center shadow-card">
+              <p className="text-xl font-black text-ink-900">
+                沒有符合的問題，請聯繫客服
+              </p>
+            </div>
+          )}
+
+          {filteredSections.map((section) => (
             <section key={section.title}>
               <div className="mb-4">
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-bus-600">
@@ -185,14 +229,14 @@ export function FaqPage() {
           <p className="mt-2 text-base leading-7 text-bus-100">
             若依照說明仍無法完成操作，請聯繫活動承辦人員並提供身分識別碼與預約日期，以便協助查詢。
           </p>
-          <div className="mx-auto mt-6 max-w-2xl border-t border-white/20 pt-6 text-left">
-            <p className="text-lg font-black">
+          <div className="mx-auto  mt-6 max-w-2xl border-t border-white/20 pt-6 text-left">
+            <p className="text-lg font-black text-center">
               首都客運客服中心（05:30~24:00）
             </p>
             <p className="mt-2 text-xl font-black text-star-300">
               免付費專線：0800-000-866
             </p>
-            <div className="mt-5 grid gap-2 text-base text-bus-100 sm:grid-cols-2">
+            <div className="mt-5 text-center grid gap-2 text-base text-bus-100 sm:grid-cols-2">
               <p>礁溪站　服務電話：03-988-0700</p>
               <p>宜蘭站　服務電話：03-937-3600</p>
               <p>羅東站　服務電話：03-955-6585</p>
@@ -202,7 +246,8 @@ export function FaqPage() {
       </div>
 
       <Link
-        className="fixed bottom-5 left-1/2 z-40 w-[calc(100%-2rem)] -translate-x-1/2 rounded-xl border-2 border-white/20 bg-bus-700 px-6 py-3 text-center text-base font-black text-white shadow-card transition hover:bg-bus-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-bus-300/40 md:w-[calc(100%-3rem)] lg:w-auto"
+        className="fixed left-1/2 z-40 w-[calc(100%-2rem)] -translate-x-1/2 rounded-xl border-2 border-white/20 bg-bus-700 px-6 py-3 text-center text-base font-black text-white shadow-card transition hover:bg-bus-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-bus-300/40 md:w-[calc(100%-3rem)] lg:w-auto"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
         to="/"
       >
         前往預約首頁

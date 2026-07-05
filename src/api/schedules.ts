@@ -18,7 +18,8 @@ interface ScheduleApiItem {
   openDate: string;
   quota: number;
   availableSeats: number;
-  bookingDeadline: string;
+  bookingDeadline?: string;
+  deadline?: string;
   userReservation: unknown;
 }
 
@@ -55,6 +56,8 @@ function toOpenSchedule(
   schedule: ScheduleApiItem,
   pickupStopId: string,
 ): OpenSchedule {
+  const bookingDeadline = schedule.bookingDeadline ?? schedule.deadline ?? "";
+
   return {
     dailyOpenScheduleId: schedule.dailyOpenScheduleId,
     routeId: schedule.routeId,
@@ -65,7 +68,7 @@ function toOpenSchedule(
     quota: schedule.quota,
     reservedCount: Math.max(schedule.quota - schedule.availableSeats, 0),
     availableSeats: schedule.availableSeats,
-    bookingDeadline: schedule.bookingDeadline,
+    bookingDeadline,
     userReservation: normalizeReservationStatus(schedule.userReservation),
     note: `剩餘 ${schedule.availableSeats} / ${schedule.quota} 位`,
   };

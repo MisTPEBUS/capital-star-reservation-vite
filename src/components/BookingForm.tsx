@@ -12,6 +12,7 @@ interface BookingFormProps {
   onChange: (next: BookingSelection) => void;
   isStopsLoading?: boolean;
   stopsError?: string;
+  onRetryStops?: () => void;
 }
 
 const timePeriods: { value: TimePeriod; label: string }[] = [
@@ -21,6 +22,34 @@ const timePeriods: { value: TimePeriod; label: string }[] = [
   { value: "EVENING", label: "晚上" },
 ];
 
+const getStopTypeLabel = (stopType: PickupStop["stopType"]) => {
+  if (stopType === "MAIN_STATION" || stopType === "TRANSIT") return "轉運站";
+  if (stopType === "ROADSIDE") return "路邊站";
+  return "上車站";
+};
+
+function StepHeading({
+  step,
+  title,
+  description,
+}: {
+  step: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-bus-700 text-sm font-black text-white">
+        {step}
+      </span>
+      <div>
+        <p className="text-xl font-black text-ink-800">{title}</p>
+        <p className="mt-1 text-lg font-bold text-ink-500">{description}</p>
+      </div>
+    </div>
+  );
+}
+
 export function BookingForm({
   stops,
   dates,
@@ -28,6 +57,7 @@ export function BookingForm({
   onChange,
   isStopsLoading = false,
   stopsError = "",
+  onRetryStops,
 }: BookingFormProps) {
   const update = <K extends keyof BookingSelection>(
     key: K,
@@ -37,7 +67,10 @@ export function BookingForm({
   };
 
   return (
-    <section className="rounded-panel bg-white p-5 shadow-card ring-1 ring-bus-100/80 md:p-6">
+    <section
+      id="booking-form"
+      className="rounded-panel bg-white p-5 shadow-card ring-1 ring-bus-100/80 md:p-6"
+    >
       <SectionTitle
         eyebrow="選擇預約條件"
         title=""
@@ -46,68 +79,73 @@ export function BookingForm({
 
       <div className="grid gap-5">
         {/* 上車地點 */}
-        <div>
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-xl font-black text-ink-800">上車地點</p>
-              <p className="mt-1 text-lg font-bold text-ink-500">
-                請選擇你的上車站
-              </p>
-            </div>
-          </div>
+        <div className="border-t border-bus-100 pt-5">
+          <StepHeading
+            step="1"
+            title="上車地點"
+            description="請選擇你的上車站"
+          />
 
           <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
             {isStopsLoading ? (
-              <div className="rounded-2xl bg-ink-50 px-4 py-5 text-lg font-black text-ink-500 ring-1 ring-bus-100 md:col-span-2">
-                讀取上車站中…
-              </div>
+              <>
+                <div className="h-[76px] rounded-2xl bg-ink-100 animate-pulse md:col-span-1" />
+                <div className="h-[76px] rounded-2xl bg-ink-100 animate-pulse md:col-span-1" />
+              </>
             ) : stopsError ? (
               <div className="rounded-2xl bg-coral/10 px-4 py-5 text-lg font-black text-coral ring-1 ring-coral/20 md:col-span-2">
-                {stopsError}
+                <p>{stopsError}</p>
+                {onRetryStops && (
+                  <button
+                    type="button"
+                    onClick={onRetryStops}
+                    className="mt-4 h-10 rounded-xl border border-coral bg-white px-4 text-base font-black text-coral transition hover:bg-coral hover:text-white"
+                  >
+                    重新載入
+                  </button>
+                )}
               </div>
             ) : stops.length === 0 ? (
               <div className="rounded-2xl bg-ink-50 px-4 py-5 text-lg font-black text-ink-500 ring-1 ring-bus-100 md:col-span-2">
                 目前沒有可預約上車站
               </div>
-            ) : stops.map((stop) => {
-              const isActive = selection.pickupStopId === stop.stopId;
+            ) : (
+              stops.map((stop) => {
+                const isActive = selection.pickupStopId === stop.stopId;
 
-              return (
-                <button
-                  key={stop.stopId}
-                  type="button"
-                  aria-pressed={isActive}
-                  onClick={() => update("pickupStopId", stop.stopId)}
-                  className={`min-h-[56px] rounded-2xl px-4 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
-                    isActive
-                      ? "bg-bus-600 text-white shadow-card"
-                      : "bg-ink-50 text-ink-800 ring-1 ring-bus-100 hover:bg-bus-50"
-                  }`}
-                >
-                  <span className="block text-3xl font-black">
-                    {stop.stopName}
-                  </span>
-                  <span
-                    className={`mt-1 block text-lg font-bold ${
-                      isActive ? "text-bus-50" : "text-ink-500"
+                return (
+                  <button
+                    key={stop.stopId}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => update("pickupStopId", stop.stopId)}
+                    className={`min-h-[56px] rounded-2xl px-4 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
+                      isActive
+                        ? "border-l-8 border-star-300 bg-bus-600 text-white shadow-card"
+                        : "border-l-8 border-transparent bg-ink-50 text-ink-800 ring-1 ring-bus-100 hover:bg-bus-50"
                     }`}
                   >
-                    點選此站作為上車地點
-                  </span>
-                </button>
-              );
-            })}
+                    <span className="flex items-center gap-2 text-xl font-black">
+                      {isActive && <span aria-hidden="true">✓</span>}
+                      <span>{stop.stopName}</span>
+                    </span>
+                    <span
+                      className={`mt-1 block text-lg font-bold ${
+                        isActive ? "text-bus-50" : "text-ink-500"
+                      }`}
+                    >
+                      {getStopTypeLabel(stop.stopType)}
+                    </span>
+                  </button>
+                );
+              })
+            )}
           </div>
         </div>
 
         {/* 日期 */}
-        <div>
-          <div>
-            <p className="text-xl font-black text-ink-800">日期</p>
-            <p className="mt-1 text-lg font-bold text-ink-500">
-              選擇預計搭乘日期
-            </p>
-          </div>
+        <div className="border-t border-bus-100 pt-5">
+          <StepHeading step="2" title="日期" description="選擇預計搭乘日期" />
 
           <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
             {dates.map((date) => {
@@ -119,20 +157,13 @@ export function BookingForm({
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => update("openDate", date.value)}
-                  className={`min-h-[64px] rounded-2xl px-3 text-center outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
+                  className={`min-h-[56px] rounded-2xl px-3 text-center outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
                     isActive
                       ? "bg-bus-600 text-white shadow-card"
                       : "bg-ink-50 text-ink-800 ring-1 ring-bus-100 hover:bg-bus-50"
                   }`}
                 >
                   <span className="block text-xl font-black">{date.label}</span>
-                  <span
-                    className={`mt-1 block text-lg font-bold ${
-                      isActive ? "text-bus-50" : "text-ink-500"
-                    }`}
-                  >
-                    可預約
-                  </span>
                 </button>
               );
             })}
@@ -140,11 +171,12 @@ export function BookingForm({
         </div>
 
         {/* 時間 */}
-        <div>
-          <p className="text-xl font-black text-ink-800">時間</p>
-          <p className="mt-1 text-lg font-bold text-ink-500">
-            篩選想搭乘的出發時段
-          </p>
+        <div className="border-t border-bus-100 pt-5">
+          <StepHeading
+            step="3"
+            title="時間"
+            description="篩選想搭乘的出發時段"
+          />
 
           <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
             {timePeriods.map((period) => {
@@ -157,9 +189,11 @@ export function BookingForm({
                   aria-pressed={isActive}
                   onClick={() => update("timePeriod", period.value)}
                   className={`min-h-12 rounded-2xl px-3 text-xl font-black outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
-                    isActive
-                      ? "bg-bus-600 text-white shadow-card"
-                      : "bg-ink-50 text-ink-700 ring-1 ring-bus-100 hover:bg-bus-50"
+                    isActive && period.value === "ALL"
+                      ? "bg-white text-bus-700 ring-2 ring-bus-600"
+                      : isActive
+                        ? "bg-bus-600 text-white shadow-card"
+                        : "bg-ink-50 text-ink-700 ring-1 ring-bus-100 hover:bg-bus-50"
                   }`}
                 >
                   {period.label}

@@ -4,6 +4,7 @@ import {
   type UpcomingReservation,
 } from "../api/reservations";
 import { SectionTitle } from "./SectionTitle";
+import { Toast, type ToastMessage } from "./Toast";
 
 interface UpcomingReservationCardProps {
   reservation: UpcomingReservation | null;
@@ -42,11 +43,10 @@ const getStatusText = (status: string) => {
   return status;
 };
 
-const getStopTypeText = (stopType: string) => {
-  if (stopType === "ROADSIDE") return "路邊站";
-  if (stopType === "STATION") return "場站";
-
-  return stopType;
+const scrollToBookingForm = () => {
+  document
+    .getElementById("booking-form")
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
 export function UpcomingReservationCard({
@@ -57,11 +57,9 @@ export function UpcomingReservationCard({
 }: UpcomingReservationCardProps) {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [isTicketExpanded, setIsTicketExpanded] = useState(true);
-  const [resultMessage, setResultMessage] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
+  const [isTicketExpanded, setIsTicketExpanded] = useState(false);
+  const [isIdentityVisible, setIsIdentityVisible] = useState(false);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   useEffect(() => {
     if (!isTicketExpanded) return;
@@ -74,12 +72,30 @@ export function UpcomingReservationCard({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isTicketExpanded]);
 
-  if (!reservation) return null;
+  if (!reservation) {
+    return (
+      <section className="rounded-panel bg-white p-5 shadow-card ring-1 ring-bus-100/80 md:p-6">
+        <SectionTitle eyebrow="" title="預約乘車憑證" description="" />
+        <div className="mt-4 rounded-card bg-ink-50 p-5 text-center ring-1 ring-bus-100">
+          <p className="text-xl font-black text-ink-900">
+            目前沒有即將出發的預約
+          </p>
+          <button
+            type="button"
+            onClick={scrollToBookingForm}
+            className="mt-4 h-11 rounded-xl bg-bus-900 px-5 text-base font-black text-white transition hover:bg-bus-700"
+          >
+            立即預約
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   const handleCancel = async () => {
     if (!userId) {
       setIsConfirmingCancel(false);
-      setResultMessage({
+      setToast({
         type: "error",
         message: "尚未取得使用者資料，無法取消預約。",
       });
@@ -90,36 +106,25 @@ export function UpcomingReservationCard({
       setIsCancelling(true);
       await cancelReservation(reservation.reservationId, userId);
       setIsConfirmingCancel(false);
-      setResultMessage({ type: "success", message: "您的預約班次已取消。" });
+      setToast({ type: "success", message: "您的預約班次已取消。" });
+      await onCancelled();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "取消預約失敗，請稍後再試。";
       setIsConfirmingCancel(false);
-      setResultMessage({ type: "error", message });
+      setToast({ type: "error", message });
     } finally {
       setIsCancelling(false);
     }
   };
 
-  const closeResult = async () => {
-    const resultType = resultMessage?.type;
-    setResultMessage(null);
-
-    if (resultType === "success") {
-      await onCancelled();
-    }
-  };
-
   const departureTime = formatDepartureTime(reservation.departureTime);
   const bookedAt = formatBookedAt(reservation.bookedAt);
-  const sequence = reservation.pickupStop.sequence;
+  const sequence = formatSequence(reservation.pickupStop.sequence);
   const statusText = getStatusText(reservation.status);
-  const stopTypeText = getStopTypeText(reservation.pickupStop.stopType);
-
-  const ticketNo = reservation.reservationId
-    .replaceAll("-", "")
-    .slice(0, 12)
-    .toUpperCase();
+  const maskedIdentityCode = identityCode
+    ? "•".repeat(identityCode.length)
+    : "-";
 
   const handleTicketKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -129,7 +134,10 @@ export function UpcomingReservationCard({
   };
 
   return (
-    <section className="overflow-hidden rounded-panel bg-white p-5 shadow-card ring-1 ring-[#D7B94A]/70 md:p-6">
+    <section
+      id="upcoming-reservation"
+      className="overflow-hidden rounded-panel bg-white p-5 shadow-card ring-1 ring-[#D7B94A]/70 md:p-6"
+    >
       <SectionTitle eyebrow="" title="預約乘車憑證" description="" />
       <article
         aria-label="預約乘車憑證，點擊可全螢幕檢視"
@@ -141,7 +149,7 @@ export function UpcomingReservationCard({
         }`}
         role={isTicketExpanded ? "dialog" : "button"}
         tabIndex={0}
-        onClick={() => !isTicketExpanded && setIsTicketExpanded(true)}
+        onClick={() => setIsTicketExpanded((current) => !current)}
         onKeyDown={handleTicketKeyDown}
       >
         <div
@@ -165,10 +173,10 @@ export function UpcomingReservationCard({
               ×
             </button>
           )}
+
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-md font-bold text-[#6B5A25]">首都客運</p>
-
               <h3 className="mt-1 text-4xl font-black leading-none tracking-tight text-[#C9151E]">
                 1571
               </h3>
@@ -212,35 +220,7 @@ export function UpcomingReservationCard({
                 </p>
               </div>
             </div>
-
-            <div className="hidden rounded-2xl border border-[#D7B94A] bg-[#FFF8D6] p-4">
-              <div className="flex items-start justify-between gap-3">
-                {/*  <div>
-                  <p className="text-md font-black text-[#C9151E]">班次代碼</p>
-                  <p className="mt-1 text-2xl font-black text-[#1F1A17]">
-                    {reservation.routeNumber}
-                  </p>
-                </div> */}
-
-                {/*  <span className="shrink-0 rounded-full bg-[#C9151E] px-3 py-1 text-base font-black text-white">
-                  {statusText}
-                </span> */}
-              </div>
-            </div>
           </div>
-
-          {/*  <div className="mt-5 rounded-xl bg-white p-3 ring-1 ring-[#D7B94A]">
-            <div
-              className="h-[54px] rounded-sm"
-              style={{
-                background:
-                  "repeating-linear-gradient(90deg, #111 0 2px, transparent 2px 4px, #111 4px 5px, transparent 5px 9px, #111 9px 12px, transparent 12px 15px)",
-              }}
-            />
-            <p className="mt-2 text-center text-base font-bold tracking-[0.18em] text-[#6B5A25]">
-              {ticketNo}
-            </p>
-          </div> */}
 
           <div className="mt-4 grid grid-cols-2 gap-3 text-md">
             <div>
@@ -259,9 +239,23 @@ export function UpcomingReservationCard({
           </div>
 
           <div className="mt-4 rounded-2xl border border-[#D7B94A] bg-[#FFF8D6] p-4">
-            <p className="font-black text-[#C9151E]">使用者身分識別碼</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-black text-[#C9151E]">使用者身分識別碼</p>
+              {identityCode && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIsIdentityVisible((current) => !current);
+                  }}
+                  className="rounded-full border border-[#D7B94A] bg-white px-3 py-1 text-sm font-black text-[#C9151E]"
+                >
+                  {isIdentityVisible ? "隱藏" : "顯示"}
+                </button>
+              )}
+            </div>
             <p className="mt-1 break-all text-xl font-black text-[#1F1A17]">
-              {identityCode || "-"}
+              {isIdentityVisible ? identityCode || "-" : maskedIdentityCode}
             </p>
           </div>
         </div>
@@ -269,32 +263,25 @@ export function UpcomingReservationCard({
         <div className="relative border-t-2 border-dashed border-[#D7B94A] bg-[#F6DF79] px-5 py-4">
           <div className="absolute -left-3 -top-3 h-6 w-6 rounded-full bg-white" />
           <div className="absolute -right-3 -top-3 h-6 w-6 rounded-full bg-white" />
-
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className=" text-xl font-black text-[#C9151E]">
-                乘車時請出示此畫面，並依預約日期與班次時刻到站候車。
-              </p>
-            </div>
-
-            <span className="hidden rounded-full bg-[#C9151E] px-3 py-1 text-base font-black text-white">
-              {reservation.routeNumber}
-            </span>
-          </div>
-
-          <button
-            className="mt-4 h-10 w-full rounded-xl border border-[#C9151E]/30 bg-white px-4 text-2xl font-black text-[#C9151E] transition hover:bg-[#C9151E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isCancelling}
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              setIsConfirmingCancel(true);
-            }}
-          >
-            取消預約
-          </button>
+          <p className="text-xl font-black text-[#C9151E]">
+            乘車時請出示此畫面，並依預約日期與班次時刻到站候車。
+          </p>
+          {!isTicketExpanded && (
+            <p className="mt-2 text-base font-black text-[#6B5A25] text-center">
+              點選隨意區塊可以放大乘車證
+            </p>
+          )}
         </div>
       </article>
+
+      <button
+        className="mt-4 h-11 w-full rounded-xl border-2 border-[#C9151E] bg-white px-4 text-base font-black text-[#C9151E] transition hover:bg-[#C9151E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={isCancelling}
+        type="button"
+        onClick={() => setIsConfirmingCancel(true)}
+      >
+        取消預約
+      </button>
 
       {isConfirmingCancel && (
         <div
@@ -338,44 +325,7 @@ export function UpcomingReservationCard({
         </div>
       )}
 
-      {resultMessage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/55 p-5"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="cancel-result-title"
-        >
-          <div className="w-full max-w-sm rounded-panel bg-white p-6 text-center shadow-soft ring-1 ring-bus-100">
-            <div
-              className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full text-xl font-black ${
-                resultMessage.type === "success"
-                  ? "bg-emerald-50 text-emerald-600"
-                  : "bg-coral/10 text-coral"
-              }`}
-            >
-              {resultMessage.type === "success" ? "OK" : "!"}
-            </div>
-            <h2
-              id="cancel-result-title"
-              className="mt-5 text-xl font-black text-ink-900"
-            >
-              {resultMessage.type === "success"
-                ? "取消預約成功"
-                : "取消預約失敗"}
-            </h2>
-            <p className="mt-3 text-md leading-6 text-ink-500">
-              {resultMessage.message}
-            </p>
-            <button
-              className="mt-6 h-11 w-full rounded-xl bg-bus-700 px-4 text-md font-black text-white transition hover:bg-bus-900"
-              type="button"
-              onClick={closeResult}
-            >
-              確定
-            </button>
-          </div>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </section>
   );
 }

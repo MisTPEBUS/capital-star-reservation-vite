@@ -7,8 +7,92 @@ interface ScheduleListProps {
   errorMessage?: string;
   reservationErrorMessage?: string;
   canReserve?: boolean;
+  unavailableReason?: "ACTIVE_RESERVATION" | "UNOPENED";
   reservingScheduleId?: string | null;
+  onRetry?: () => void;
   onReserve: (schedule: OpenSchedule) => void;
+}
+
+const parseLocalDateTime = (dateValue: string, timeValue: string) => {
+  if (!dateValue || !timeValue) return null;
+
+  const dateMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const timeMatch = timeValue.match(/^(\d{1,2}):(\d{2})/);
+
+  if (!dateMatch || !timeMatch) return null;
+
+  return new Date(
+    Number(dateMatch[1]),
+    Number(dateMatch[2]) - 1,
+    Number(dateMatch[3]),
+    Number(timeMatch[1]),
+    Number(timeMatch[2]),
+  );
+};
+
+const getDeadlineDate = (schedule: OpenSchedule) => {
+  if (!schedule.bookingDeadline) return null;
+
+  const explicitDate = new Date(schedule.bookingDeadline);
+  if (!Number.isNaN(explicitDate.getTime())) return explicitDate;
+
+  return parseLocalDateTime(schedule.openDate, schedule.bookingDeadline);
+};
+
+const getDeadlineBadge = (schedule: OpenSchedule) => {
+  const deadline = getDeadlineDate(schedule);
+  const timeLabel = deadline
+    ? new Intl.DateTimeFormat("zh-TW", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(deadline)
+    : schedule.bookingDeadline?.slice(0, 5) || "";
+
+  if (!deadline) {
+    return {
+      text: timeLabel ? `截止 ${timeLabel}` : "截止時間未提供",
+      className: timeLabel ? "bg-star-300 text-bus-900" : "bg-ink-200 text-ink-600",
+    };
+  }
+
+  if (deadline.getTime() < Date.now()) {
+    return {
+      text: "已截止",
+      className: "bg-ink-200 text-ink-600",
+    };
+  }
+
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  const dateKey = (date: Date) =>
+    `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  const deadlineKey = dateKey(deadline);
+  const relativeDate =
+    deadlineKey === dateKey(today)
+      ? "今日"
+      : deadlineKey === dateKey(tomorrow)
+        ? "明日"
+        : `${deadline.getMonth() + 1}/${deadline.getDate()}`;
+
+  return {
+    text: `截止 ${relativeDate} ${timeLabel}`,
+    className: "bg-star-300 text-bus-900",
+  };
+};
+
+function ScheduleSkeleton() {
+  return (
+    <div className="grid gap-2.5">
+      {[0, 1, 2].map((item) => (
+        <div
+          key={item}
+          className="h-[132px] rounded-2xl bg-ink-100 animate-pulse"
+        />
+      ))}
+    </div>
+  );
 }
 
 export function ScheduleList({
@@ -17,9 +101,18 @@ export function ScheduleList({
   errorMessage = "",
   reservationErrorMessage = "",
   canReserve = true,
+  unavailableReason = "UNOPENED",
   reservingScheduleId = null,
+  onRetry,
   onReserve,
 }: ScheduleListProps) {
+  const unavailableText =
+    unavailableReason === "ACTIVE_RESERVATION"
+      ? "您已有進行中的預約，仍可查看班次時刻表。"
+      : "此日期尚未開放預約，仍可查看班次時刻表。";
+  const unavailableButtonText =
+    unavailableReason === "ACTIVE_RESERVATION" ? "已預約" : "未開放";
+
   return (
     <section className="rounded-panel bg-white p-4 shadow-card ring-1 ring-bus-100/80 md:p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -44,23 +137,22 @@ export function ScheduleList({
       )}
 
       {isLoading ? (
-        <div className="rounded-card bg-ink-50 p-6 text-center ring-1 ring-ink-100">
-          <p className="text-xl font-black text-ink-800">正在讀取班次</p>
-          <p className="mt-2 text-base text-ink-500">請稍候。</p>
-        </div>
+        <ScheduleSkeleton />
       ) : errorMessage ? (
         <div className="rounded-card bg-coral/10 p-6 text-center ring-1 ring-coral/20">
           <p className="text-xl font-black text-coral">班次資料讀取失敗</p>
           <p className="mt-2 text-base font-bold text-ink-600">
             {errorMessage}
           </p>
-        </div>
-      ) : !canReserve ? (
-        <div className="rounded-card bg-ink-50 p-6 text-center ring-1 ring-ink-100">
-          <p className="text-xl font-black text-ink-800">目前無法預約班次</p>
-          <p className="mt-2 text-base text-ink-500">
-            你已有進行中的預約或此日期尚未開放。
-          </p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-4 h-10 rounded-xl border border-coral bg-white px-4 text-base font-black text-coral transition hover:bg-coral hover:text-white"
+            >
+              重新載入
+            </button>
+          )}
         </div>
       ) : schedules.length === 0 ? (
         <div className="rounded-card bg-ink-50 p-6 text-center ring-1 ring-ink-100">
@@ -73,21 +165,31 @@ export function ScheduleList({
         </div>
       ) : (
         <div className="grid gap-2.5">
+          {!canReserve && (
+            <div className="rounded-card bg-star-100/70 p-4 text-base font-black text-bus-900 ring-1 ring-star-300">
+              {unavailableText}
+            </div>
+          )}
           {schedules.map((schedule) => {
             const isFull = schedule.availableSeats <= 0;
             const isReserved = schedule.userReservation === "RESERVED";
             const isReserving =
               reservingScheduleId === schedule.dailyOpenScheduleId;
+            const deadlineBadge = getDeadlineBadge(schedule);
+            const isPastDeadline = deadlineBadge.text === "已截止";
             const disabled =
               isFull ||
               isReserved ||
+              isPastDeadline ||
               !canReserve ||
               reservingScheduleId !== null;
 
             return (
               <article
                 key={schedule.dailyOpenScheduleId}
-                className="overflow-hidden rounded-card border border-bus-100 bg-white shadow-sm ring-1 ring-bus-50"
+                className={`overflow-hidden rounded-card border border-bus-100 shadow-sm ring-1 ring-bus-50 ${
+                  isFull ? "bg-ink-50 opacity-60" : "bg-white"
+                }`}
               >
                 {/* Row 1：時間、班次、剩餘人數 */}
                 <div className="grid grid-cols-[1fr_auto] items-center gap-3 p-3.5">
@@ -102,7 +204,7 @@ export function ScheduleList({
                           {schedule.scheduleCode}
                         </p>
                         <p className="text-xl font-bold text-ink-400">
-                          出發班次
+                          宜蘭→五結
                         </p>
                       </div>
                     </div>
@@ -129,11 +231,17 @@ export function ScheduleList({
                 <div className="grid grid-cols-[1fr_120px] items-center gap-3 border-t border-bus-100 bg-gradient-to-r from-bus-50/80 to-white p-3.5">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="shrink-0 rounded-full bg-star-300 px-2.5 py-1 text-sm font-black text-bus-900">
-                        截止 {schedule.bookingDeadline}
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-sm font-black ${deadlineBadge.className}`}
+                      >
+                        {deadlineBadge.text}
                       </span>
 
-                      {isReserved ? (
+                      {isPastDeadline ? (
+                        <span className="shrink-0 rounded-full bg-ink-200 px-2.5 py-1 text-sm font-black text-ink-600">
+                          已截止
+                        </span>
+                      ) : isReserved ? (
                         <span className="shrink-0 rounded-full bg-ink-900 px-2.5 py-1 text-sm font-black text-white">
                           已預約
                         </span>
@@ -165,11 +273,15 @@ export function ScheduleList({
                   >
                     {isReserving
                       ? "處理中"
-                      : isReserved
-                        ? "已預約"
-                        : isFull
-                          ? "已滿"
-                          : "預約"}
+                      : !canReserve
+                        ? unavailableButtonText
+                        : isPastDeadline
+                          ? "已截止"
+                          : isReserved
+                            ? "已預約"
+                            : isFull
+                              ? "已滿"
+                              : "預約"}
                   </button>
                 </div>
               </article>

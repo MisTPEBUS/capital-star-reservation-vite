@@ -88,6 +88,7 @@ function App() {
   const [pickupStops, setPickupStops] = useState<PickupStop[]>([]);
   const [pickupStopsLoading, setPickupStopsLoading] = useState(true);
   const [pickupStopsError, setPickupStopsError] = useState("");
+  const [pickupStopsRetryKey, setPickupStopsRetryKey] = useState(0);
 
   const [selection, setSelection] = useState<BookingSelection>({
     routeId: route.routeId,
@@ -106,6 +107,10 @@ function App() {
 
   const [reservationResult, setReservationResult] =
     useState<ReservationResult | null>(null);
+
+  useEffect(() => {
+    document.title = "預約首頁 — Capital Star";
+  }, []);
 
   const displayRoute = useMemo<RouteInfo>(
     () => ({
@@ -226,7 +231,7 @@ function App() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [pickupStopsRetryKey]);
 
   useEffect(() => {
     async function loadAuthProfile() {
@@ -449,9 +454,11 @@ function App() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bus-50 px-5 text-center">
         <div className="rounded-panel bg-white p-6 shadow-card ring-1 ring-coral/20">
-          <p className="text-lg font-black text-coral">{liffError}</p>
+          <p className="text-lg font-black text-coral">
+            無法載入，請透過 LINE 重新開啟此頁面。
+          </p>
           <p className="mt-2 text-sm font-bold text-ink-500">
-            請確認 LIFF ID 與 Endpoint URL 是否正確。
+            若問題持續發生，請聯繫客服。
           </p>
         </div>
       </div>
@@ -550,6 +557,7 @@ function App() {
               onChange={setSelection}
               isStopsLoading={pickupStopsLoading}
               stopsError={pickupStopsError}
+              onRetryStops={() => setPickupStopsRetryKey((current) => current + 1)}
             />
 
             <ScheduleList
@@ -558,7 +566,11 @@ function App() {
               errorMessage={schedulesError}
               reservationErrorMessage={reservationError}
               canReserve={canReserve}
+              unavailableReason={
+                activeUpcomingReservation ? "ACTIVE_RESERVATION" : "UNOPENED"
+              }
               reservingScheduleId={reservingScheduleId}
+              onRetry={loadSchedules}
               onReserve={handleReserve}
             />
           </div>
@@ -567,6 +579,14 @@ function App() {
         <SuccessModal
           result={reservationResult}
           onClose={() => setReservationResult(null)}
+          onViewTicket={() => {
+            setReservationResult(null);
+            window.setTimeout(() => {
+              document
+                .getElementById("upcoming-reservation")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 0);
+          }}
         />
       </main>
     </div>

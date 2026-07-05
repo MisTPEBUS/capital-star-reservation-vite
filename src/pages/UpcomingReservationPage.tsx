@@ -31,6 +31,7 @@ export function UpcomingReservationPage() {
 
   useEffect(() => {
     const previousFontSize = document.documentElement.style.fontSize;
+    document.title = "乘車憑證 — Capital Star";
     document.documentElement.style.fontSize = "112.5%";
 
     return () => {
