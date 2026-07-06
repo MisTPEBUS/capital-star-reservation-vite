@@ -6,6 +6,7 @@ import AdminApp from './admin/AdminApp';
 import { UpcomingReservationPage } from './pages/UpcomingReservationPage';
 import { FaqPage } from './pages/FaqPage';
 import { FrontendUIKitPage } from './pages/FrontendUIKitPage';
+import { RegisterProfilePage } from './pages/RegisterProfilePage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <HashRouter>
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/register" element={<RegisterProfilePage />} />
         <Route path="/ticket" element={<UpcomingReservationPage />} />
         <Route path="/faq" element={<FaqPage />} />
         <Route path="/ui-kit" element={<FrontendUIKitPage />} />
