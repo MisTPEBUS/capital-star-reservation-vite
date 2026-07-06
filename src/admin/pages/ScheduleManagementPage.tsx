@@ -52,7 +52,14 @@ const dateQuickOptions = [
   { label: "後天", offset: 2 },
   { label: "下週同日", offset: 7 },
 ];
-const departureTimeOptions = ["05:30", "06:00", "06:30", "07:00", "07:30", "08:00"];
+const departureTimeOptions = [
+  "05:30",
+  "06:00",
+  "06:30",
+  "07:00",
+  "07:30",
+  "08:00",
+];
 
 function getRoute(routes: AdminRoute[], routeId: string) {
   return routes.find((route) => route.routeId === routeId) ?? routes[0] ?? null;
@@ -626,7 +633,6 @@ export function ScheduleManagementPage() {
     <div className="space-y-6">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="admin-page-kicker">DISPATCH MANAGEMENT</p>
           <h1 className="admin-page-title">班次設定</h1>
           <p className="admin-page-description">
             建立營運預約班次，提供路線、站位、預約時段與可預約人數設定。
@@ -718,7 +724,9 @@ export function ScheduleManagementPage() {
                     後一天
                   </button>
                   {dateQuickOptions.map((option) => {
-                    const value = formatDate(addDays(new Date(), option.offset));
+                    const value = formatDate(
+                      addDays(new Date(), option.offset),
+                    );
                     const isActive = scheduleForm.operationDate === value;
 
                     return (
@@ -830,7 +838,9 @@ export function ScheduleManagementPage() {
                   <button
                     className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
                     type="button"
-                    onClick={() => setBookingCloseAtByRule("departure-minus-30")}
+                    onClick={() =>
+                      setBookingCloseAtByRule("departure-minus-30")
+                    }
                   >
                     發車前 30 分
                   </button>

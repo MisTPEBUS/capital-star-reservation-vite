@@ -10,6 +10,7 @@ interface BookingFormProps {
   dates: { value: string; label: string }[];
   selection: BookingSelection;
   onChange: (next: BookingSelection) => void;
+  onDateSelected?: () => void;
   isStopsLoading?: boolean;
   stopsError?: string;
   onRetryStops?: () => void;
@@ -55,6 +56,7 @@ export function BookingForm({
   dates,
   selection,
   onChange,
+  onDateSelected,
   isStopsLoading = false,
   stopsError = "",
   onRetryStops,
@@ -64,6 +66,15 @@ export function BookingForm({
     value: BookingSelection[K],
   ) => {
     onChange({ ...selection, [key]: value });
+  };
+
+  const scrollToSection = (id: string) => {
+    window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
   };
 
   return (
@@ -79,7 +90,7 @@ export function BookingForm({
 
       <div className="grid gap-4">
         {/* 上車地點 */}
-        <div className="border-t border-bus-100 pt-4">
+        <div id="booking-pickup" className="border-t border-bus-100 pt-4">
           <StepHeading
             step="1"
             title="上車地點"
@@ -118,7 +129,15 @@ export function BookingForm({
                     key={stop.stopId}
                     type="button"
                     aria-pressed={isActive}
-                    onClick={() => update("pickupStopId", stop.stopId)}
+                    onClick={() => {
+                      onChange({
+                        ...selection,
+                        pickupStopId: stop.stopId,
+                        openDate: dates[0]?.value ?? selection.openDate,
+                        timePeriod: "ALL",
+                      });
+                      scrollToSection("booking-date");
+                    }}
                     className={`min-h-12 rounded-xl px-3 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
                       isActive
                         ? "border-l-8 border-star-300 bg-bus-600 text-white shadow-card"
@@ -144,7 +163,7 @@ export function BookingForm({
         </div>
 
         {/* 日期 */}
-        <div className="border-t border-bus-100 pt-4">
+        <div id="booking-date" className="border-t border-bus-100 pt-4">
           <StepHeading step="2" title="日期" description="選擇預計搭乘日期" />
 
           <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -156,7 +175,14 @@ export function BookingForm({
                   key={date.value}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() => update("openDate", date.value)}
+                  onClick={() => {
+                    onChange({
+                      ...selection,
+                      openDate: date.value,
+                      timePeriod: "ALL",
+                    });
+                    onDateSelected?.();
+                  }}
                   className={`min-h-12 rounded-xl px-3 text-center outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
                     isActive
                       ? "bg-bus-600 text-white shadow-card"

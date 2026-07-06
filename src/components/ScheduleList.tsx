@@ -9,8 +9,9 @@ interface ScheduleListProps {
   canReserve?: boolean;
   unavailableReason?: "ACTIVE_RESERVATION" | "UNOPENED";
   reservingScheduleId?: string | null;
+  selectedScheduleId?: string | null;
   onRetry?: () => void;
-  onReserve: (schedule: OpenSchedule) => void;
+  onSelect: (schedule: OpenSchedule) => void;
 }
 
 const parseLocalDateTime = (dateValue: string, timeValue: string) => {
@@ -52,7 +53,9 @@ const getDeadlineBadge = (schedule: OpenSchedule) => {
   if (!deadline) {
     return {
       text: timeLabel ? `截止 ${timeLabel}` : "截止時間未提供",
-      className: timeLabel ? "bg-star-300 text-bus-900" : "bg-ink-200 text-ink-600",
+      className: timeLabel
+        ? "bg-star-300 text-bus-900"
+        : "bg-ink-200 text-ink-600",
     };
   }
 
@@ -88,7 +91,7 @@ function ScheduleSkeleton() {
       {[0, 1, 2].map((item) => (
         <div
           key={item}
-          className="h-[132px] rounded-2xl bg-ink-100 animate-pulse"
+          className="h-[92px] rounded-2xl bg-ink-100 animate-pulse"
         />
       ))}
     </div>
@@ -103,18 +106,19 @@ export function ScheduleList({
   canReserve = true,
   unavailableReason = "UNOPENED",
   reservingScheduleId = null,
+  selectedScheduleId = null,
   onRetry,
-  onReserve,
+  onSelect,
 }: ScheduleListProps) {
   const unavailableText =
     unavailableReason === "ACTIVE_RESERVATION"
       ? "您已有進行中的預約，仍可查看班次時刻表。"
       : "此日期尚未開放預約，仍可查看班次時刻表。";
-  const unavailableButtonText =
-    unavailableReason === "ACTIVE_RESERVATION" ? "已預約" : "未開放";
-
   return (
-    <section className="rounded-panel bg-white p-4 shadow-card ring-1 ring-bus-100/80 md:p-5">
+    <section
+      id="schedule-list"
+      className="rounded-panel bg-white p-4 shadow-card ring-1 ring-bus-100/80 md:p-5"
+    >
       <div className="mb-4 flex items-start justify-between gap-3">
         <SectionTitle
           eyebrow="班次清單"
@@ -173,10 +177,10 @@ export function ScheduleList({
           {schedules.map((schedule) => {
             const isFull = schedule.availableSeats <= 0;
             const isReserved = schedule.userReservation === "RESERVED";
-            const isReserving =
-              reservingScheduleId === schedule.dailyOpenScheduleId;
             const deadlineBadge = getDeadlineBadge(schedule);
             const isPastDeadline = deadlineBadge.text === "已截止";
+            const isSelected =
+              selectedScheduleId === schedule.dailyOpenScheduleId;
             const disabled =
               isFull ||
               isReserved ||
@@ -185,13 +189,20 @@ export function ScheduleList({
               reservingScheduleId !== null;
 
             return (
-              <article
+              <button
                 key={schedule.dailyOpenScheduleId}
-                className={`overflow-hidden rounded-card border border-bus-100 shadow-sm ring-1 ring-bus-50 ${
-                  isFull ? "bg-ink-50 opacity-60" : "bg-white"
+                type="button"
+                disabled={disabled}
+                aria-pressed={isSelected}
+                onClick={() => onSelect(schedule)}
+                className={`overflow-hidden rounded-card border text-left shadow-sm outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
+                  disabled
+                    ? "cursor-not-allowed border-ink-100 bg-ink-50 opacity-60"
+                    : isSelected
+                      ? "border-bus-700 bg-bus-50 ring-2 ring-bus-600"
+                      : "border-bus-100 bg-white ring-1 ring-bus-50 hover:bg-bus-50"
                 }`}
               >
-                {/* Row 1：時間、班次、剩餘人數 */}
                 <div className="grid grid-cols-[1fr_auto] items-center gap-3 p-3.5">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -203,8 +214,15 @@ export function ScheduleList({
                         <p className="truncate text-base font-black leading-5 text-ink-800">
                           {schedule.scheduleCode}
                         </p>
-                        <p className="text-xl font-bold text-ink-400">
-                          宜蘭→五結
+                        <p className="mt-1 flex flex-wrap gap-1.5 text-sm font-black">
+                          <span
+                            className={
+                              deadlineBadge.className +
+                              " rounded-full px-2 py-0.5"
+                            }
+                          >
+                            {deadlineBadge.text}
+                          </span>
                         </p>
                       </div>
                     </div>
@@ -226,65 +244,7 @@ export function ScheduleList({
                     </p>
                   </div>
                 </div>
-
-                {/* Row 2：狀態、備註、按鈕 */}
-                <div className="grid grid-cols-[1fr_120px] items-center gap-3 border-t border-bus-100 bg-gradient-to-r from-bus-50/80 to-white p-3.5">
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <span
-                        className={`shrink-0 rounded-full px-2.5 py-1 text-sm font-black ${deadlineBadge.className}`}
-                      >
-                        {deadlineBadge.text}
-                      </span>
-
-                      {isPastDeadline ? (
-                        <span className="shrink-0 rounded-full bg-ink-200 px-2.5 py-1 text-sm font-black text-ink-600">
-                          已截止
-                        </span>
-                      ) : isReserved ? (
-                        <span className="shrink-0 rounded-full bg-ink-900 px-2.5 py-1 text-sm font-black text-white">
-                          已預約
-                        </span>
-                      ) : isFull ? (
-                        <span className="shrink-0 rounded-full bg-coral/10 px-2.5 py-1 text-sm font-black text-coral">
-                          已滿
-                        </span>
-                      ) : (
-                        <span className="shrink-0 rounded-full bg-bus-600 px-2.5 py-1 text-sm font-black text-white">
-                          可預約
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="mt-1 truncate text-sm font-bold leading-5 text-ink-500">
-                      {schedule.note}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => onReserve(schedule)}
-                    className={`h-14 text-2xl rounded-2xl px-4 text-base font-black outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
-                      disabled
-                        ? "cursor-not-allowed bg-ink-100 text-ink-400"
-                        : "bg-bus-900 text-white shadow-sm hover:bg-bus-700 active:scale-[0.98]"
-                    }`}
-                  >
-                    {isReserving
-                      ? "處理中"
-                      : !canReserve
-                        ? unavailableButtonText
-                        : isPastDeadline
-                          ? "已截止"
-                          : isReserved
-                            ? "已預約"
-                            : isFull
-                              ? "已滿"
-                              : "預約"}
-                  </button>
-                </div>
-              </article>
+              </button>
             );
           })}
         </div>

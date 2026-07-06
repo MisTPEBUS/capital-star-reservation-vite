@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { getAuthProfile } from "../api/auth";
+import { useNavigate } from "react-router-dom";
+import {
+  getAuthProfile,
+  getPreferredProfileName,
+  isProfileRegistrationRequired,
+} from "../api/auth";
 import {
   getUpcomingReservations,
   type UpcomingReservation,
@@ -23,8 +28,10 @@ function getDepartureTimestamp(reservation: UpcomingReservation) {
 }
 
 export function UpcomingReservationPage() {
+  const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
   const [identityCode, setIdentityCode] = useState<string | null>(null);
+  const [passengerName, setPassengerName] = useState<string | null>(null);
   const [reservation, setReservation] = useState<UpcomingReservation | null>(
     null,
   );
@@ -44,6 +51,15 @@ export function UpcomingReservationPage() {
     if (!liffProfile) return;
 
     const profile = await getAuthProfile(liffProfile.lineUserId);
+
+    if (isProfileRegistrationRequired(profile)) {
+      navigate("/register", {
+        replace: true,
+        state: { returnTo: "/ticket" },
+      });
+      return;
+    }
+
     const reservations = await getUpcomingReservations(profile.userId);
     const nextReservation = reservations
       .filter(
@@ -55,8 +71,9 @@ export function UpcomingReservationPage() {
 
     setUserId(profile.userId);
     setIdentityCode(profile.activeCode);
+    setPassengerName(getPreferredProfileName(profile, liffProfile.displayName));
     setReservation(nextReservation ?? null);
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -79,6 +96,7 @@ export function UpcomingReservationPage() {
           reservation={reservation}
           userId={userId}
           identityCode={identityCode}
+          passengerName={passengerName}
           onCancelled={loadReservation}
         />
       </div>

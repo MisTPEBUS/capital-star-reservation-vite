@@ -5,6 +5,8 @@ export type TimePeriod = 'ALL' | 'MORNING' | 'AFTERNOON' | 'EVENING';
 export interface PassengerProfile {
   userId: string;
   displayName: string;
+  firstName?: string | null;
+  sex?: string | null;
   activeCode: string;
   phoneNumber: string;
   email: string | null;
