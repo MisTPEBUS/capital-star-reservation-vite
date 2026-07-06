@@ -77,7 +77,12 @@ function fillRoundRect(
   context.lineTo(x + width - radius, y);
   context.quadraticCurveTo(x + width, y, x + width, y + radius);
   context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  context.quadraticCurveTo(
+    x + width,
+    y + height,
+    x + width - radius,
+    y + height,
+  );
   context.lineTo(x + radius, y + height);
   context.quadraticCurveTo(x, y + height, x, y + height - radius);
   context.lineTo(x, y + radius);
@@ -101,8 +106,14 @@ function drawCenteredStopName(
   context.textBaseline = "middle";
 
   const lines = getTextLines(context, stopName, maxTextWidth);
-  const textWidth = Math.max(...lines.map((line) => context.measureText(line).width), 0);
-  const labelWidth = Math.min(size * 0.58, Math.max(textWidth + size * 0.1, size * 0.28));
+  const textWidth = Math.max(
+    ...lines.map((line) => context.measureText(line).width),
+    0,
+  );
+  const labelWidth = Math.min(
+    size * 0.58,
+    Math.max(textWidth + size * 0.1, size * 0.28),
+  );
   const labelHeight = lines.length * lineHeight + size * 0.08;
   const labelX = (size - labelWidth) / 2;
   const labelY = (size - labelHeight) / 2;
@@ -183,7 +194,9 @@ function StopQrCode({
         ref={canvasRef}
         width={size}
       />
-      <p className="mt-2 text-xs leading-5 text-admin-muted">連結已包含站位 ID。</p>
+      <p className="mt-2 text-xs leading-5 text-admin-muted">
+        連結已包含站位 ID。
+      </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <button
           className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
@@ -215,7 +228,9 @@ export function StopManagementPage() {
   const [notice, setNotice] = useState<Notice>(null);
   const [qrSizes, setQrSizes] = useState<Record<string, number>>({});
   const [qrLabels, setQrLabels] = useState<Record<string, string>>({});
-  const [expandedQrStopIds, setExpandedQrStopIds] = useState<Record<string, boolean>>({});
+  const [expandedQrStopIds, setExpandedQrStopIds] = useState<
+    Record<string, boolean>
+  >({});
 
   const loadStops = async () => {
     try {
@@ -276,7 +291,9 @@ export function StopManagementPage() {
       if (editingStop) {
         const updated = await updateStop(editingStop.stopId, payload);
         setStops((current) =>
-          current.map((stop) => (stop.stopId === editingStop.stopId ? updated : stop)),
+          current.map((stop) =>
+            stop.stopId === editingStop.stopId ? updated : stop,
+          ),
         );
         setNotice({ type: "success", message: "站位已更新。" });
       } else {
@@ -303,7 +320,9 @@ export function StopManagementPage() {
     try {
       setIsDeletingId(stop.stopId);
       await deleteStop(stop.stopId);
-      setStops((current) => current.filter((item) => item.stopId !== stop.stopId));
+      setStops((current) =>
+        current.filter((item) => item.stopId !== stop.stopId),
+      );
       setNotice({ type: "success", message: "站位已刪除。" });
     } catch (error) {
       setNotice({
@@ -335,11 +354,16 @@ export function StopManagementPage() {
     <div className="space-y-6">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="admin-page-kicker">DISPATCH MANAGEMENT</p>
           <h1 className="admin-page-title">站位設定</h1>
-          <p className="admin-page-description">管理路線可使用的轉運站與路邊站位。</p>
+          <p className="admin-page-description">
+            管理路線可使用的轉運站與路邊站位。
+          </p>
         </div>
-        <button className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg transition hover:bg-emerald-300" type="button" onClick={openCreateForm}>
+        <button
+          className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg transition hover:bg-emerald-300"
+          type="button"
+          onClick={openCreateForm}
+        >
           新增站位
         </button>
       </section>
@@ -356,12 +380,20 @@ export function StopManagementPage() {
       <section className="admin-panel-body overflow-hidden p-0">
         <div className="flex items-center justify-between border-b border-admin-border px-5 py-4">
           <h2 className="admin-section-title">站位清單</h2>
-          <button className="text-sm font-semibold text-adminStatus-enabled" type="button" onClick={loadStops}>重新整理</button>
+          <button
+            className="text-sm font-semibold text-adminStatus-enabled"
+            type="button"
+            onClick={loadStops}
+          >
+            重新整理
+          </button>
         </div>
         {isLoading ? (
           <p className="px-5 py-8 text-center text-admin-muted">讀取站位中…</p>
         ) : stops.length === 0 ? (
-          <p className="px-5 py-8 text-center text-admin-muted">目前沒有站位資料。</p>
+          <p className="px-5 py-8 text-center text-admin-muted">
+            目前沒有站位資料。
+          </p>
         ) : (
           <div className="divide-y divide-admin-border">
             {stops.map((stop) => {
@@ -370,20 +402,33 @@ export function StopManagementPage() {
               const isQrExpanded = expandedQrStopIds[stop.stopId] ?? false;
 
               return (
-                <article
-                  className="px-5 py-5"
-                  key={stop.stopId}
-                >
+                <article className="px-5 py-5" key={stop.stopId}>
                   <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-bold text-admin-text">{stop.stopName}</h3>
-                        <span className="rounded-full bg-admin-elevated px-2 py-0.5 text-xs font-bold text-admin-softText">{stop.stopType === "STATION" ? "轉運站" : "路邊站"}</span>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${stop.status === "ACTIVE" ? "bg-adminStatus-enabled/10 text-adminStatus-enabled" : "bg-admin-elevated text-admin-muted"}`}>{stop.status === "ACTIVE" ? "啟用" : "停用"}</span>
+                        <h3 className="font-bold text-admin-text">
+                          {stop.stopName}
+                        </h3>
+                        <span className="rounded-full bg-admin-elevated px-2 py-0.5 text-xs font-bold text-admin-softText">
+                          {stop.stopType === "STATION" ? "轉運站" : "路邊站"}
+                        </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-bold ${stop.status === "ACTIVE" ? "bg-adminStatus-enabled/10 text-adminStatus-enabled" : "bg-admin-elevated text-admin-muted"}`}
+                        >
+                          {stop.status === "ACTIVE" ? "啟用" : "停用"}
+                        </span>
                       </div>
-                      <p className="mt-2 text-sm text-admin-muted">{stop.address || "未提供地址"}</p>
-                      {(stop.latitude !== null || stop.longitude !== null) && <p className="mt-1 text-xs text-admin-muted">座標：{stop.latitude ?? "-"}, {stop.longitude ?? "-"}</p>}
-                      <p className="mt-2 break-all text-xs text-admin-muted">站位 ID：{stop.stopId}</p>
+                      <p className="mt-2 text-sm text-admin-muted">
+                        {stop.address || "未提供地址"}
+                      </p>
+                      {(stop.latitude !== null || stop.longitude !== null) && (
+                        <p className="mt-1 text-xs text-admin-muted">
+                          座標：{stop.latitude ?? "-"}, {stop.longitude ?? "-"}
+                        </p>
+                      )}
+                      <p className="mt-2 break-all text-xs text-admin-muted">
+                        站位 ID：{stop.stopId}
+                      </p>
                     </div>
 
                     <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -395,8 +440,21 @@ export function StopManagementPage() {
                       >
                         {isQrExpanded ? "收合 QR Code" : "產生 QR Code"}
                       </button>
-                      <button className="rounded-adminControl border border-admin-borderStrong px-3 py-2 text-sm font-semibold text-admin-softText" type="button" onClick={() => openEditForm(stop)}>修改</button>
-                      <button className="rounded-adminControl border border-red-400/40 px-3 py-2 text-sm font-semibold text-red-300 disabled:opacity-60" disabled={isDeletingId === stop.stopId} type="button" onClick={() => removeStop(stop)}>{isDeletingId === stop.stopId ? "刪除中…" : "刪除"}</button>
+                      <button
+                        className="rounded-adminControl border border-admin-borderStrong px-3 py-2 text-sm font-semibold text-admin-softText"
+                        type="button"
+                        onClick={() => openEditForm(stop)}
+                      >
+                        修改
+                      </button>
+                      <button
+                        className="rounded-adminControl border border-red-400/40 px-3 py-2 text-sm font-semibold text-red-300 disabled:opacity-60"
+                        disabled={isDeletingId === stop.stopId}
+                        type="button"
+                        onClick={() => removeStop(stop)}
+                      >
+                        {isDeletingId === stop.stopId ? "刪除中…" : "刪除"}
+                      </button>
                     </div>
                   </div>
 
@@ -436,7 +494,8 @@ export function StopManagementPage() {
                           />
                         </label>
                         <p className="sm:col-span-2 text-xs leading-5 text-admin-muted">
-                          QR Code 連結會帶入此站位 ID，中央文字可依現場張貼需求調整。
+                          QR Code 連結會帶入此站位
+                          ID，中央文字可依現場張貼需求調整。
                         </p>
                       </div>
                       <StopQrCode
@@ -455,12 +514,24 @@ export function StopManagementPage() {
       </section>
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5" role="dialog" aria-modal="true" aria-labelledby="stop-form-title">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="stop-form-title"
+        >
           <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-6 shadow-adminPanel">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold text-admin-text" id="stop-form-title">{editingStop ? "修改站位" : "新增站位"}</h2>
-                <p className="mt-1 text-sm text-admin-muted">設定站位名稱、類型、地址、座標與狀態。</p>
+                <h2
+                  className="text-xl font-bold text-admin-text"
+                  id="stop-form-title"
+                >
+                  {editingStop ? "修改站位" : "新增站位"}
+                </h2>
+                <p className="mt-1 text-sm text-admin-muted">
+                  設定站位名稱、類型、地址、座標與狀態。
+                </p>
               </div>
               <button
                 aria-label="關閉"
@@ -471,40 +542,110 @@ export function StopManagementPage() {
                 ×
               </button>
             </div>
-            <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={saveStop}>
+            <form
+              className="mt-5 grid gap-4 md:grid-cols-2"
+              onSubmit={saveStop}
+            >
               <label className="text-sm font-medium text-admin-softText">
                 站位名稱
-                <input className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled" value={form.stopName} onChange={(event) => setForm((current) => ({ ...current, stopName: event.target.value }))} />
+                <input
+                  className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  value={form.stopName}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      stopName: event.target.value,
+                    }))
+                  }
+                />
               </label>
               <label className="text-sm font-medium text-admin-softText">
                 站位類型
-                <select className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled" value={form.stopType} onChange={(event) => setForm((current) => ({ ...current, stopType: event.target.value as StopType }))}>
+                <select
+                  className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  value={form.stopType}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      stopType: event.target.value as StopType,
+                    }))
+                  }
+                >
                   <option value="ROADSIDE">路邊站</option>
                   <option value="STATION">轉運站</option>
                 </select>
               </label>
               <label className="text-sm font-medium text-admin-softText md:col-span-2">
                 地址
-                <input className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled" value={form.address ?? ""} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value || null }))} />
+                <input
+                  className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  value={form.address ?? ""}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      address: event.target.value || null,
+                    }))
+                  }
+                />
               </label>
               <label className="text-sm font-medium text-admin-softText">
                 緯度
-                <input className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled" inputMode="decimal" value={form.latitude ?? ""} onChange={(event) => setForm((current) => ({ ...current, latitude: toNullableNumber(event.target.value) }))} />
+                <input
+                  className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  inputMode="decimal"
+                  value={form.latitude ?? ""}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      latitude: toNullableNumber(event.target.value),
+                    }))
+                  }
+                />
               </label>
               <label className="text-sm font-medium text-admin-softText">
                 經度
-                <input className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled" inputMode="decimal" value={form.longitude ?? ""} onChange={(event) => setForm((current) => ({ ...current, longitude: toNullableNumber(event.target.value) }))} />
+                <input
+                  className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  inputMode="decimal"
+                  value={form.longitude ?? ""}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      longitude: toNullableNumber(event.target.value),
+                    }))
+                  }
+                />
               </label>
               <label className="text-sm font-medium text-admin-softText">
                 狀態
-                <select className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as StopStatus }))}>
+                <select
+                  className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  value={form.status}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      status: event.target.value as StopStatus,
+                    }))
+                  }
+                >
                   <option value="ACTIVE">啟用</option>
                   <option value="INACTIVE">停用</option>
                 </select>
               </label>
               <div className="flex items-end justify-end gap-3 md:col-span-2">
-                <button className="h-11 rounded-adminControl border border-admin-borderStrong px-5 text-sm font-semibold text-admin-softText disabled:opacity-60" disabled={isSaving} type="button" onClick={closeForm}>取消</button>
-                <button className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg disabled:opacity-60" disabled={isSaving} type="submit">
+                <button
+                  className="h-11 rounded-adminControl border border-admin-borderStrong px-5 text-sm font-semibold text-admin-softText disabled:opacity-60"
+                  disabled={isSaving}
+                  type="button"
+                  onClick={closeForm}
+                >
+                  取消
+                </button>
+                <button
+                  className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg disabled:opacity-60"
+                  disabled={isSaving}
+                  type="submit"
+                >
                   {isSaving ? "儲存中…" : editingStop ? "儲存修改" : "新增站位"}
                 </button>
               </div>

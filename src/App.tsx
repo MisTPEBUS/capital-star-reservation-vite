@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import busHero from "./assets/bus-main.png";
 import busSide from "./assets/bus-side.png";
 import { BookingForm } from "./components/BookingForm";
@@ -6,7 +7,12 @@ import { MemberCard } from "./components/MemberCard";
 import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
 import { UpcomingReservationCard } from "./components/UpcomingReservationCard";
-import { AuthProfile, getAuthProfile } from "./api/auth";
+import {
+  AuthProfile,
+  getPreferredProfileName,
+  getAuthProfile,
+  isProfileRegistrationRequired,
+} from "./api/auth";
 import {
   createReservation,
   getUpcomingReservations,
@@ -76,6 +82,7 @@ const getReservationDepartureTimestamp = (reservation: UpcomingReservation) => {
 };
 
 function App() {
+  const navigate = useNavigate();
   const availableDates = useMemo(() => getAvailableDates(), []);
   const [liffProfile, setLiffProfile] = useState<LiffProfile | null>(null);
   const [liffLoading, setLiffLoading] = useState(true);
@@ -101,6 +108,12 @@ function App() {
   const [schedulesError, setSchedulesError] = useState("");
   const [canReserve, setCanReserve] = useState(true);
   const [reservationError, setReservationError] = useState("");
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
+    null,
+  );
+  const [shouldScrollToSchedules, setShouldScrollToSchedules] = useState(false);
+  const [isScheduleControlsVisible, setIsScheduleControlsVisible] =
+    useState(false);
   const [reservingScheduleId, setReservingScheduleId] = useState<string | null>(
     null,
   );
@@ -142,13 +155,78 @@ function App() {
     );
   }, [upcomingReservations]);
 
+  const selectedSchedule = useMemo(
+    () =>
+      filteredSchedules.find(
+        (schedule) => schedule.dailyOpenScheduleId === selectedScheduleId,
+      ) ?? null,
+    [filteredSchedules, selectedScheduleId],
+  );
+
+  useEffect(() => {
+    if (
+      selectedScheduleId &&
+      !filteredSchedules.some(
+        (schedule) => schedule.dailyOpenScheduleId === selectedScheduleId,
+      )
+    ) {
+      setSelectedScheduleId(null);
+    }
+  }, [filteredSchedules, selectedScheduleId]);
+
+  useEffect(() => {
+    if (!shouldScrollToSchedules || schedulesLoading) return;
+
+    if (!schedulesError && filteredSchedules.length > 0) {
+      document
+        .getElementById("schedule-list")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    setShouldScrollToSchedules(false);
+  }, [
+    filteredSchedules.length,
+    schedulesError,
+    schedulesLoading,
+    shouldScrollToSchedules,
+  ]);
+
+  useEffect(() => {
+    const updateScheduleControlsVisibility = () => {
+      const scheduleList = document.getElementById("schedule-list");
+
+      if (!scheduleList) {
+        setIsScheduleControlsVisible(false);
+        return;
+      }
+
+      const rect = scheduleList.getBoundingClientRect();
+      setIsScheduleControlsVisible(rect.top <= window.innerHeight * 0.55);
+    };
+
+    updateScheduleControlsVisibility();
+    window.addEventListener("scroll", updateScheduleControlsVisibility, {
+      passive: true,
+    });
+    window.addEventListener("resize", updateScheduleControlsVisibility);
+
+    return () => {
+      window.removeEventListener("scroll", updateScheduleControlsVisibility);
+      window.removeEventListener("resize", updateScheduleControlsVisibility);
+    };
+  }, []);
+
   const displayPassengerProfile = {
     ...passengerProfile,
     userId: authProfile?.userId ?? passengerProfile.userId,
-    displayName:
-      authProfile?.displayName ??
-      liffProfile?.displayName ??
-      passengerProfile.displayName,
+    displayName: authProfile
+      ? getPreferredProfileName(
+          authProfile,
+          liffProfile?.displayName ?? passengerProfile.displayName,
+        )
+      : (liffProfile?.displayName ?? passengerProfile.displayName),
+    firstName: authProfile?.firstName ?? null,
+    sex: authProfile?.sex ?? null,
     pictureUrl: liffProfile?.pictureUrl ?? "",
     lineUserId: liffProfile?.lineUserId ?? passengerProfile.userId,
     activeCode: authProfile?.activeCode ?? passengerProfile.activeCode,
@@ -205,7 +283,7 @@ function App() {
             ...current,
             pickupStopId: hasCurrentStop
               ? current.pickupStopId
-              : activeStops[0]?.stopId ?? "",
+              : (activeStops[0]?.stopId ?? ""),
           };
         });
       } catch (error) {
@@ -242,6 +320,14 @@ function App() {
 
         const profile = await getAuthProfile(liffProfile.lineUserId);
 
+        if (isProfileRegistrationRequired(profile)) {
+          navigate("/register", {
+            replace: true,
+            state: { returnTo: "/" },
+          });
+          return;
+        }
+
         setAuthProfile(profile);
       } catch (error) {
         console.error("AUTH_PROFILE_ERROR:", error);
@@ -254,7 +340,7 @@ function App() {
     }
 
     loadAuthProfile();
-  }, [liffProfile?.lineUserId]);
+  }, [liffProfile?.lineUserId, navigate]);
 
   const loadUpcomingReservations = async (userId: string) => {
     try {
@@ -409,10 +495,7 @@ function App() {
 
       setReservationResult({
         reservationId: reservation.reservationId,
-        scheduleCode: `${reservation.routeNumber}-${reservation.departureTime.slice(
-          0,
-          5,
-        )}`,
+        scheduleCode: `${reservation.routeNumber}`,
         departureTime: reservation.departureTime.slice(0, 5),
         openDate: reservation.openDate,
         pickupStopName: reservation.pickupStop.stopName,
@@ -421,6 +504,8 @@ function App() {
         bookedAt: formatDateTime(reservation.bookedAt),
         qrCode: reservation.qrCode,
       });
+
+      setSelectedScheduleId(null);
 
       await Promise.all([
         loadSchedules(),
@@ -435,6 +520,37 @@ function App() {
     } finally {
       setReservingScheduleId(null);
     }
+  };
+
+  const handleBookingSelectionChange = (nextSelection: BookingSelection) => {
+    const hasScheduleQueryChanged =
+      nextSelection.openDate !== selection.openDate ||
+      nextSelection.pickupStopId !== selection.pickupStopId;
+
+    setSelectedScheduleId(null);
+    if (hasScheduleQueryChanged) {
+      setSchedules([]);
+      setSchedulesLoading(true);
+    }
+    setSelection(nextSelection);
+  };
+
+  const isReserveButtonDisabled =
+    Boolean(activeUpcomingReservation) ||
+    !selectedSchedule ||
+    !canReserve ||
+    reservingScheduleId !== null;
+
+  const reserveButtonText = activeUpcomingReservation
+    ? "已預約"
+    : reservingScheduleId
+      ? "處理中"
+      : "預約";
+
+  const scrollToPickup = () => {
+    document
+      .getElementById("booking-pickup")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   if (liffLoading) {
@@ -484,7 +600,10 @@ function App() {
 
                 <div className="mt-5 grid grid-cols-3 gap-2">
                   <HeroMetric label="路線" value={displayRoute.routeNumber} />
-                  <HeroMetric label="站點" value={`${displayRoute.stops.length}`} />
+                  <HeroMetric
+                    label="站點"
+                    value={`${displayRoute.stops.length}`}
+                  />
                   <HeroMetric label="截止" value="18:00" />
                 </div>
               </div>
@@ -500,12 +619,21 @@ function App() {
             </div>
           </header>
 
-          <div className="mt-4 grid gap-3 pb-6 md:gap-4">
-            <MemberCard passenger={displayPassengerProfile} route={displayRoute} />
+          <div className="mt-4 grid gap-3 pb-32 md:gap-4">
+            <MemberCard
+              passenger={displayPassengerProfile}
+              route={displayRoute}
+              onEditProfile={() =>
+                navigate("/register", {
+                  state: { returnTo: "/" },
+                })
+              }
+            />
             <UpcomingReservationCard
               reservation={activeUpcomingReservation}
               userId={authProfile?.userId ?? null}
               identityCode={displayPassengerProfile.activeCode}
+              passengerName={displayPassengerProfile.displayName}
               onCancelled={async () => {
                 if (authProfile?.userId) {
                   await loadUpcomingReservations(authProfile.userId);
@@ -554,10 +682,13 @@ function App() {
               stops={pickupStops}
               dates={availableDates}
               selection={selection}
-              onChange={setSelection}
+              onChange={handleBookingSelectionChange}
+              onDateSelected={() => setShouldScrollToSchedules(true)}
               isStopsLoading={pickupStopsLoading}
               stopsError={pickupStopsError}
-              onRetryStops={() => setPickupStopsRetryKey((current) => current + 1)}
+              onRetryStops={() =>
+                setPickupStopsRetryKey((current) => current + 1)
+              }
             />
 
             <ScheduleList
@@ -570,10 +701,71 @@ function App() {
                 activeUpcomingReservation ? "ACTIVE_RESERVATION" : "UNOPENED"
               }
               reservingScheduleId={reservingScheduleId}
+              selectedScheduleId={selectedScheduleId}
               onRetry={loadSchedules}
-              onReserve={handleReserve}
+              onSelect={(schedule) =>
+                setSelectedScheduleId(schedule.dailyOpenScheduleId)
+              }
             />
           </div>
+        </div>
+
+        <button
+          type="button"
+          aria-label="回到選擇上車地點"
+          onClick={scrollToPickup}
+          className={`fixed bottom-24 right-4 z-40 grid h-12 w-12 place-items-center rounded-full border border-bus-100 bg-white text-2xl font-black leading-none text-bus-700 shadow-lift transition hover:bg-bus-50 ${
+            isScheduleControlsVisible
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-4 opacity-0"
+          }`}
+        >
+          ↑
+        </button>
+
+        <div
+          className={`fixed inset-x-0 bottom-0 z-40 border-t border-bus-100 bg-white/95 px-4 py-3 shadow-[0_-12px_30px_rgba(7,43,80,0.12)] backdrop-blur transition ${
+            isScheduleControlsVisible
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-full opacity-0"
+          }`}
+        >
+          {activeUpcomingReservation ? (
+            <button
+              type="button"
+              disabled
+              className="mx-auto block h-12 w-full max-w-[820px] cursor-not-allowed rounded-2xl bg-ink-100 px-4 text-lg font-black text-ink-400"
+            >
+              已預約
+            </button>
+          ) : (
+            <div className="mx-auto grid w-full max-w-[820px] grid-cols-[1fr_132px] items-center gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-black text-ink-500">已選班次</p>
+                <p className="truncate text-lg font-black text-ink-900">
+                  {selectedSchedule
+                    ? `${selectedSchedule.openDate} ${selectedSchedule.departureTime}`
+                    : "請選擇搭乘時間"}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={isReserveButtonDisabled}
+                onClick={() => {
+                  if (selectedSchedule) {
+                    void handleReserve(selectedSchedule);
+                  }
+                }}
+                className={`h-12 rounded-2xl px-4 text-lg font-black outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
+                  isReserveButtonDisabled
+                    ? "cursor-not-allowed bg-ink-100 text-ink-400"
+                    : "bg-bus-900 text-white shadow-card hover:bg-bus-700 active:scale-[0.98]"
+                }`}
+              >
+                {reserveButtonText}
+              </button>
+            </div>
+          )}
         </div>
 
         <SuccessModal

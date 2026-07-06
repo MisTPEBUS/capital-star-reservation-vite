@@ -108,7 +108,6 @@ export function UserPermissionsPage() {
   return (
     <div className="space-y-6">
       <section>
-        <p className="admin-page-kicker">USER PERMISSIONS</p>
         <h1 className="admin-page-title">權限設定</h1>
         <p className="admin-page-description">
           查詢會員資料後，可將身分設定為會員、工作人員或管理人員。
