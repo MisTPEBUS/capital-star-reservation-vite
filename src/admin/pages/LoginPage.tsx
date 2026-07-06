@@ -12,7 +12,10 @@ import {
   requestLoginVerificationCode,
   verifyLoginCode,
 } from "../../api/admin/auth";
-import { hasValidAdminSession, saveAdminSession } from "../../api/admin/session";
+import {
+  hasValidAdminSession,
+  saveAdminSession,
+} from "../../api/admin/session";
 
 const OTP_LENGTH = 4;
 
@@ -52,7 +55,8 @@ export function LoginPage() {
     if (step !== "otp" || !verification) return;
 
     const updateRemainingSeconds = () => {
-      const milliseconds = new Date(verification.expiresAt).getTime() - Date.now();
+      const milliseconds =
+        new Date(verification.expiresAt).getTime() - Date.now();
       setRemainingSeconds(Math.max(0, Math.ceil(milliseconds / 1000)));
     };
 
@@ -65,7 +69,7 @@ export function LoginPage() {
     event.preventDefault();
 
     if (!/^\d{8}$/.test(activityCode)) {
-      setDialog({ type: "error", message: "請輸入 8 碼活動碼。" });
+      setDialog({ type: "error", message: "請輸入 8 碼識別碼。" });
       return;
     }
 
@@ -95,7 +99,10 @@ export function LoginPage() {
     }
 
     if (!verification) {
-      setDialog({ type: "error", message: "找不到驗證資訊，請重新發送驗證碼。" });
+      setDialog({
+        type: "error",
+        message: "找不到驗證資訊，請重新發送驗證碼。",
+      });
       return;
     }
 
@@ -107,7 +114,10 @@ export function LoginPage() {
     isVerifyingCodeRef.current = true;
     setIsVerifyingCode(true);
     try {
-      const session = await verifyLoginCode(nextOtp.join(""), verification.userId);
+      const session = await verifyLoginCode(
+        nextOtp.join(""),
+        verification.userId,
+      );
       saveAdminSession(session);
       navigate("/admin/dashboard", { replace: true });
     } catch (error) {

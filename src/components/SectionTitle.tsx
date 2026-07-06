@@ -10,7 +10,7 @@ export function SectionTitle({
   description,
 }: SectionTitleProps) {
   return (
-    <div className="mb-4">
+    <div className="mb-3">
       <p className="text-base font-black uppercase tracking-[0.28em] text-bus-600">
         {eyebrow}
       </p>
@@ -18,7 +18,7 @@ export function SectionTitle({
         {title}
       </h2>
       {description ? (
-        <p className="mt-2 text-xl leading-6 text-ink-500">{description}</p>
+        <p className="mt-1.5 text-lg leading-6 text-ink-500">{description}</p>
       ) : null}
     </div>
   );

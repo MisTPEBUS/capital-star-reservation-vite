@@ -28,9 +28,9 @@ export function Toast({ toast, onClose, duration = 3000 }: ToastProps) {
   if (!toast) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-[60] w-[calc(100%-2.5rem)] max-w-sm">
+    <div className="fixed bottom-4 right-4 z-[60] w-[calc(100%-2rem)] max-w-sm">
       <div
-        className={`flex items-start justify-between gap-3 rounded-2xl border p-4 shadow-soft ${toastStyles[toast.type]}`}
+        className={`flex items-start justify-between gap-3 rounded-2xl border p-3 shadow-soft ${toastStyles[toast.type]}`}
         role="status"
       >
         <p className="text-base font-black leading-6">{toast.message}</p>

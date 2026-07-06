@@ -467,7 +467,7 @@ function App() {
 
   return (
     <div>
-      <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-4 py-4 text-ink-900 md:px-6 md:py-8">
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
         <div className="mx-auto w-full max-w-[820px]">
           <header className="hidden overflow-hidden rounded-panel bg-bus-900 text-white shadow-soft ring-1 ring-white/60">
             <div className="grid gap-0 md:grid-cols-[1.08fr_0.92fr] md:items-stretch">
@@ -500,7 +500,7 @@ function App() {
             </div>
           </header>
 
-          <div className="mt-5 grid gap-5 pb-10">
+          <div className="mt-4 grid gap-3 pb-6 md:gap-4">
             <MemberCard passenger={displayPassengerProfile} route={displayRoute} />
             <UpcomingReservationCard
               reservation={activeUpcomingReservation}
@@ -514,7 +514,7 @@ function App() {
             />
 
             {authProfileError && (
-              <div className="rounded-panel bg-white p-4 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20">
+              <div className="rounded-panel bg-white p-3 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20 md:p-4">
                 {authProfileError}
               </div>
             )}

@@ -73,7 +73,7 @@ export function UpcomingReservationPage() {
   }, [loadReservation]);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-4 py-4 text-ink-900 md:px-6 md:py-8">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
       <div className="mx-auto w-full max-w-[820px]">
         <UpcomingReservationCard
           reservation={reservation}
