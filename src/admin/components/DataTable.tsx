@@ -21,7 +21,7 @@ export function DataTable({ reservations }: DataTableProps) {
             <th className="px-4 py-3 font-semibold">班次</th>
             <th className="px-4 py-3 font-semibold">序號</th>
             <th className="px-4 py-3 font-semibold">LINE 暱稱</th>
-            <th className="px-4 py-3 font-semibold">活動碼</th>
+            <th className="px-4 py-3 font-semibold">識別碼</th>
             <th className="px-4 py-3 font-semibold">上車站</th>
             <th className="px-4 py-3 font-semibold">預約時間</th>
             <th className="px-4 py-3 font-semibold">取消時間</th>

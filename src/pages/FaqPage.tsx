@@ -21,9 +21,9 @@ const faqSections: Array<{
           "請從 LINE 開啟首都客運預約服務。系統會確認您的 LINE 身分並建立或讀取乘客資料；完成後即可查看可預約的班次。",
       },
       {
-        question: "身分識別碼是什麼？需要自行設定嗎？",
+        question: "識別碼是什麼？需要自行設定嗎？",
         answer:
-          "身分識別碼是系統提供的 8 位乘客識別碼，會用於乘車憑證與工作人員核對。您不需要自行設定，請在需要時出示憑證即可。",
+          "識別碼是系統提供的 8 位乘客識別碼，會用於乘車憑證與工作人員核對。您不需要自行設定，請在需要時出示憑證即可。",
       },
       {
         question: "為什麼無法看到可預約的班次？",
@@ -127,34 +127,34 @@ export function FaqPage() {
   };
 
   return (
-    <main className="min-h-screen overflow-hidden bg-ink-50 px-4 py-8 pb-28 text-ink-900 sm:px-6 lg:px-8 lg:py-12 lg:pb-32">
+    <main className="min-h-screen overflow-hidden bg-ink-50 px-3 py-5 pb-20 text-ink-900 sm:px-4 lg:px-6 lg:py-7 lg:pb-24">
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute left-1/2 top-[-180px] h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-bus-100 blur-3xl" />
         <div className="absolute bottom-[-180px] right-[-100px] h-80 w-80 rounded-full bg-star-100/70 blur-3xl" />
       </div>
 
       <div className="mx-auto max-w-4xl">
-        <header className="rounded-xl border border-bus-500 bg-white/85 p-6 shadow-card backdrop-blur sm:p-9">
-          <div className="flex flex-wrap items-start justify-between gap-5">
+        <header className="rounded-xl border border-bus-500 bg-white/85 p-4 shadow-card backdrop-blur sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
               <p className="text-sm font-black tracking-[0.2em] text-bus-600">
                 首都客運
               </p>
-              <h1 className="mt-3 text-3xl font-black tracking-tight text-ink-900 sm:text-4xl">
+              <h1 className="mt-2 text-3xl font-black tracking-tight text-ink-900 sm:text-4xl">
                 預約系統使用說明
               </h1>
-              <p className="mt-4 text-lg leading-8 text-ink-500">
+              <p className="mt-3 text-base leading-7 text-ink-500 sm:text-lg">
                 透過 LINE
-                即可查詢班次、完成預約並出示乘車憑證。以下整理乘客最常遇到的操作與問題。
+                即可查詢班次、完成預約並出示乘車紀錄。以下整理乘客最常遇到的操作與問題。
               </p>
             </div>
           </div>
 
-          <div className="mt-7 grid gap-3 border-t border-ink-100 pt-6 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 border-t border-ink-100 pt-4 sm:grid-cols-3">
             {[
               ["1", "選擇日期與上車站"],
               ["2", "預約可用班次"],
-              ["3", "出示乘車憑證"],
+              ["3", "出示乘車紀錄"],
             ].map(([step, label]) => (
               <div className="flex items-center gap-3" key={step}>
                 <span className="grid h-9 w-9 place-items-center rounded-full bg-bus-700 text-sm font-black text-white">
@@ -165,7 +165,7 @@ export function FaqPage() {
             ))}
           </div>
 
-          <div className="mt-6 border-t border-ink-100 pt-6">
+          <div className="mt-5 border-t border-ink-100 pt-4">
             <label className="block text-sm font-black tracking-[0.16em] text-bus-600">
               搜尋問題
             </label>
@@ -179,9 +179,9 @@ export function FaqPage() {
           </div>
         </header>
 
-        <div className="mt-8 space-y-10">
+        <div className="mt-6 space-y-6">
           {!hasResults && (
-            <div className="rounded-xl border-2 border-bus-100 bg-white p-6 text-center shadow-card">
+            <div className="rounded-xl border-2 border-bus-100 bg-white p-4 text-center shadow-card">
               <p className="text-xl font-black text-ink-900">
                 沒有符合的問題，請聯繫客服
               </p>
@@ -190,23 +190,23 @@ export function FaqPage() {
 
           {filteredSections.map((section) => (
             <section key={section.title}>
-              <div className="mb-4">
-                <h2 className="mt-2 text-2xl font-black tracking-tight text-bus-600">
+              <div className="mb-3">
+                <h2 className="mt-1 text-2xl font-black tracking-tight text-bus-600">
                   {section.title}
                 </h2>
-                <p className="mt-2 text-lg leading-7 text-ink-400">
+                <p className="mt-1.5 text-base leading-6 text-ink-400 sm:text-lg">
                   {section.description}
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {section.items.map((item) => (
                   <details
-                    className="group cursor-pointer rounded-xl border-2 border-blue-400 bg-white p-2 shadow-[0_1px_0_rgba(15,23,42,0.08),0_10px_26px_rgba(15,23,42,0.05)] transition hover:border-bus-300 open:border-bus-600 open:ring-2 open:ring-bus-600/25"
+                    className="group cursor-pointer rounded-xl border-2 border-blue-400 bg-white p-1.5 shadow-[0_1px_0_rgba(15,23,42,0.08),0_10px_26px_rgba(15,23,42,0.05)] transition hover:border-bus-300 open:border-bus-600 open:ring-2 open:ring-bus-600/25"
                     key={item.question}
                     onClick={toggleFaqCard}
                   >
-                    <summary className="flex cursor-pointer  pb-0 list-none items-center justify-between gap-4 rounded-2xl p-2 text-left outline-none transition hover:bg-ink-50 focus-visible:bg-ink-50 focus-visible:ring-4 focus-visible:ring-bus-500/20">
+                    <summary className="flex cursor-pointer  pb-0 list-none items-center justify-between gap-3 rounded-xl p-2 text-left outline-none transition hover:bg-ink-50 focus-visible:bg-ink-50 focus-visible:ring-4 focus-visible:ring-bus-500/20">
                       <span className="text-lg font-black text-ink-900">
                         {item.question}
                       </span>
@@ -214,7 +214,7 @@ export function FaqPage() {
                         +
                       </span>
                     </summary>
-                    <div className="mt-2 border-t border-ink-100 px-2  text-base leading-8 text-ink-500">
+                    <div className="mt-2 border-t border-ink-100 px-2 pt-2 text-base leading-7 text-ink-500">
                       {item.answer}
                     </div>
                   </details>
@@ -224,19 +224,19 @@ export function FaqPage() {
           ))}
         </div>
 
-        <footer className="mt-10 rounded-card border-2 border-bus-500 bg-bus-900 px-6 py-7 text-center text-white shadow-soft">
+        <footer className="mt-7 rounded-card border-2 border-bus-500 bg-bus-900 px-4 py-5 text-center text-white shadow-soft sm:px-5">
           <p className="text-xl font-black">需要協助嗎？</p>
           <p className="mt-2 text-base leading-7 text-bus-100">
-            若依照說明仍無法完成操作，請聯繫活動承辦人員並提供身分識別碼與預約日期，以便協助查詢。
+            若依照說明仍無法完成操作，請聯繫活動承辦人員並提供識別碼與預約日期，以便協助查詢。
           </p>
-          <div className="mx-auto  mt-6 max-w-2xl border-t border-white/20 pt-6 text-left">
+          <div className="mx-auto  mt-4 max-w-2xl border-t border-white/20 pt-4 text-left">
             <p className="text-lg font-black text-center">
               首都客運客服中心（05:30~24:00）
             </p>
             <p className="mt-2 text-xl font-black text-star-300">
               免付費專線：0800-000-866
             </p>
-            <div className="mt-5 text-center grid gap-2 text-base text-bus-100 sm:grid-cols-2">
+            <div className="mt-4 text-center grid gap-2 text-base text-bus-100 sm:grid-cols-2">
               <p>礁溪站　服務電話：03-988-0700</p>
               <p>宜蘭站　服務電話：03-937-3600</p>
               <p>羅東站　服務電話：03-955-6585</p>
@@ -246,7 +246,7 @@ export function FaqPage() {
       </div>
 
       <Link
-        className="fixed left-1/2 z-40 w-[calc(100%-2rem)] -translate-x-1/2 rounded-xl border-2 border-white/20 bg-bus-700 px-6 py-3 text-center text-base font-black text-white shadow-card transition hover:bg-bus-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-bus-300/40 md:w-[calc(100%-3rem)] lg:w-auto"
+        className="fixed left-1/2 z-40 w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-xl border-2 border-white/20 bg-bus-700 px-5 py-2.5 text-center text-base font-black text-white shadow-card transition hover:bg-bus-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-bus-300/40 md:w-[calc(100%-2rem)] lg:w-auto"
         style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
         to="/"
       >

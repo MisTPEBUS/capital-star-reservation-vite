@@ -230,7 +230,7 @@ export function DashboardPage() {
       { header: "發車時間", key: "departureTime", width: 12 },
       { header: "乘車序號", key: "sequence", width: 12 },
       { header: "LINE 暱稱", key: "lineDisplayName", width: 18 },
-      { header: "活動碼", key: "activeCode", width: 16 },
+      { header: "識別碼", key: "activeCode", width: 16 },
       { header: "電話", key: "phone", width: 16 },
       { header: "上車站", key: "pickupStopName", width: 14 },
       { header: "預約時間", key: "bookedAt", width: 22 },

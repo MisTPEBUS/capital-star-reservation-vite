@@ -193,7 +193,7 @@ export function UserPermissionsPage() {
                       )}
                       {user.activeCode && (
                         <div>
-                          <dt className="inline">活動碼： </dt>
+                          <dt className="inline">識別碼： </dt>
                           <dd className="inline font-mono text-admin-softText">
                             {user.activeCode}
                           </dd>
