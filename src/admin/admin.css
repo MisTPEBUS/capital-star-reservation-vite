@@ -8,7 +8,7 @@
   }
 
   .admin-page-container {
-    @apply mx-auto w-full max-w-7xl px-4 py-6 md:px-6;
+    @apply mx-auto w-full max-w-7xl px-3 py-4 md:px-5;
   }
 
   .admin-panel {
@@ -16,15 +16,15 @@
   }
 
   .admin-panel-header {
-    @apply mb-5 rounded-adminPanel border border-admin-border bg-admin-surface p-5 shadow-adminPanel;
+    @apply mb-4 rounded-adminPanel border border-admin-border bg-admin-surface p-4 shadow-adminPanel;
   }
 
   .admin-panel-body {
-    @apply rounded-adminPanel border border-admin-border bg-admin-surface p-4 shadow-adminPanel;
+    @apply rounded-adminPanel border border-admin-border bg-admin-surface p-3 shadow-adminPanel md:p-4;
   }
 
   .admin-stat-card {
-    @apply rounded-adminCard bg-admin-elevated p-4;
+    @apply rounded-adminCard bg-admin-elevated p-3;
   }
 
   .admin-stat-label {
@@ -56,7 +56,7 @@
   }
 
   .admin-trip-card {
-    @apply w-full rounded-adminCard border p-4 text-left transition duration-200 ease-out;
+    @apply w-full rounded-adminCard border p-3 text-left transition duration-200 ease-out;
     @apply focus-visible:ring-2 focus-visible:ring-adminStatus-enabled/70 focus-visible:ring-offset-2 focus-visible:ring-offset-admin-bg;
   }
 

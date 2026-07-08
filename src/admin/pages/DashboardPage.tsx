@@ -301,7 +301,7 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="admin-page-kicker">DASHBOARD</p>
@@ -443,7 +443,7 @@ export function DashboardPage() {
               <button
                 key={schedule.dailyOpenScheduleId}
                 aria-pressed={isSelected}
-                className={`rounded-adminCard border p-5 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
+                className={`rounded-adminCard border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
                   isSelected
                     ? "border-adminStatus-enabled bg-adminStatus-enabled/10 ring-1 ring-adminStatus-enabled/30"
                     : "border-admin-border bg-admin-elevated hover:border-admin-borderStrong"

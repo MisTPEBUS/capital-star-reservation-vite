@@ -270,7 +270,7 @@ export function RouteManagementPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="admin-page-title">路線設定</h1>
@@ -301,7 +301,7 @@ export function RouteManagementPage() {
       )}
 
       <section className="admin-panel-body overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-admin-border px-5 py-4">
+        <div className="flex items-center justify-between border-b border-admin-border px-4 py-3">
           <h2 className="admin-section-title">路線清單</h2>
           <button
             className="text-sm font-semibold text-adminStatus-enabled"
@@ -312,16 +312,16 @@ export function RouteManagementPage() {
           </button>
         </div>
         {isLoading ? (
-          <p className="px-5 py-8 text-center text-admin-muted">讀取路線中…</p>
+          <p className="px-4 py-6 text-center text-admin-muted">讀取路線中…</p>
         ) : routes.length === 0 ? (
-          <p className="px-5 py-8 text-center text-admin-muted">
+          <p className="px-4 py-6 text-center text-admin-muted">
             目前沒有路線資料。
           </p>
         ) : (
           <div className="divide-y divide-admin-border">
             {routes.map((route) => (
               <article
-                className="grid gap-4 px-5 py-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
+                className="grid gap-3 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
                 key={route.routeId}
               >
                 <div>
@@ -377,12 +377,12 @@ export function RouteManagementPage() {
 
       {isFormOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="route-form-title"
         >
-          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-6 shadow-adminPanel">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-5 shadow-adminPanel">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2
@@ -491,12 +491,12 @@ export function RouteManagementPage() {
 
       {stationRoute && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="route-stop-title"
         >
-          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-6 shadow-adminPanel">
+          <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-5 shadow-adminPanel">
             <h2
               className="text-xl font-bold text-admin-text"
               id="route-stop-title"

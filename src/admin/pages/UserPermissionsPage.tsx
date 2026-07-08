@@ -106,7 +106,7 @@ export function UserPermissionsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <section>
         <h1 className="admin-page-title">權限設定</h1>
         <p className="admin-page-description">
@@ -174,7 +174,7 @@ export function UserPermissionsPage() {
 
               return (
                 <article
-                  className="grid gap-4 px-5 py-5 md:grid-cols-[minmax(0,1fr)_260px] md:items-center"
+                  className="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_260px] md:items-center"
                   key={user.userId}
                 >
                   <div className="min-w-0">

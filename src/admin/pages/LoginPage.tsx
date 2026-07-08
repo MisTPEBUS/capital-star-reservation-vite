@@ -16,6 +16,7 @@ import {
   hasValidAdminSession,
   saveAdminSession,
 } from "../../api/admin/session";
+import { useAdminFontSize } from "../hooks/useAdminFontSize";
 
 const OTP_LENGTH = 4;
 
@@ -33,6 +34,13 @@ function formatCountdown(seconds: number) {
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const {
+    fontSize,
+    canDecreaseFontSize,
+    canIncreaseFontSize,
+    decreaseFontSize,
+    increaseFontSize,
+  } = useAdminFontSize();
   const [step, setStep] = useState<"activityCode" | "otp">("activityCode");
   const [activityCode, setActivityCode] = useState("");
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
@@ -210,8 +218,37 @@ export function LoginPage() {
   };
 
   return (
-    <main className="admin-shell flex items-center justify-center p-5">
+    <main className="admin-shell flex items-center justify-center p-4">
       <section className="w-full max-w-md">
+        <div className="mb-4 flex justify-end">
+          <div
+            aria-label="文字大小"
+            className="flex overflow-hidden rounded-adminControl border border-admin-borderStrong"
+            role="group"
+          >
+            <button
+              className="px-3 py-2 text-sm font-bold text-admin-softText transition hover:bg-admin-elevated hover:text-admin-text disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!canDecreaseFontSize}
+              title="縮小文字"
+              type="button"
+              onClick={decreaseFontSize}
+            >
+              A-
+            </button>
+            <span className="border-l border-admin-borderStrong px-2 py-2 text-xs font-bold text-admin-muted">
+              {fontSize}px
+            </span>
+            <button
+              className="border-l border-admin-borderStrong px-3 py-2 text-sm font-bold text-admin-softText transition hover:bg-admin-elevated hover:text-admin-text disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!canIncreaseFontSize}
+              title="放大文字"
+              type="button"
+              onClick={increaseFontSize}
+            >
+              A+
+            </button>
+          </div>
+        </div>
         <header className="mb-8 text-center">
           {/*  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-adminPanel border border-admin-borderStrong bg-admin-elevated text-2xl font-bold tracking-[0.1em] text-adminStatus-enabled">
            
@@ -226,7 +263,7 @@ export function LoginPage() {
         </header>
 
         {step === "activityCode" ? (
-          <form className="admin-panel p-7 sm:p-8" onSubmit={sendCode}>
+          <form className="admin-panel p-5 sm:p-6" onSubmit={sendCode}>
             {/*    <p className="text-xs font-semibold tracking-[0.18em] text-admin-muted">
               首都之星LINE識別碼
             </p> */}
@@ -256,7 +293,7 @@ export function LoginPage() {
             </button>
           </form>
         ) : (
-          <form className="admin-panel p-7 sm:p-8" onSubmit={verifyCode}>
+          <form className="admin-panel p-5 sm:p-6" onSubmit={verifyCode}>
             <div className="text-center">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-adminStatus-enabled/30 bg-adminStatus-enabled/10 text-2xl text-adminStatus-enabled">
                 @
@@ -322,11 +359,11 @@ export function LoginPage() {
 
       {dialog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-sm rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-7 text-center shadow-adminPanel">
+          <div className="w-full max-w-sm rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-5 text-center shadow-adminPanel">
             <div
               className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full border text-2xl font-bold ${
                 dialog.type === "success"

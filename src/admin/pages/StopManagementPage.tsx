@@ -351,7 +351,7 @@ export function StopManagementPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="admin-page-title">站位設定</h1>
@@ -378,7 +378,7 @@ export function StopManagementPage() {
       )}
 
       <section className="admin-panel-body overflow-hidden p-0">
-        <div className="flex items-center justify-between border-b border-admin-border px-5 py-4">
+        <div className="flex items-center justify-between border-b border-admin-border px-4 py-3">
           <h2 className="admin-section-title">站位清單</h2>
           <button
             className="text-sm font-semibold text-adminStatus-enabled"
@@ -389,9 +389,9 @@ export function StopManagementPage() {
           </button>
         </div>
         {isLoading ? (
-          <p className="px-5 py-8 text-center text-admin-muted">讀取站位中…</p>
+          <p className="px-4 py-6 text-center text-admin-muted">讀取站位中…</p>
         ) : stops.length === 0 ? (
-          <p className="px-5 py-8 text-center text-admin-muted">
+          <p className="px-4 py-6 text-center text-admin-muted">
             目前沒有站位資料。
           </p>
         ) : (
@@ -402,7 +402,7 @@ export function StopManagementPage() {
               const isQrExpanded = expandedQrStopIds[stop.stopId] ?? false;
 
               return (
-                <article className="px-5 py-5" key={stop.stopId}>
+                <article className="px-4 py-3" key={stop.stopId}>
                   <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -515,12 +515,12 @@ export function StopManagementPage() {
 
       {isFormOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="stop-form-title"
         >
-          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-6 shadow-adminPanel">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-5 shadow-adminPanel">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2
