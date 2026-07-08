@@ -63,7 +63,9 @@ export function DashboardPage() {
   const [openDate, setOpenDate] = useState(getTodayValue());
   const [viewMode, setViewMode] = useState<DashboardViewMode>("SPLIT");
   const [schedules, setSchedules] = useState<DashboardDailyOpenSchedule[]>([]);
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
+    null,
+  );
   const [reservations, setReservations] = useState<DashboardReservation[]>([]);
   const [isSchedulesLoading, setIsSchedulesLoading] = useState(false);
   const [isReservationsLoading, setIsReservationsLoading] = useState(false);
@@ -115,7 +117,9 @@ export function DashboardPage() {
       setSelectedScheduleId((current) => {
         if (
           current &&
-          sortedSchedules.some((schedule) => schedule.dailyOpenScheduleId === current)
+          sortedSchedules.some(
+            (schedule) => schedule.dailyOpenScheduleId === current,
+          )
         ) {
           return current;
         }
@@ -186,7 +190,8 @@ export function DashboardPage() {
         setIsReservationsLoading(true);
         setReservationsError("");
 
-        const result = await getDashboardScheduleReservations(selectedScheduleId);
+        const result =
+          await getDashboardScheduleReservations(selectedScheduleId);
         if (!isCurrent) return;
 
         setSchedules((current) =>
@@ -290,7 +295,9 @@ export function DashboardPage() {
   };
 
   const shiftOpenDate = (days: number) => {
-    setOpenDate((current) => formatDateValue(addDays(getDateFromValue(current), days)));
+    setOpenDate((current) =>
+      formatDateValue(addDays(getDateFromValue(current), days)),
+    );
   };
 
   return (
@@ -359,13 +366,13 @@ export function DashboardPage() {
                 明日
               </button>
             </div>
-          <button
-            className="h-11 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
-            type="button"
-            onClick={loadDailyOpenSchedules}
-          >
-            重新整理
-          </button>
+            <button
+              className="h-11 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
+              type="button"
+              onClick={loadDailyOpenSchedules}
+            >
+              重新整理
+            </button>
           </div>
         </div>
       </section>
@@ -402,7 +409,7 @@ export function DashboardPage() {
             type="button"
             onClick={() => setViewMode("CARDS")}
           >
-            卡片總覽
+            卡片
           </button>
           <button
             className={`h-9 rounded-adminControl px-4 transition ${
@@ -413,7 +420,7 @@ export function DashboardPage() {
             type="button"
             onClick={() => setViewMode("SPLIT")}
           >
-            左右對照
+            清單
           </button>
         </div>
       </section>
@@ -470,19 +477,27 @@ export function DashboardPage() {
                 <div className="mt-4 grid grid-cols-4 gap-2 border-t border-admin-border pt-4 text-sm">
                   <div>
                     <p className="text-admin-muted">名額</p>
-                    <p className="font-bold text-admin-text">{schedule.quota}</p>
+                    <p className="font-bold text-admin-text">
+                      {schedule.quota}
+                    </p>
                   </div>
                   <div>
                     <p className="text-admin-muted">預約</p>
-                    <p className="font-bold text-admin-text">{schedule.reservedCount}</p>
+                    <p className="font-bold text-admin-text">
+                      {schedule.reservedCount}
+                    </p>
                   </div>
                   <div>
                     <p className="text-admin-muted">取消</p>
-                    <p className="font-bold text-admin-text">{schedule.cancelledCount}</p>
+                    <p className="font-bold text-admin-text">
+                      {schedule.cancelledCount}
+                    </p>
                   </div>
                   <div>
                     <p className="text-admin-muted">剩餘</p>
-                    <p className="font-bold text-admin-text">{schedule.availableSeats}</p>
+                    <p className="font-bold text-admin-text">
+                      {schedule.availableSeats}
+                    </p>
                   </div>
                 </div>
               </button>
@@ -494,8 +509,12 @@ export function DashboardPage() {
           <div className="admin-panel-body">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-semibold text-admin-text">班次</h3>
-                <p className="mt-1 text-sm text-admin-muted">點選左側班次，右側立即更新。</p>
+                <h3 className="text-base font-semibold text-admin-text">
+                  班次
+                </h3>
+                <p className="mt-1 text-sm text-admin-muted">
+                  點選左側班次，右側立即更新。
+                </p>
               </div>
               <span className="text-sm font-semibold text-admin-muted">
                 {schedules.length} 班
