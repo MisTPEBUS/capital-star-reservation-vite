@@ -60,7 +60,6 @@ export function UpcomingReservationCard({
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isTicketExpanded, setIsTicketExpanded] = useState(false);
-  const [isIdentityVisible, setIsIdentityVisible] = useState(true);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   useEffect(() => {
@@ -122,9 +121,6 @@ export function UpcomingReservationCard({
   const bookedAt = formatBookedAt(reservation.bookedAt);
   const sequence = formatSequence(reservation.pickupStop.sequence);
   const statusText = getStatusText(reservation.status);
-  const maskedIdentityCode = identityCode
-    ? "•".repeat(identityCode.length)
-    : "-";
 
   const handleTicketKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -176,13 +172,10 @@ export function UpcomingReservationCard({
 
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-md font-bold text-[#6B5A25]">首都客運</p>
-              <h3 className="mt-1 text-4xl font-black leading-none tracking-tight text-[#C9151E]">
+              <p className="text-lg font-bold text-[#6B5A25]">首都客運</p>
+              <h3 className="mt-1 text-5xl font-black leading-none tracking-tight text-[#C9151E]">
                 1571
               </h3>
-              <p className="text-md font-bold text-[#6B5A25]">
-                宜蘭 - 市府轉運站
-              </p>
             </div>
 
             <div className="shrink-0 rounded-xl border border-[#D7B94A] bg-[#FFF8D6] px-3 py-2 text-right">
@@ -205,42 +198,6 @@ export function UpcomingReservationCard({
               </p>
             </div>
 
-            {passengerName || identityCode ? (
-              <div className="rounded-2xl border-2 border-[#C9151E] bg-white p-3 shadow-[0_8px_18px_rgba(201,21,30,0.12)] md:p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-md font-black text-[#C9151E]">乘客</p>
-                    <p className="mt-1 break-words text-4xl font-black text-[#1F1A17]">
-                      {passengerName || "-"}
-                    </p>
-                  </div>
-                  {identityCode && (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setIsIdentityVisible((current) => !current);
-                      }}
-                      className="hidden shrink-0 rounded-full border border-[#D7B94A] bg-[#FFF8D6] px-3 py-1 text-sm font-black text-[#C9151E]"
-                    >
-                      {isIdentityVisible ? "隱藏" : "顯示"}
-                    </button>
-                  )}
-                </div>
-
-                <div className="mt-3 rounded-xl bg-[#FFF8D6] px-3 py-2 ring-1 ring-[#D7B94A]">
-                  <p className="text-sm font-black text-[#C9151E]">
-                    使用者識別碼
-                  </p>
-                  <p className="mt-1 break-all font-mono text-xl font-black tracking-[0.12em] text-[#1F1A17]">
-                    {isIdentityVisible
-                      ? identityCode || "-"
-                      : maskedIdentityCode}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
             <div className="grid grid-cols-2 gap-2.5 md:gap-3">
               <div className="rounded-2xl border border-[#D7B94A] bg-[#FFF8D6] p-3 md:p-4">
                 <p className="text-md font-black text-[#C9151E]">上車站</p>
@@ -256,15 +213,31 @@ export function UpcomingReservationCard({
                 </p>
               </div>
             </div>
+            {passengerName || identityCode ? (
+              <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-2xl border-2 border-[#C9151E] bg-white p-3 shadow-[0_8px_18px_rgba(201,21,30,0.12)] md:p-4">
+                <div className="min-w-0">
+                  <p className="text-md font-black text-[#C9151E]">乘客</p>
+                  <p className="mt-1 break-words text-4xl font-black leading-none text-[#1F1A17]">
+                    {passengerName || "-"}
+                  </p>
+                </div>
+                <div className="shrink-0 rounded-xl bg-[#FFF8D6] px-3 py-2 text-right ring-1 ring-[#D7B94A]">
+                  <p className="text-xs font-black text-[#C9151E]">識別碼</p>
+                  <p className="mt-1 max-w-[120px] truncate font-mono text-base font-black tracking-[0.12em] text-[#1F1A17]">
+                    {identityCode || "-"}
+                  </p>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-3 text-md">
-            <div>
+            {/*  <div>
               <p className="font-black text-[#C9151E]">預約時間</p>
               <p className="mt-1 text-2xl font-black text-[#1F1A17]">
                 {bookedAt}
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
 
