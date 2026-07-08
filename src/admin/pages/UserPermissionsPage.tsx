@@ -1,24 +1,26 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
   type AdminUser,
   type UserRole,
-  findUserByActiveCode,
+  getAdminUsers,
   updateUserRole,
 } from "../../api/admin/users";
+
+type RoleFilter = "ALL" | UserRole;
 
 const roleOptions: Array<{
   value: UserRole;
   label: string;
-  description: string;
 }> = [
-  { value: "MEMBER", label: "會員", description: "" },
-  { value: "STAFF", label: "工作人員", description: "" },
-  {
-    value: "ADMIN",
-    label: "管理人員",
-    description: "",
-  },
+  { value: "MEMBER", label: "會員" },
+  { value: "STAFF", label: "工作人員" },
+  { value: "ADMIN", label: "管理人員" },
+];
+
+const roleFilters: Array<{ value: RoleFilter; label: string }> = [
+  { value: "ALL", label: "全部" },
+  ...roleOptions,
 ];
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -26,16 +28,56 @@ function getErrorMessage(error: unknown, fallback: string) {
     return error.response?.data?.message || fallback;
   }
 
+  if (error instanceof Error) return error.message;
+
   return fallback;
 }
 
+function getRoleLabel(role: UserRole) {
+  return roleOptions.find((option) => option.value === role)?.label ?? role;
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value || "-";
+
+  return new Intl.DateTimeFormat("zh-TW", {
+    dateStyle: "short",
+    timeStyle: "short",
+    hour12: false,
+  }).format(date);
+}
+
 export function UserPermissionsPage() {
-  const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL");
+  const [keyword, setKeyword] = useState("");
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const selectedRole = roleFilter === "ALL" ? undefined : roleFilter;
+
+  const loadUsers = async (role = selectedRole) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const nextUsers = await getAdminUsers(role);
+      setUsers(nextUsers);
+    } catch (requestError) {
+      setUsers([]);
+      setError(getErrorMessage(requestError, "使用者清單讀取失敗。"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadUsers(selectedRole);
+  }, [selectedRole]);
 
   useEffect(() => {
     if (!success) return;
@@ -44,30 +86,36 @@ export function UserPermissionsPage() {
     return () => window.clearTimeout(timer);
   }, [success]);
 
-  const handleSearch = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const keyword = query.trim();
+  const filteredUsers = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
 
-    if (!/^\d{8}$/.test(keyword)) {
-      setUsers([]);
-      setError("請輸入 8 碼活動驗證碼。");
-      return;
-    }
+    if (!normalizedKeyword) return users;
 
-    setIsSearching(true);
-    setError(null);
-    setSuccess(null);
+    return users.filter((user) => {
+      const searchableText = [
+        user.displayName,
+        user.lineId,
+        user.userId,
+        user.activeCode,
+        user.phone,
+        user.email,
+        user.role,
+        user.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-    try {
-      const user = await findUserByActiveCode(keyword);
-      setUsers([user]);
-    } catch (requestError) {
-      setUsers([]);
-      setError(getErrorMessage(requestError, "查詢會員資訊失敗，請稍後再試。"));
-    } finally {
-      setIsSearching(false);
-    }
-  };
+      return searchableText.includes(normalizedKeyword);
+    });
+  }, [keyword, users]);
+
+  const userCountLabel = useMemo(() => {
+    if (isLoading) return "讀取中";
+    return keyword.trim()
+      ? `${filteredUsers.length} / ${users.length} 位使用者`
+      : `${users.length} 位使用者`;
+  }, [filteredUsers.length, isLoading, keyword, users.length]);
 
   const handleRoleChange = async (user: AdminUser, role: UserRole) => {
     if (user.role === role) return;
@@ -94,10 +142,11 @@ export function UserPermissionsPage() {
             : currentUser,
         ),
       );
-      const roleLabel = roleOptions.find(
-        (option) => option.value === role,
-      )?.label;
-      setSuccess(`使用者權限已更新為${roleLabel}。`);
+      setSuccess(`使用者權限已更新為${getRoleLabel(role)}。`);
+
+      if (selectedRole && selectedRole !== role) {
+        await loadUsers(selectedRole);
+      }
     } catch (requestError) {
       setError(getErrorMessage(requestError, "更新權限失敗，請稍後再試。"));
     } finally {
@@ -107,40 +156,74 @@ export function UserPermissionsPage() {
 
   return (
     <div className="space-y-4">
-      <section>
-        <h1 className="admin-page-title">權限設定</h1>
-        <p className="admin-page-description">
-          查詢會員資料後，可將身分設定為會員、工作人員或管理人員。
-        </p>
+      <section className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="admin-page-title">權限設定</h1>
+          <p className="admin-page-description">
+            依照身分篩選使用者，並可直接在表格中調整權限。
+          </p>
+        </div>
+        <button
+          className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText disabled:opacity-50"
+          disabled={isLoading}
+          type="button"
+          onClick={() => void loadUsers(selectedRole)}
+        >
+          重新整理
+        </button>
       </section>
 
       <section className="admin-panel-body">
-        <form
-          className="flex flex-col gap-3 sm:flex-row"
-          onSubmit={handleSearch}
-        >
-          <label className="sr-only" htmlFor="user-query">
-            查詢會員
-          </label>
-          <input
-            id="user-query"
-            className="h-11 min-w-0 flex-1 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-4 text-admin-text outline-none placeholder:text-admin-muted focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15"
-            inputMode="numeric"
-            maxLength={8}
-            placeholder="請輸入 8 碼活動驗證碼"
-            value={query}
-            onChange={(event) =>
-              setQuery(event.target.value.replace(/\D/g, ""))
-            }
-          />
-          <button
-            className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isSearching}
-            type="submit"
+        <div className="grid gap-3 lg:grid-cols-[1fr_minmax(260px,360px)_auto] lg:items-center">
+          <div
+            aria-label="使用者角色篩選"
+            className="flex flex-wrap gap-2"
+            role="group"
           >
-            {isSearching ? "查詢中…" : "查詢會員"}
-          </button>
-        </form>
+            {roleFilters.map((option) => {
+              const isActive = roleFilter === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  className={`h-10 rounded-adminControl border px-4 text-sm font-semibold ${
+                    isActive
+                      ? "border-adminStatus-enabled bg-adminStatus-enabled text-admin-bg"
+                      : "border-admin-borderStrong text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
+                  }`}
+                  type="button"
+                  onClick={() => setRoleFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex min-w-0 gap-2">
+            <label className="sr-only" htmlFor="user-keyword">
+              關鍵字篩選
+            </label>
+            <input
+              id="user-keyword"
+              className="h-10 min-w-0 flex-1 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm text-admin-text outline-none placeholder:text-admin-muted focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15"
+              placeholder="搜尋姓名、LINE ID、識別碼、電話、Email"
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+            />
+            {keyword && (
+              <button
+                className="h-10 rounded-adminControl border border-admin-borderStrong px-3 text-sm font-semibold text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
+                type="button"
+                onClick={() => setKeyword("")}
+              >
+                清除
+              </button>
+            )}
+          </div>
+          <span className="text-sm font-semibold text-admin-muted">
+            {userCountLabel}
+          </span>
+        </div>
 
         {error && (
           <p
@@ -160,98 +243,107 @@ export function UserPermissionsPage() {
         )}
       </section>
 
-      {users.length > 0 && (
-        <section className="admin-panel-body overflow-hidden p-0">
-          {/*  <div className="border-b border-admin-border px-5 py-4">
-            <h2 className="admin-section-title">查詢結果</h2>
-            <p className="mt-1 text-sm text-admin-muted">
-              共 {users.length} 位會員
-            </p>
-          </div> */}
-          <div className="divide-y divide-admin-border">
-            {users.map((user) => {
-              const isUpdating = updatingUserId === user.userId;
+      <section className="admin-panel-body overflow-hidden p-0">
+        {isLoading ? (
+          <p className="px-4 py-8 text-center text-admin-muted">
+            讀取使用者清單中…
+          </p>
+        ) : users.length === 0 ? (
+          <p className="px-4 py-8 text-center text-admin-muted">
+            目前沒有符合條件的使用者。
+          </p>
+        ) : filteredUsers.length === 0 ? (
+          <p className="px-4 py-8 text-center text-admin-muted">
+            目前沒有符合關鍵字的使用者。
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-left text-sm">
+              <thead className="border-b border-admin-border bg-admin-bg text-xs text-admin-muted">
+                <tr>
+                  <th className="px-3 py-2.5 font-semibold">使用者</th>
+                  <th className="px-3 py-2.5 font-semibold">識別碼</th>
+                  <th className="px-3 py-2.5 font-semibold">聯絡資訊</th>
+                  <th className="px-3 py-2.5 font-semibold">狀態</th>
+                  <th className="px-3 py-2.5 font-semibold">建立時間</th>
+                  <th className="px-3 py-2.5 font-semibold">更新時間</th>
+                  <th className="px-3 py-2.5 font-semibold">權限</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-admin-border">
+                {filteredUsers.map((user) => {
+                  const isUpdating = updatingUserId === user.userId;
 
-              return (
-                <article
-                  className="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_260px] md:items-center"
-                  key={user.userId}
-                >
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-admin-text">
-                      {user.displayName || "未設定名稱"}
-                    </h3>
-                    <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm text-admin-muted sm:grid-cols-2">
-                      {user.lineId && (
-                        <div>
-                          <dt className="inline">LINE ID： </dt>
-                          <dd className="inline break-all text-admin-softText">
-                            {user.lineId}
-                          </dd>
-                        </div>
-                      )}
-                      {user.activeCode && (
-                        <div>
-                          <dt className="inline">識別碼： </dt>
-                          <dd className="inline font-mono text-admin-softText">
-                            {user.activeCode}
-                          </dd>
-                        </div>
-                      )}
-                      {user.phone && (
-                        <div>
-                          <dt className="inline">電話： </dt>
-                          <dd className="inline text-admin-softText">
-                            {user.phone}
-                          </dd>
-                        </div>
-                      )}
-                      {user.email && (
-                        <div>
-                          <dt className="inline">Email： </dt>
-                          <dd className="inline break-all text-admin-softText">
-                            {user.email}
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
-                  </div>
-                  <div>
-                    <label
-                      className="text-sm font-medium text-admin-softText"
-                      htmlFor={`role-${user.userId}`}
-                    >
-                      身分權限
-                    </label>
-                    <select
-                      className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm font-semibold text-admin-text outline-none focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={isUpdating}
-                      id={`role-${user.userId}`}
-                      value={user.role}
-                      onChange={(event) =>
-                        handleRoleChange(user, event.target.value as UserRole)
-                      }
-                    >
-                      {roleOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}（{option.value}）
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-xs text-admin-muted">
-                      {isUpdating
-                        ? "更新中…"
-                        : roleOptions.find(
-                            (option) => option.value === user.role,
-                          )?.description}
-                    </p>
-                  </div>
-                </article>
-              );
-            })}
+                  return (
+                    <tr key={user.userId} className="text-admin-softText">
+                      <td className="px-3 py-3">
+                        <p className="font-semibold text-admin-text">
+                          {user.displayName || "未設定名稱"}
+                        </p>
+                        <p className="mt-1 break-all text-xs text-admin-muted">
+                          {user.lineId || user.userId}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3 font-mono">
+                        {user.activeCode || "-"}
+                      </td>
+                      <td className="px-3 py-3">
+                        <p>{user.phone || "-"}</p>
+                        <p className="mt-1 break-all text-xs text-admin-muted">
+                          {user.email || "-"}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span
+                          className={`font-semibold ${
+                            user.status === "ACTIVE" && user.isEnabled
+                              ? "text-adminStatus-enabled"
+                              : "text-admin-muted"
+                          }`}
+                        >
+                          {user.status === "ACTIVE" && user.isEnabled
+                            ? "啟用"
+                            : "停用"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        {formatDateTime(user.createdAt)}
+                      </td>
+                      <td className="px-3 py-3">
+                        {formatDateTime(user.updatedAt)}
+                      </td>
+                      <td className="px-3 py-3">
+                        <select
+                          className="h-10 w-full min-w-36 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm font-semibold text-admin-text outline-none focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={isUpdating}
+                          value={user.role}
+                          onChange={(event) =>
+                            handleRoleChange(
+                              user,
+                              event.target.value as UserRole,
+                            )
+                          }
+                        >
+                          {roleOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}（{option.value}）
+                            </option>
+                          ))}
+                        </select>
+                        {isUpdating && (
+                          <p className="mt-1 text-xs text-admin-muted">
+                            更新中…
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </section>
-      )}
+        )}
+      </section>
     </div>
   );
 }

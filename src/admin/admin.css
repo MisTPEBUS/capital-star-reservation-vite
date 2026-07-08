@@ -8,23 +8,32 @@
   }
 
   .admin-page-container {
-    @apply mx-auto w-full max-w-7xl px-3 py-4 md:px-5;
+    @apply mx-auto w-full max-w-7xl px-2 py-4 md:px-3;
+  }
+
+  .admin-shell[data-font-size="12"] .admin-page-container,
+  .admin-shell[data-font-size="14"] .admin-page-container,
+  .admin-shell[data-font-size="16"] .admin-page-container,
+  .admin-shell[data-font-size="18"] .admin-page-container,
+  .admin-shell[data-font-size="20"] .admin-page-container,
+  .admin-shell[data-font-size="22"] .admin-page-container {
+    @apply px-1 md:px-2;
   }
 
   .admin-panel {
-    @apply rounded-adminPanel border border-admin-border bg-admin-surface shadow-adminPanel;
+    @apply rounded-adminPanel border border-admin-border bg-admin-surface shadow-adminPanel transition-colors duration-150 ease-out;
   }
 
   .admin-panel-header {
-    @apply mb-4 rounded-adminPanel border border-admin-border bg-admin-surface p-4 shadow-adminPanel;
+    @apply mb-4 rounded-adminPanel border border-admin-border bg-admin-surface p-4 shadow-adminPanel transition-colors duration-150 ease-out;
   }
 
   .admin-panel-body {
-    @apply rounded-adminPanel border border-admin-border bg-admin-surface p-3 shadow-adminPanel md:p-4;
+    @apply rounded-adminPanel border border-admin-border bg-admin-surface p-3 shadow-adminPanel transition-colors duration-150 ease-out md:p-4;
   }
 
   .admin-stat-card {
-    @apply rounded-adminCard bg-admin-elevated p-3;
+    @apply rounded-adminCard bg-admin-elevated p-3 transition-colors duration-150 ease-out;
   }
 
   .admin-stat-label {
@@ -117,6 +126,19 @@
 
   .admin-switch-thumb {
     @apply absolute left-1 top-1 h-6 w-6 rounded-full bg-white transition;
+  }
+
+  .admin-shell button,
+  .admin-shell a,
+  .admin-shell input,
+  .admin-shell select,
+  .admin-shell textarea {
+    @apply transition duration-150 ease-out;
+  }
+
+  .admin-shell button:not(:disabled):active,
+  .admin-shell a:active {
+    transform: translateY(1px);
   }
 
   .admin-trip-card[data-is-enable="true"] .admin-switch-thumb {

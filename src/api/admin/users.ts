@@ -31,6 +31,21 @@ export interface UserRoleUpdateResult {
   updatedAt: string;
 }
 
+export async function getAdminUsers(role?: UserRole) {
+  const response = await apiClient.get<ApiResponse<AdminUser[]>>(
+    "/api/v1/admin/users",
+    {
+      params: role ? { role } : undefined,
+    },
+  );
+
+  if (response.data.code !== 0 || !response.data.data) {
+    throw new Error(response.data.message || "使用者清單讀取失敗");
+  }
+
+  return response.data.data;
+}
+
 export async function findUserByActiveCode(activeCode: string) {
   const response = await apiClient.post<ApiResponse<AdminUser>>(
     "/api/v1/admin/users/active-code",

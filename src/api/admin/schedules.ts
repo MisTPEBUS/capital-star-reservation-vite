@@ -14,6 +14,7 @@ export interface DailyOpenSchedulePayload {
   departureTime: string;
   openDate: string;
   quota: number;
+  deadline?: string;
   status: DailyOpenScheduleStatus;
 }
 

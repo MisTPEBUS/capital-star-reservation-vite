@@ -5,7 +5,6 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ScheduleManagementPage } from "./pages/ScheduleManagementPage";
 import { UserPermissionsPage } from "./pages/UserPermissionsPage";
-import { SettingsPage } from "./pages/SettingsPage";
 import { DispatchManagementPage } from "./pages/DispatchManagementPage";
 import { RouteManagementPage } from "./pages/RouteManagementPage";
 import { StopManagementPage } from "./pages/StopManagementPage";
@@ -34,7 +33,6 @@ export default function AdminApp() {
           path="dispatch/schedules"
           element={<ScheduleManagementPage />}
         />
-        <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate replace to="login" />} />
     </Routes>

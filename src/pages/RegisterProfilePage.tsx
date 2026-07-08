@@ -15,10 +15,9 @@ const sexOptions = [
 export function RegisterProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const returnTo =
-    typeof (location.state as LocationState | null)?.returnTo === "string"
-      ? (location.state as LocationState).returnTo
-      : "/";
+  const locationState = location.state as LocationState | null;
+  const returnTo: string =
+    typeof locationState?.returnTo === "string" ? locationState.returnTo : "/";
 
   const [liffProfile, setLiffProfile] = useState<LiffProfile | null>(null);
   const [firstName, setFirstName] = useState("");

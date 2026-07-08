@@ -304,10 +304,36 @@ export function DashboardPage() {
     <div className="space-y-4">
       <section className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="admin-page-kicker">DASHBOARD</p>
-          <h1 className="admin-page-title">今日預約概況</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="admin-page-title">今日預約概況</h1>
+            <div className="flex rounded-adminControl border border-admin-borderStrong bg-admin-bg p-1 text-sm font-bold">
+              <button
+                className={`h-9 rounded-adminControl px-4 transition ${
+                  viewMode === "CARDS"
+                    ? "bg-adminStatus-enabled text-admin-bg"
+                    : "text-admin-softText hover:text-adminStatus-enabled"
+                }`}
+                type="button"
+                onClick={() => setViewMode("CARDS")}
+              >
+                卡片
+              </button>
+              <button
+                className={`h-9 rounded-adminControl px-4 transition ${
+                  viewMode === "SPLIT"
+                    ? "bg-adminStatus-enabled text-admin-bg"
+                    : "text-admin-softText hover:text-adminStatus-enabled"
+                }`}
+                type="button"
+                onClick={() => setViewMode("SPLIT")}
+              >
+                清單
+              </button>
+            </div>
+          </div>
           <p className="admin-page-description">
             選擇日期查看當日開放預約班次，點選班次後查詢乘客預約清單。
+            {isSchedulesLoading ? " 讀取中…" : ""}
           </p>
         </div>
 
@@ -389,39 +415,6 @@ export function DashboardPage() {
         <div className="admin-stat-card">
           <p className="admin-stat-label">剩餘名額</p>
           <p className="admin-stat-value">{totalAvailableSeats}</p>
-        </div>
-      </section>
-
-      <section className="flex flex-wrap items-center justify-between gap-3 rounded-adminPanel border border-admin-border bg-admin-surface p-3 shadow-adminPanel">
-        <div>
-          <h2 className="admin-section-title">當日開放預約班次</h2>
-          <p className="mt-1 text-sm text-admin-muted">
-            {openDate} {isSchedulesLoading ? "讀取中…" : ""}
-          </p>
-        </div>
-        <div className="flex rounded-adminControl border border-admin-borderStrong bg-admin-bg p-1 text-sm font-bold">
-          <button
-            className={`h-9 rounded-adminControl px-4 transition ${
-              viewMode === "CARDS"
-                ? "bg-adminStatus-enabled text-admin-bg"
-                : "text-admin-softText hover:text-adminStatus-enabled"
-            }`}
-            type="button"
-            onClick={() => setViewMode("CARDS")}
-          >
-            卡片
-          </button>
-          <button
-            className={`h-9 rounded-adminControl px-4 transition ${
-              viewMode === "SPLIT"
-                ? "bg-adminStatus-enabled text-admin-bg"
-                : "text-admin-softText hover:text-adminStatus-enabled"
-            }`}
-            type="button"
-            onClick={() => setViewMode("SPLIT")}
-          >
-            清單
-          </button>
         </div>
       </section>
 

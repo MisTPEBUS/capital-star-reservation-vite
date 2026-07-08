@@ -84,25 +84,6 @@ function getDateFromInputValue(value: string) {
   return new Date(year, month - 1, day);
 }
 
-function getBookingCloseAt(operationDate: string) {
-  const date = getDateFromInputValue(operationDate);
-  if (!date) return "";
-  return `${formatDate(addDays(date, -1))}T23:59`;
-}
-
-function createEmptyScheduleForm(): ScheduleForm {
-  const operationDate = formatDate(addDays(new Date(), 1));
-
-  return {
-    routeId: "",
-    operationDate,
-    departureTime: "06:30",
-    scheduleName: "",
-    totalQuota: 20,
-    bookingCloseAt: getBookingCloseAt(operationDate),
-  };
-}
-
 function formatTime(date: Date) {
   const hour = String(date.getHours()).padStart(2, "0");
   const minute = String(date.getMinutes()).padStart(2, "0");
@@ -122,6 +103,28 @@ function getDateTimeFromValues(dateValue: string, timeValue: string) {
 
   date.setHours(hour, minute, 0, 0);
   return date;
+}
+
+function getBookingCloseAt(operationDate: string, departureTime: string) {
+  const departureDate = getDateTimeFromValues(operationDate, departureTime);
+  if (!departureDate) return "";
+
+  departureDate.setMinutes(departureDate.getMinutes() - 30);
+  return formatDateTimeInput(departureDate);
+}
+
+function createEmptyScheduleForm(): ScheduleForm {
+  const operationDate = formatDate(addDays(new Date(), 1));
+  const departureTime = "06:30";
+
+  return {
+    routeId: "",
+    operationDate,
+    departureTime,
+    scheduleName: "",
+    totalQuota: 20,
+    bookingCloseAt: getBookingCloseAt(operationDate, departureTime),
+  };
 }
 
 function addMinutesToTime(value: string, minutes: number) {
@@ -325,7 +328,7 @@ export function ScheduleManagementPage() {
     setScheduleForm((current) => ({
       ...current,
       operationDate,
-      bookingCloseAt: getBookingCloseAt(operationDate),
+      bookingCloseAt: getBookingCloseAt(operationDate, current.departureTime),
     }));
   };
 
@@ -336,7 +339,11 @@ export function ScheduleManagementPage() {
   };
 
   const setDepartureTime = (departureTime: string) => {
-    updateScheduleForm("departureTime", departureTime);
+    setScheduleForm((current) => ({
+      ...current,
+      departureTime,
+      bookingCloseAt: getBookingCloseAt(current.operationDate, departureTime),
+    }));
   };
 
   const adjustDepartureTime = (minutes: number) => {
@@ -433,6 +440,7 @@ export function ScheduleManagementPage() {
       departureTime: item.time,
       openDate: item.date,
       quota: item.quota,
+      deadline: item.bookingCloseRule,
       status: "ACTIVE",
     }));
 
@@ -461,6 +469,54 @@ export function ScheduleManagementPage() {
     } finally {
       setIsSavingBatch(false);
     }
+  };
+
+  const updateBatchPreviewItem = <K extends keyof PreviewSchedule>(
+    id: string,
+    key: K,
+    value: PreviewSchedule[K],
+  ) => {
+    setBatchPreview((current) =>
+      current.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              [key]: value,
+            }
+          : item,
+      ),
+    );
+  };
+
+  const setBatchBookingCloseAtByRule = (
+    rule: "previous-day-2359" | "previous-day-1800" | "departure-minus-30",
+  ) => {
+    setBatchPreview((current) =>
+      current.map((item) => {
+        const operationDate = getDateFromInputValue(item.date);
+
+        if (!operationDate) return item;
+
+        if (rule === "previous-day-2359") {
+          return {
+            ...item,
+            bookingCloseRule: `${formatDate(addDays(operationDate, -1))}T23:59`,
+          };
+        }
+
+        if (rule === "previous-day-1800") {
+          return {
+            ...item,
+            bookingCloseRule: `${formatDate(addDays(operationDate, -1))}T18:00`,
+          };
+        }
+
+        return {
+          ...item,
+          bookingCloseRule: getBookingCloseAt(item.date, item.time),
+        };
+      }),
+    );
   };
 
   const downloadBatchTemplate = async () => {
@@ -755,7 +811,7 @@ export function ScheduleManagementPage() {
                   value={scheduleForm.departureTime}
                   onClick={openInputPicker}
                   onChange={(event) =>
-                    updateScheduleForm("departureTime", event.target.value)
+                    setDepartureTime(event.target.value)
                   }
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -1039,8 +1095,38 @@ export function ScheduleManagementPage() {
             尚未匯入批次清單。
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
+          <div>
+            <div className="flex flex-wrap gap-2 border-b border-admin-border bg-admin-bg px-4 py-3">
+              <button
+                className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                type="button"
+                onClick={() =>
+                  setBatchBookingCloseAtByRule("departure-minus-30")
+                }
+              >
+                全部改為發車前 30 分
+              </button>
+              <button
+                className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                type="button"
+                onClick={() =>
+                  setBatchBookingCloseAtByRule("previous-day-2359")
+                }
+              >
+                全部改為前一天 23:59
+              </button>
+              <button
+                className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                type="button"
+                onClick={() =>
+                  setBatchBookingCloseAtByRule("previous-day-1800")
+                }
+              >
+                全部改為前一天 18:00
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-admin-bg text-admin-muted">
                 <tr>
                   <th className="px-3 py-2.5 font-semibold">日期</th>
@@ -1055,19 +1141,67 @@ export function ScheduleManagementPage() {
                 {batchPreview.map((item) => (
                   <tr key={item.id}>
                     <td className="px-3 py-3 text-admin-softText">
-                      {item.date}
+                      <input
+                        className="h-10 w-36 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                        type="date"
+                        value={item.date}
+                        onClick={openInputPicker}
+                        onChange={(event) =>
+                          updateBatchPreviewItem(
+                            item.id,
+                            "date",
+                            event.target.value,
+                          )
+                        }
+                      />
                     </td>
                     <td className="px-3 py-3 font-bold text-admin-text">
-                      {item.time}
+                      <input
+                        className="h-10 w-28 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 font-bold text-admin-text outline-none focus:border-adminStatus-enabled"
+                        type="time"
+                        value={item.time}
+                        onClick={openInputPicker}
+                        onChange={(event) =>
+                          updateBatchPreviewItem(
+                            item.id,
+                            "time",
+                            event.target.value,
+                          )
+                        }
+                      />
                     </td>
                     <td className="px-3 py-3 text-admin-softText">
                       {item.routeName}
                     </td>
                     <td className="px-3 py-3 text-admin-softText">
-                      {item.quota}
+                      <input
+                        className="h-10 w-24 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                        min={1}
+                        type="number"
+                        value={item.quota}
+                        onChange={(event) =>
+                          updateBatchPreviewItem(
+                            item.id,
+                            "quota",
+                            Number(event.target.value),
+                          )
+                        }
+                      />
                     </td>
                     <td className="px-3 py-3 text-admin-softText">
-                      {item.bookingCloseRule}
+                      <input
+                        className="h-10 w-48 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                        type="datetime-local"
+                        value={item.bookingCloseRule}
+                        onClick={openInputPicker}
+                        onChange={(event) =>
+                          updateBatchPreviewItem(
+                            item.id,
+                            "bookingCloseRule",
+                            event.target.value,
+                          )
+                        }
+                      />
                     </td>
                     <td className="px-3 py-3">
                       <button
@@ -1086,6 +1220,7 @@ export function ScheduleManagementPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </section>

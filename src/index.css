@@ -28,9 +28,46 @@ input {
   font: inherit;
 }
 
+button,
+a,
+input,
+select,
+textarea {
+  transition-duration: 160ms;
+  transition-property:
+    background-color,
+    border-color,
+    box-shadow,
+    color,
+    opacity,
+    transform;
+  transition-timing-function: ease-out;
+}
+
+button:not(:disabled):active,
+a:active {
+  transform: translateY(1px);
+}
+
 ::selection {
   background: #ffd43b;
   color: #072b50;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  button:not(:disabled):active,
+  a:active {
+    transform: none;
+  }
 }
 
 @media (min-width: 900px) {

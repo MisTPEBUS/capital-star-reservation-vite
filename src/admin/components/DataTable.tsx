@@ -20,29 +20,43 @@ export function DataTable({ reservations }: DataTableProps) {
           <tr>
             <th className="px-3 py-2.5 font-semibold">班次</th>
             <th className="px-3 py-2.5 font-semibold">序號</th>
-            <th className="px-3 py-2.5 font-semibold">LINE 暱稱</th>
+            <th className="px-3 py-2.5 font-semibold">稱謂</th>
             <th className="px-3 py-2.5 font-semibold">識別碼</th>
             <th className="px-3 py-2.5 font-semibold">上車站</th>
             <th className="px-3 py-2.5 font-semibold">預約時間</th>
-            <th className="px-3 py-2.5 font-semibold">取消時間</th>
+
             <th className="px-3 py-2.5 font-semibold">狀態</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-admin-border">
           {reservations.map((reservation) => (
             <tr key={reservation.reservationId} className="text-admin-softText">
-              <td className="px-3 py-3 font-semibold text-admin-text">{reservation.departureTime}</td>
-              <td className="px-3 py-3">{String(reservation.sequence).padStart(2, "0")}</td>
+              <td className="px-3 py-3 font-semibold text-admin-text">
+                {reservation.departureTime}
+              </td>
               <td className="px-3 py-3">
-                <p className="font-semibold text-admin-text">{reservation.lineDisplayName}</p>
-                <p className="mt-1 text-xs text-admin-muted">{reservation.phone}</p>
+                {String(reservation.sequence).padStart(2, "0")}
+              </td>
+              <td className="px-3 py-3">
+                <p className="font-semibold text-admin-text">
+                  {reservation.lineDisplayName}
+                </p>
+                <p className="mt-1 text-xs text-admin-muted">
+                  {reservation.phone}
+                </p>
               </td>
               <td className="px-3 py-3 font-mono">{reservation.activeCode}</td>
               <td className="px-3 py-3">{reservation.pickupStopName}</td>
               <td className="px-3 py-3">{reservation.bookedAt}</td>
               <td className="px-3 py-3">{reservation.cancelledAt || "-"}</td>
               <td className="px-3 py-3">
-                <span className={reservation.status === "RESERVED" ? "font-semibold text-adminStatus-enabled" : "font-semibold text-admin-muted"}>
+                <span
+                  className={
+                    reservation.status === "RESERVED"
+                      ? "font-semibold text-adminStatus-enabled"
+                      : "font-semibold text-admin-muted"
+                  }
+                >
                   {reservation.status === "RESERVED" ? "已預約" : "已取消"}
                 </span>
               </td>

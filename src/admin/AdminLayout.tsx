@@ -9,6 +9,9 @@ export function AdminLayout() {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     return localStorage.getItem("admin-theme") === "light" ? "light" : "dark";
   });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("admin-sidebar-collapsed") === "true";
+  });
   const {
     fontSize,
     canDecreaseFontSize,
@@ -21,17 +24,31 @@ export function AdminLayout() {
     localStorage.setItem("admin-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    localStorage.setItem(
+      "admin-sidebar-collapsed",
+      String(isSidebarCollapsed),
+    );
+  }, [isSidebarCollapsed]);
+
   if (!hasValidAdminSession()) {
     return <Navigate replace to="/admin/login" />;
   }
 
   return (
     <div
-      className="admin-shell min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)] lg:items-start"
+      className={`admin-shell min-h-screen lg:grid lg:items-start ${
+        isSidebarCollapsed
+          ? "lg:grid-cols-[76px_minmax(0,1fr)]"
+          : "lg:grid-cols-[280px_minmax(0,1fr)]"
+      }`}
       data-font-size={fontSize}
       data-theme={theme}
     >
-      <Sidebar />
+      <Sidebar
+        isCollapsed={isSidebarCollapsed}
+        onCollapsedChange={setIsSidebarCollapsed}
+      />
       <div className="min-w-0">
         <Header
           theme={theme}
