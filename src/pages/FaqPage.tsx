@@ -3,8 +3,15 @@ import { Link } from "react-router-dom";
 
 interface FaqItem {
   question: string;
-  answer: string;
+  answer: FaqAnswer;
 }
+
+type FaqAnswerPart = {
+  text: string;
+  highlight?: boolean;
+};
+
+type FaqAnswer = string | FaqAnswerPart[];
 
 const faqSections: Array<{
   title: string;
@@ -38,8 +45,18 @@ const faqSections: Array<{
     items: [
       {
         question: "如何完成預約？",
-        answer:
-          "依序選擇上車站、日期與可預約班次，再按下預約按鈕。系統會確認座位數、預約截止時間與您的預約狀態；成功後會立即顯示乘車憑證。",
+        answer: [
+          { text: "依序" },
+          { text: "選擇上車站", highlight: true },
+          { text: "日期", highlight: true },
+          { text: "與可預約" },
+          { text: "班次", highlight: true },
+          {
+            text: "，再按下預約按鈕。系統會確認座位數、預約截止時間與您的預約狀態；成功後會立即",
+          },
+          { text: "顯示乘車憑證" },
+          { text: "。" },
+        ],
       },
       {
         question: "預約成功後要在哪裡查看乘車憑證？",
@@ -81,6 +98,29 @@ const faqSections: Array<{
   },
 ];
 
+function getAnswerText(answer: FaqAnswer) {
+  return typeof answer === "string"
+    ? answer
+    : answer.map((part) => part.text).join("");
+}
+
+function renderAnswer(answer: FaqAnswer) {
+  if (typeof answer === "string") return answer;
+
+  return answer.map((part, index) =>
+    part.highlight ? (
+      <mark
+        className="box-decoration-clone bg-[linear-gradient(to_top,rgba(255,193,7,0.75)_0%,rgba(255,235,59,0.65)_40%,rgba(255,235,59,0.25)_55%,transparent_60%)] px-1 py-0.5 font-black text-ink-900"
+        key={`${part.text}-${index}`}
+      >
+        {part.text}
+      </mark>
+    ) : (
+      <span key={`${part.text}-${index}`}>{part.text}</span>
+    ),
+  );
+}
+
 export function FaqPage() {
   const [keyword, setKeyword] = useState("");
   const normalizedKeyword = keyword.trim().toLowerCase();
@@ -92,7 +132,7 @@ export function FaqPage() {
         ...section,
         items: section.items.filter((item) => {
           const question = item.question.toLowerCase();
-          const answer = item.answer.toLowerCase();
+          const answer = getAnswerText(item.answer).toLowerCase();
 
           return (
             question.includes(normalizedKeyword) ||
@@ -215,7 +255,7 @@ export function FaqPage() {
                       </span>
                     </summary>
                     <div className="mt-2 border-t border-ink-100 px-2 pt-2 text-base leading-7 text-ink-500">
-                      {item.answer}
+                      {renderAnswer(item.answer)}
                     </div>
                   </details>
                 ))}
@@ -229,14 +269,14 @@ export function FaqPage() {
           <p className="mt-2 text-base leading-7 text-bus-100">
             若依照說明仍無法完成操作，請聯繫活動承辦人員並提供識別碼與預約日期，以便協助查詢。
           </p>
-          <div className="mx-auto  mt-4 max-w-2xl border-t border-white/20 pt-4 text-left">
-            <p className="text-lg font-black text-center">
+          <div className="mx-auto  mt-4 max-w-2xl border-t border-white/20 pt-4 text-center">
+            <p className="text-lg font-black ">
               首都客運客服中心（05:30~24:00）
             </p>
             <p className="mt-2 text-xl font-black text-star-300">
               免付費專線：0800-000-866
             </p>
-            <div className="mt-4 text-center grid gap-2 text-base text-bus-100 sm:grid-cols-2">
+            <div className="mt-4  grid gap-2 text-base text-bus-100 sm:grid-cols-2">
               <p>礁溪站　服務電話：03-988-0700</p>
               <p>宜蘭站　服務電話：03-937-3600</p>
               <p>羅東站　服務電話：03-955-6585</p>

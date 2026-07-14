@@ -5,12 +5,16 @@ import type {
 } from "../types/reservation";
 import { SectionTitle } from "./SectionTitle";
 
+export type BookingSelectionChangeSource = "pickup" | "date" | "time";
+
 interface BookingFormProps {
   stops: PickupStop[];
   dates: { value: string; label: string }[];
   selection: BookingSelection;
-  onChange: (next: BookingSelection) => void;
-  onDateSelected?: () => void;
+  onChange: (
+    next: BookingSelection,
+    source: BookingSelectionChangeSource,
+  ) => void;
   isStopsLoading?: boolean;
   stopsError?: string;
   onRetryStops?: () => void;
@@ -56,7 +60,6 @@ export function BookingForm({
   dates,
   selection,
   onChange,
-  onDateSelected,
   isStopsLoading = false,
   stopsError = "",
   onRetryStops,
@@ -64,17 +67,9 @@ export function BookingForm({
   const update = <K extends keyof BookingSelection>(
     key: K,
     value: BookingSelection[K],
+    source: BookingSelectionChangeSource,
   ) => {
-    onChange({ ...selection, [key]: value });
-  };
-
-  const scrollToSection = (id: string) => {
-    window.setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 80);
+    onChange({ ...selection, [key]: value }, source);
   };
 
   return (
@@ -133,10 +128,8 @@ export function BookingForm({
                       onChange({
                         ...selection,
                         pickupStopId: stop.stopId,
-                        openDate: dates[0]?.value ?? selection.openDate,
                         timePeriod: "ALL",
-                      });
-                      scrollToSection("booking-date");
+                      }, "pickup");
                     }}
                     className={`min-h-12 rounded-xl px-3 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
                       isActive
@@ -180,8 +173,7 @@ export function BookingForm({
                       ...selection,
                       openDate: date.value,
                       timePeriod: "ALL",
-                    });
-                    onDateSelected?.();
+                    }, "date");
                   }}
                   className={`min-h-12 rounded-xl px-3 text-center outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
                     isActive
@@ -197,7 +189,7 @@ export function BookingForm({
         </div>
 
         {/* 時間 */}
-        <div className="border-t border-bus-100 pt-4">
+        <div id="booking-time" className="border-t border-bus-100 pt-4">
           <StepHeading
             step="3"
             title="時間"
@@ -213,7 +205,7 @@ export function BookingForm({
                   key={period.value}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() => update("timePeriod", period.value)}
+                  onClick={() => update("timePeriod", period.value, "time")}
                   className={`min-h-12 rounded-xl px-3 text-lg font-black outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
                     isActive && period.value === "ALL"
                       ? "bg-white text-bus-700 ring-2 ring-bus-600"

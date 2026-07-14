@@ -20,7 +20,7 @@ export function DataTable({ reservations }: DataTableProps) {
           <tr>
             <th className="px-3 py-2.5 font-semibold">班次</th>
             <th className="px-3 py-2.5 font-semibold">序號</th>
-            <th className="px-3 py-2.5 font-semibold">稱謂</th>
+            <th className="px-3 py-2.5 font-semibold">乘客</th>
             <th className="px-3 py-2.5 font-semibold">識別碼</th>
             <th className="px-3 py-2.5 font-semibold">上車站</th>
             <th className="px-3 py-2.5 font-semibold">預約時間</th>
@@ -39,16 +39,15 @@ export function DataTable({ reservations }: DataTableProps) {
               </td>
               <td className="px-3 py-3">
                 <p className="font-semibold text-admin-text">
-                  {reservation.lineDisplayName}
+                  {reservation.name}
                 </p>
                 <p className="mt-1 text-xs text-admin-muted">
-                  {reservation.phone}
+                  LINE：{reservation.lineDisplayName}
                 </p>
               </td>
               <td className="px-3 py-3 font-mono">{reservation.activeCode}</td>
               <td className="px-3 py-3">{reservation.pickupStopName}</td>
               <td className="px-3 py-3">{reservation.bookedAt}</td>
-              <td className="px-3 py-3">{reservation.cancelledAt || "-"}</td>
               <td className="px-3 py-3">
                 <span
                   className={

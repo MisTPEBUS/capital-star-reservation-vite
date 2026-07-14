@@ -21,6 +21,7 @@ interface ReservationStop {
 
 export interface UpcomingReservation {
   reservationId: string;
+  sequenceNo?: number | null;
   routeId: string;
   routeNumber: string;
   departureTime: string;
@@ -32,6 +33,7 @@ export interface UpcomingReservation {
 
 export interface CreateReservationResult {
   reservationId: string;
+  sequenceNo?: number | null;
   dailyOpenScheduleId: string;
   userId: string;
   routeId: string;

@@ -30,6 +30,7 @@ interface RawDashboardReservation {
   userId?: string;
   sequence?: number;
   sequenceNo?: number;
+  name?: string | null;
   lineDisplayName?: string | null;
   displayName?: string | null;
   passengerName?: string | null;
@@ -52,6 +53,7 @@ interface RawDashboardScheduleReservations extends DashboardDailyOpenSchedule {
 export interface DashboardReservation {
   reservationId: string;
   sequence: number;
+  name: string;
   lineDisplayName: string;
   activeCode: string;
   phone: string;
@@ -91,10 +93,10 @@ function toDashboardReservation(
   return {
     reservationId: reservationId ?? `${reservation.userId ?? "reservation"}-${index}`,
     sequence: reservation.sequenceNo ?? reservation.sequence ?? index + 1,
+    name: reservation.name ?? reservation.passengerName ?? "未提供",
     lineDisplayName:
       reservation.lineDisplayName ??
       reservation.displayName ??
-      reservation.passengerName ??
       "未提供",
     activeCode: activeCode || "-",
     phone: reservation.phoneNumber ?? reservation.phone ?? "-",

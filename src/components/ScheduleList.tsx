@@ -126,12 +126,12 @@ export function ScheduleList({
           description="列表會依照上車地點、日期、時段篩選。"
         />
 
-        <div className="shrink-0 rounded-2xl bg-bus-50 px-3 py-2 text-right ring-1 ring-bus-100">
+        {/*  <div className="shrink-0 rounded-2xl bg-bus-50 px-3 py-2 text-right ring-1 ring-bus-100">
           <p className="text-md font-bold text-ink-500">可選</p>
           <p className="text-2xl font-black leading-none text-bus-700">
             {schedules.length}
           </p>
-        </div>
+        </div> */}
       </div>
 
       {reservationErrorMessage && (

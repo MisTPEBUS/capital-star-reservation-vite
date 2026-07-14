@@ -7,21 +7,15 @@ import {
   updateUserRole,
 } from "../../api/admin/users";
 
-type RoleFilter = "ALL" | UserRole;
-
 const roleOptions: Array<{
-  value: UserRole;
+  value: Extract<UserRole, "ADMIN" | "MEMBER">;
   label: string;
 }> = [
+  { value: "ADMIN", label: "管理員" },
   { value: "MEMBER", label: "會員" },
-  { value: "STAFF", label: "工作人員" },
-  { value: "ADMIN", label: "管理人員" },
 ];
 
-const roleFilters: Array<{ value: RoleFilter; label: string }> = [
-  { value: "ALL", label: "全部" },
-  ...roleOptions,
-];
+type RoleFilter = (typeof roleOptions)[number]["value"];
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
@@ -50,7 +44,7 @@ function formatDateTime(value: string) {
 }
 
 export function UserPermissionsPage() {
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("ADMIN");
   const [keyword, setKeyword] = useState("");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +52,7 @@ export function UserPermissionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const selectedRole = roleFilter === "ALL" ? undefined : roleFilter;
+  const selectedRole = roleFilter;
 
   const loadUsers = async (role = selectedRole) => {
     setIsLoading(true);
@@ -180,7 +174,7 @@ export function UserPermissionsPage() {
             className="flex flex-wrap gap-2"
             role="group"
           >
-            {roleFilters.map((option) => {
+            {roleOptions.map((option) => {
               const isActive = roleFilter === option.value;
 
               return (

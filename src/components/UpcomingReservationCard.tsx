@@ -33,7 +33,9 @@ const formatDepartureTime = (departureTime: string) => {
   return departureTime.slice(0, 5);
 };
 
-const formatSequence = (sequence: number) => {
+const formatSequence = (sequence?: number | null) => {
+  if (sequence === null || sequence === undefined) return "-";
+
   return String(sequence).padStart(2, "0");
 };
 
@@ -119,8 +121,10 @@ export function UpcomingReservationCard({
 
   const departureTime = formatDepartureTime(reservation.departureTime);
   const bookedAt = formatBookedAt(reservation.bookedAt);
-  const sequence = formatSequence(reservation.pickupStop.sequence);
+  const sequence = formatSequence(reservation.sequenceNo);
   const statusText = getStatusText(reservation.status);
+  const identityCodePrefix = identityCode?.slice(0, -3) ?? "";
+  const identityCodeSuffix = identityCode?.slice(-3) ?? "";
 
   const handleTicketKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -174,14 +178,13 @@ export function UpcomingReservationCard({
             <div>
               <p className="text-lg font-bold text-[#6B5A25]">首都客運</p>
               <h3 className="mt-1 text-5xl font-black leading-none tracking-tight text-[#C9151E]">
-                1571
+                {reservation.routeNumber}
               </h3>
             </div>
-
-            <div className="shrink-0 rounded-xl border border-[#D7B94A] bg-[#FFF8D6] px-3 py-2 text-right">
-              <p className="text-base font-black text-[#C9151E]">乘車序號</p>
-              <p className="mt-1 text-5xl font-black text-[#1F1A17]">
-                {sequence}
+            <div className="rounded-2xl border border-[#D7B94A] bg-[#FFF8D6] p-3 md:p-4">
+              <p className="text-md font-black text-[#C9151E]">上車站</p>
+              <p className="mt-1 break-words text-4xl font-black text-[#1F1A17]">
+                {reservation.pickupStop.stopName}
               </p>
             </div>
           </div>
@@ -199,17 +202,17 @@ export function UpcomingReservationCard({
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 md:gap-3">
-              <div className="rounded-2xl border border-[#D7B94A] bg-[#FFF8D6] p-3 md:p-4">
-                <p className="text-md font-black text-[#C9151E]">上車站</p>
-                <p className="mt-1 break-words text-4xl font-black text-[#1F1A17]">
-                  {reservation.pickupStop.stopName}
+              <div className="rounded-2xl border border-[#C9151E] bg-[#C9151E] p-3 text-white md:p-4">
+                <p className="text-md font-black text-red-100">班次時刻</p>
+                <p className="mt-1 text-3xl font-black tracking-tight text-center">
+                  {departureTime}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-[#C9151E] bg-[#C9151E] p-3 text-white md:p-4">
-                <p className="text-md font-black text-red-100">班次時刻</p>
-                <p className="mt-1 text-3xl font-black tracking-tight">
-                  {departureTime}
+              <div className="shrink-0 rounded-xl border border-[#D7B94A] bg-[#FFF8D6] px-3 py-2 text-left">
+                <p className="text-base font-black text-[#C9151E]">乘車序號</p>
+                <p className="mt-1 text-5xl font-black text-[#1F1A17] text-center">
+                  {sequence}
                 </p>
               </div>
             </div>
@@ -222,9 +225,20 @@ export function UpcomingReservationCard({
                   </p>
                 </div>
                 <div className="shrink-0 rounded-xl bg-[#FFF8D6] px-3 py-2 text-right ring-1 ring-[#D7B94A]">
-                  <p className="text-xs font-black text-[#C9151E]">識別碼</p>
-                  <p className="mt-1 max-w-[120px] truncate font-mono text-base font-black tracking-[0.12em] text-[#1F1A17]">
-                    {identityCode || "-"}
+                  <p className="text-md font-black text-[#C9151E] text-left">
+                    識別碼
+                  </p>
+                  <p className="mt-1 max-w-[140px] truncate font-mono text-base font-black tracking-[0.12em] text-[#1F1A17]">
+                    {identityCode ? (
+                      <>
+                        {identityCodePrefix}
+                        <span className="text-3xl text-[#C9151E]">
+                          {identityCodeSuffix}
+                        </span>
+                      </>
+                    ) : (
+                      "-"
+                    )}
                   </p>
                 </div>
               </div>

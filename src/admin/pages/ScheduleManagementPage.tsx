@@ -39,7 +39,7 @@ interface PreviewSchedule {
   date: string;
   time: string;
   routeId: string;
-  routeName: string;
+  routeNumber: string;
   quota: number;
   bookingCloseRule: string;
 }
@@ -94,6 +94,26 @@ function formatDateTimeInput(date: Date) {
   return `${formatDate(date)}T${formatTime(date)}`;
 }
 
+function getDateTimeFromInputValue(value: string) {
+  const normalizedValue = value.replace(" ", "T");
+  const match = normalizedValue.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2})?$/,
+  );
+
+  if (!match) return null;
+
+  const [, year, month, day, hour, minute] = match;
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    0,
+    0,
+  );
+}
+
 function getDateTimeFromValues(dateValue: string, timeValue: string) {
   const date = getDateFromInputValue(dateValue);
   if (!date) return null;
@@ -111,6 +131,63 @@ function getBookingCloseAt(operationDate: string, departureTime: string) {
 
   departureDate.setMinutes(departureDate.getMinutes() - 30);
   return formatDateTimeInput(departureDate);
+}
+
+function normalizeBookingCloseAt(
+  operationDate: string,
+  departureTime: string,
+  bookingCloseAt: string,
+) {
+  const latestBookingCloseAt = getBookingCloseAt(operationDate, departureTime);
+  const latestBookingCloseDate =
+    getDateTimeFromInputValue(latestBookingCloseAt);
+  const bookingCloseDate = getDateTimeFromInputValue(bookingCloseAt);
+
+  if (!latestBookingCloseAt || !latestBookingCloseDate) return bookingCloseAt;
+  if (!bookingCloseDate) return latestBookingCloseAt;
+
+  return bookingCloseDate > latestBookingCloseDate
+    ? latestBookingCloseAt
+    : formatDateTimeInput(bookingCloseDate);
+}
+
+function isDeadlineBeforeNow(value: string) {
+  const deadlineDate = getDateTimeFromInputValue(value);
+
+  return Boolean(deadlineDate && deadlineDate.getTime() < Date.now());
+}
+
+function formatDeadlinePayload(value: string) {
+  const deadlineDate = getDateTimeFromInputValue(value);
+
+  if (!deadlineDate) return value.replace("T", " ");
+
+  return `${formatDate(deadlineDate)} ${formatTime(deadlineDate)}:00`;
+}
+
+function applyWorksheetStyle(
+  worksheet: import("exceljs").Worksheet,
+  headerColor = "FF047857",
+) {
+  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+  worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  worksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: headerColor },
+  };
+
+  worksheet.eachRow((row) => {
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      cell.border = {
+        top: { style: "thin", color: { argb: "FF94A3B8" } },
+        left: { style: "thin", color: { argb: "FF94A3B8" } },
+        bottom: { style: "thin", color: { argb: "FF94A3B8" } },
+        right: { style: "thin", color: { argb: "FF94A3B8" } },
+      };
+      cell.alignment = { vertical: "middle" };
+    });
+  });
 }
 
 function createEmptyScheduleForm(): ScheduleForm {
@@ -350,6 +427,17 @@ export function ScheduleManagementPage() {
     setDepartureTime(addMinutesToTime(scheduleForm.departureTime, minutes));
   };
 
+  const setBookingCloseAt = (bookingCloseAt: string) => {
+    setScheduleForm((current) => ({
+      ...current,
+      bookingCloseAt: normalizeBookingCloseAt(
+        current.operationDate,
+        current.departureTime,
+        bookingCloseAt,
+      ),
+    }));
+  };
+
   const setBookingCloseAtByRule = (
     rule: "previous-day-2359" | "previous-day-1800" | "departure-minus-30",
   ) => {
@@ -407,11 +495,20 @@ export function ScheduleManagementPage() {
       return;
     }
 
+    if (isDeadlineBeforeNow(scheduleForm.bookingCloseAt)) {
+      setNotice({
+        type: "error",
+        message: "預約截止時間不得早於現在，請重新設定截止日期。",
+      });
+      return;
+    }
+
     const payload: DailyOpenSchedulePayload = {
       routeId: scheduleForm.routeId,
       departureTime: scheduleForm.departureTime,
       openDate: scheduleForm.operationDate,
       quota: enabledStopQuota,
+      deadline: formatDeadlinePayload(scheduleForm.bookingCloseAt),
       status: "ACTIVE",
     };
 
@@ -435,12 +532,24 @@ export function ScheduleManagementPage() {
   const saveBatchSchedules = async () => {
     if (batchPreview.length === 0) return;
 
+    const expiredDeadlineItem = batchPreview.find((item) =>
+      isDeadlineBeforeNow(item.bookingCloseRule),
+    );
+
+    if (expiredDeadlineItem) {
+      setNotice({
+        type: "error",
+        message: `${expiredDeadlineItem.date} ${expiredDeadlineItem.time} 的截止日期已早於現在，請重新設定後再建立批次班次。`,
+      });
+      return;
+    }
+
     const schedules: DailyOpenSchedulePayload[] = batchPreview.map((item) => ({
       routeId: item.routeId,
       departureTime: item.time,
       openDate: item.date,
       quota: item.quota,
-      deadline: item.bookingCloseRule,
+      deadline: formatDeadlinePayload(item.bookingCloseRule),
       status: "ACTIVE",
     }));
 
@@ -477,14 +586,27 @@ export function ScheduleManagementPage() {
     value: PreviewSchedule[K],
   ) => {
     setBatchPreview((current) =>
-      current.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              [key]: value,
-            }
-          : item,
-      ),
+      current.map((item) => {
+        if (item.id !== id) return item;
+
+        const nextItem = {
+          ...item,
+          [key]: value,
+        };
+
+        if (key === "date" || key === "time" || key === "bookingCloseRule") {
+          return {
+            ...nextItem,
+            bookingCloseRule: normalizeBookingCloseAt(
+              nextItem.date,
+              nextItem.time,
+              nextItem.bookingCloseRule,
+            ),
+          };
+        }
+
+        return nextItem;
+      }),
     );
   };
 
@@ -523,54 +645,54 @@ export function ScheduleManagementPage() {
     const { default: ExcelJS } = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("批次班次匯入");
+    const routeWorksheet = workbook.addWorksheet("班次");
+    const templateDate = formatDate(addDays(new Date(), 1));
+    const templateRouteNumber = routes[0]?.routeNumber ?? "1571";
 
     worksheet.columns = [
       { header: "路線編號", key: "routeNumber", width: 16 },
-      { header: "路線名稱", key: "routeName", width: 24 },
       { header: "營運日期", key: "date", width: 16 },
       { header: "班次時間", key: "time", width: 14 },
-      { header: "預約名額", key: "quota", width: 12 },
-      { header: "預約截止", key: "bookingCloseAt", width: 24 },
+      { header: "預約座位", key: "quota", width: 12 },
+      { header: "截止日期", key: "bookingCloseAt", width: 24 },
     ];
 
     worksheet.addRows([
       {
-        routeNumber: "1571",
-        routeName: "宜蘭－市府轉運站",
-        date: "2026-07-01",
+        routeNumber: templateRouteNumber,
+        date: templateDate,
         time: "05:30",
         quota: 20,
-        bookingCloseAt: "2026/6/30 11:59:00 PM",
+        bookingCloseAt: formatDeadlinePayload(
+          getBookingCloseAt(templateDate, "05:30"),
+        ),
       },
       {
-        routeNumber: "1571",
-        routeName: "宜蘭－市府轉運站",
-        date: "2026-07-01",
+        routeNumber: templateRouteNumber,
+        date: templateDate,
         time: "06:00",
         quota: 20,
-        bookingCloseAt: "2026/6/30 11:59:00 PM",
+        bookingCloseAt: formatDeadlinePayload(
+          getBookingCloseAt(templateDate, "06:00"),
+        ),
       },
     ]);
 
-    worksheet.views = [{ state: "frozen", ySplit: 1 }];
-    worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-    worksheet.getRow(1).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF047857" },
-    };
+    routeWorksheet.columns = [
+      { header: "班次名稱", key: "routeName", width: 28 },
+      { header: "班次編號", key: "routeNumber", width: 16 },
+    ];
+    routeWorksheet.addRows(
+      [...routes]
+        .sort((a, b) => a.routeNumber.localeCompare(b.routeNumber))
+        .map((route) => ({
+          routeName: route.routeName,
+          routeNumber: route.routeNumber,
+        })),
+    );
 
-    worksheet.eachRow((row) => {
-      row.eachCell({ includeEmpty: true }, (cell) => {
-        cell.border = {
-          top: { style: "thin", color: { argb: "FF94A3B8" } },
-          left: { style: "thin", color: { argb: "FF94A3B8" } },
-          bottom: { style: "thin", color: { argb: "FF94A3B8" } },
-          right: { style: "thin", color: { argb: "FF94A3B8" } },
-        };
-        cell.alignment = { vertical: "middle" };
-      });
-    });
+    applyWorksheetStyle(worksheet);
+    applyWorksheetStyle(routeWorksheet);
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
@@ -608,25 +730,18 @@ export function ScheduleManagementPage() {
         if (rowNumber === 1) return;
 
         const routeNumber = getCellText(row.getCell(1).value);
-        const routeNameText = getCellText(row.getCell(2).value);
-        const date = getCellDate(row.getCell(3).value);
-        const time = getCellTime(row.getCell(4).value);
-        const quota = Number(getCellText(row.getCell(5).value));
-        const bookingCloseAt = getCellDateTime(row.getCell(6).value);
-        const isEmptyRow = [routeNumber, routeNameText, date, time].every(
-          (value) => !value,
-        );
+        const date = getCellDate(row.getCell(2).value);
+        const time = getCellTime(row.getCell(3).value);
+        const quota = Number(getCellText(row.getCell(4).value));
+        const bookingCloseAt = getCellDateTime(row.getCell(5).value);
+        const isEmptyRow = [routeNumber, date, time].every((value) => !value);
 
         if (isEmptyRow) return;
 
-        const route = routes.find(
-          (item) =>
-            item.routeNumber === routeNumber ||
-            item.routeName === routeNameText,
-        );
+        const route = routes.find((item) => item.routeNumber === routeNumber);
 
-        if (!routeNumber && !routeNameText) {
-          errors.push(`第 ${rowNumber} 列缺少路線編號或路線名稱`);
+        if (!routeNumber) {
+          errors.push(`第 ${rowNumber} 列缺少路線編號`);
           return;
         }
 
@@ -641,13 +756,13 @@ export function ScheduleManagementPage() {
         }
 
         if (!Number.isFinite(quota) || quota <= 0) {
-          errors.push(`第 ${rowNumber} 列預約名額必須大於 0`);
+          errors.push(`第 ${rowNumber} 列預約座位必須大於 0`);
           return;
         }
 
         if (!bookingCloseAt) {
           errors.push(
-            `第 ${rowNumber} 列預約截止格式錯誤，請使用 YYYY/M/D h:mm:ss AM/PM`,
+            `第 ${rowNumber} 列截止日期格式錯誤，請使用 YYYY-MM-DD HH:mm`,
           );
           return;
         }
@@ -657,14 +772,25 @@ export function ScheduleManagementPage() {
           return;
         }
 
+        const normalizedBookingCloseAt = normalizeBookingCloseAt(
+          date,
+          time,
+          bookingCloseAt.replace(" ", "T"),
+        );
+
+        if (isDeadlineBeforeNow(normalizedBookingCloseAt)) {
+          errors.push(`第 ${rowNumber} 列截止日期已早於現在，未匯入`);
+          return;
+        }
+
         preview.push({
           id: `${date}-${time}-${rowNumber}`,
           date,
           time,
           routeId: route.routeId,
-          routeName: route.routeName,
+          routeNumber: route.routeNumber,
           quota,
-          bookingCloseRule: bookingCloseAt,
+          bookingCloseRule: normalizedBookingCloseAt,
         });
       });
 
@@ -810,9 +936,7 @@ export function ScheduleManagementPage() {
                   type="time"
                   value={scheduleForm.departureTime}
                   onClick={openInputPicker}
-                  onChange={(event) =>
-                    setDepartureTime(event.target.value)
-                  }
+                  onChange={(event) => setDepartureTime(event.target.value)}
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
@@ -872,9 +996,7 @@ export function ScheduleManagementPage() {
                   type="datetime-local"
                   value={scheduleForm.bookingCloseAt}
                   onClick={openInputPicker}
-                  onChange={(event) =>
-                    updateScheduleForm("bookingCloseAt", event.target.value)
-                  }
+                  onChange={(event) => setBookingCloseAt(event.target.value)}
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
@@ -976,7 +1098,7 @@ export function ScheduleManagementPage() {
 
         <aside className="space-y-4">
           <section className="admin-panel-body">
-            <h2 className="admin-section-title">三、預約控制設定</h2>
+            <h2 className="admin-section-title">三、預約班次資訊</h2>
             <p className="mt-1 text-sm text-admin-muted">
               確認目前設定後建立派班資料。
             </p>
@@ -1040,9 +1162,9 @@ export function ScheduleManagementPage() {
           <div className="rounded-adminControl border border-admin-border bg-admin-bg p-4">
             <p className="text-sm font-bold text-admin-text">Excel 欄位格式</p>
             <p className="mt-2 text-sm leading-6 text-admin-muted">
-              路線編號、路線名稱、營運日期、班次時間、預約名額、預約截止。
-              營運日期請使用 YYYY-MM-DD，班次時間請使用 HH:mm，預約截止可使用
-              2026/6/26 11:59:00 PM。
+              路線編號、營運日期、班次時間、預約座位、截止日期。 營運日期請使用
+              YYYY-MM-DD，班次時間請使用 HH:mm，截止日期可使用 2026-07-01
+              05:00。
             </p>
           </div>
 
@@ -1077,7 +1199,7 @@ export function ScheduleManagementPage() {
           <div>
             <h2 className="admin-section-title">五、匯入批次清單</h2>
             <p className="mt-1 text-sm text-admin-muted">
-              確認匯入的日期、時間、名額與預約截止後再送出。
+              確認匯入的營運日期、班次時間、預約座位與截止日期後再送出。
             </p>
           </div>
           <button
@@ -1126,100 +1248,112 @@ export function ScheduleManagementPage() {
               </button>
             </div>
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="bg-admin-bg text-admin-muted">
-                <tr>
-                  <th className="px-3 py-2.5 font-semibold">日期</th>
-                  <th className="px-3 py-2.5 font-semibold">時間</th>
-                  <th className="px-3 py-2.5 font-semibold">路線</th>
-                  <th className="px-3 py-2.5 font-semibold">預約名額</th>
-                  <th className="px-3 py-2.5 font-semibold">預約截止</th>
-                  <th className="px-3 py-2.5 font-semibold">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-admin-border">
-                {batchPreview.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-3 py-3 text-admin-softText">
-                      <input
-                        className="h-10 w-36 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-                        type="date"
-                        value={item.date}
-                        onClick={openInputPicker}
-                        onChange={(event) =>
-                          updateBatchPreviewItem(
-                            item.id,
-                            "date",
-                            event.target.value,
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="px-3 py-3 font-bold text-admin-text">
-                      <input
-                        className="h-10 w-28 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 font-bold text-admin-text outline-none focus:border-adminStatus-enabled"
-                        type="time"
-                        value={item.time}
-                        onClick={openInputPicker}
-                        onChange={(event) =>
-                          updateBatchPreviewItem(
-                            item.id,
-                            "time",
-                            event.target.value,
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="px-3 py-3 text-admin-softText">
-                      {item.routeName}
-                    </td>
-                    <td className="px-3 py-3 text-admin-softText">
-                      <input
-                        className="h-10 w-24 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-                        min={1}
-                        type="number"
-                        value={item.quota}
-                        onChange={(event) =>
-                          updateBatchPreviewItem(
-                            item.id,
-                            "quota",
-                            Number(event.target.value),
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="px-3 py-3 text-admin-softText">
-                      <input
-                        className="h-10 w-48 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-                        type="datetime-local"
-                        value={item.bookingCloseRule}
-                        onClick={openInputPicker}
-                        onChange={(event) =>
-                          updateBatchPreviewItem(
-                            item.id,
-                            "bookingCloseRule",
-                            event.target.value,
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="px-3 py-3">
-                      <button
-                        className="rounded-adminControl border border-red-400/40 px-3 py-2 text-xs font-semibold text-red-300"
-                        type="button"
-                        onClick={() =>
-                          setBatchPreview((current) =>
-                            current.filter((preview) => preview.id !== item.id),
-                          )
-                        }
-                      >
-                        刪除
-                      </button>
-                    </td>
+              <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
+                <colgroup>
+                  <col className="w-[190px]" />
+                  <col className="w-[150px]" />
+                  <col className="w-[150px]" />
+                  <col className="w-[130px]" />
+                  <col className="w-[300px]" />
+                  <col className="w-[120px]" />
+                </colgroup>
+                <thead className="bg-admin-bg text-admin-muted">
+                  <tr>
+                    <th className="px-3 py-2.5 font-semibold">營運日期</th>
+                    <th className="px-3 py-2.5 font-semibold">班次時間</th>
+                    <th className="px-3 py-2.5 font-semibold">路線編號</th>
+                    <th className="px-3 py-2.5 font-semibold">預約座位</th>
+                    <th className="px-3 py-2.5 font-semibold">截止日期</th>
+                    <th className="px-3 py-2.5 font-semibold">操作</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-admin-border">
+                  {batchPreview.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-3 py-3 text-admin-softText">
+                        <input
+                          className="h-10 w-full min-w-[166px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                          type="date"
+                          value={item.date}
+                          onClick={openInputPicker}
+                          onChange={(event) =>
+                            updateBatchPreviewItem(
+                              item.id,
+                              "date",
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-3 py-3 font-bold text-admin-text">
+                        <input
+                          className="h-10 w-full min-w-[126px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 font-bold text-admin-text outline-none focus:border-adminStatus-enabled"
+                          type="time"
+                          value={item.time}
+                          onClick={openInputPicker}
+                          onChange={(event) =>
+                            updateBatchPreviewItem(
+                              item.id,
+                              "time",
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-3 py-3 text-admin-softText">
+                        <p className="font-bold text-admin-text">
+                          {item.routeNumber}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3 text-admin-softText">
+                        <input
+                          className="h-10 w-full min-w-[106px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                          min={1}
+                          type="number"
+                          value={item.quota}
+                          onChange={(event) =>
+                            updateBatchPreviewItem(
+                              item.id,
+                              "quota",
+                              Number(event.target.value),
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-3 py-3 text-admin-softText">
+                        <input
+                          className="h-10 w-full min-w-[276px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                          type="datetime-local"
+                          value={item.bookingCloseRule}
+                          onClick={openInputPicker}
+                          onChange={(event) =>
+                            updateBatchPreviewItem(
+                              item.id,
+                              "bookingCloseRule",
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <button
+                          className="rounded-adminControl border border-red-400/40 px-3 py-2 text-xs font-semibold text-red-300"
+                          type="button"
+                          onClick={() =>
+                            setBatchPreview((current) =>
+                              current.filter(
+                                (preview) => preview.id !== item.id,
+                              ),
+                            )
+                          }
+                        >
+                          刪除
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import busHero from "./assets/bus-main.png";
 import busSide from "./assets/bus-side.png";
-import { BookingForm } from "./components/BookingForm";
+import {
+  BookingForm,
+  type BookingSelectionChangeSource,
+} from "./components/BookingForm";
 import { MemberCard } from "./components/MemberCard";
 import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
@@ -111,7 +114,9 @@ function App() {
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
     null,
   );
-  const [shouldScrollToSchedules, setShouldScrollToSchedules] = useState(false);
+  const [pendingScrollTarget, setPendingScrollTarget] = useState<
+    "time" | "schedules" | null
+  >(null);
   const [isScheduleControlsVisible, setIsScheduleControlsVisible] =
     useState(false);
   const [reservingScheduleId, setReservingScheduleId] = useState<string | null>(
@@ -175,20 +180,31 @@ function App() {
   }, [filteredSchedules, selectedScheduleId]);
 
   useEffect(() => {
-    if (!shouldScrollToSchedules || schedulesLoading) return;
+    if (!pendingScrollTarget || schedulesLoading) return;
 
-    if (!schedulesError && filteredSchedules.length > 0) {
-      document
-        .getElementById("schedule-list")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const hasSchedules =
+      pendingScrollTarget === "time"
+        ? schedules.length > 0
+        : filteredSchedules.length > 0;
+
+    if (!schedulesError && hasSchedules) {
+      const targetId =
+        pendingScrollTarget === "time" ? "booking-time" : "schedule-list";
+
+      window.setTimeout(() => {
+        document
+          .getElementById(targetId)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
     }
 
-    setShouldScrollToSchedules(false);
+    setPendingScrollTarget(null);
   }, [
     filteredSchedules.length,
+    pendingScrollTarget,
+    schedules.length,
     schedulesError,
     schedulesLoading,
-    shouldScrollToSchedules,
   ]);
 
   useEffect(() => {
@@ -522,7 +538,10 @@ function App() {
     }
   };
 
-  const handleBookingSelectionChange = (nextSelection: BookingSelection) => {
+  const handleBookingSelectionChange = (
+    nextSelection: BookingSelection,
+    source: BookingSelectionChangeSource,
+  ) => {
     const hasScheduleQueryChanged =
       nextSelection.openDate !== selection.openDate ||
       nextSelection.pickupStopId !== selection.pickupStopId;
@@ -532,6 +551,9 @@ function App() {
       setSchedules([]);
       setSchedulesLoading(true);
     }
+    setPendingScrollTarget(
+      source === "date" ? "time" : source === "time" ? "schedules" : null,
+    );
     setSelection(nextSelection);
   };
 
@@ -683,7 +705,6 @@ function App() {
               dates={availableDates}
               selection={selection}
               onChange={handleBookingSelectionChange}
-              onDateSelected={() => setShouldScrollToSchedules(true)}
               isStopsLoading={pickupStopsLoading}
               stopsError={pickupStopsError}
               onRetryStops={() =>
@@ -770,8 +791,7 @@ function App() {
 
         <SuccessModal
           result={reservationResult}
-          onClose={() => setReservationResult(null)}
-          onViewTicket={() => {
+          onClose={() => {
             setReservationResult(null);
             window.setTimeout(() => {
               document

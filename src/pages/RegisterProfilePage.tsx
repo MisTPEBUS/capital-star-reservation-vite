@@ -12,6 +12,10 @@ const sexOptions = [
   { label: "女", value: "FEMALE" },
 ];
 
+function normalizeFirstName(value: string) {
+  return Array.from(value.trim()).slice(0, 1).join("");
+}
+
 export function RegisterProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,7 +50,7 @@ export function RegisterProfilePage() {
         const profile = await getAuthProfile(nextLiffProfile.lineUserId);
         if (!isCurrent) return;
 
-        setFirstName(profile.firstName ?? "");
+        setFirstName(normalizeFirstName(profile.firstName ?? ""));
         setSex(profile.sex ?? "");
       } catch (error) {
         if (!isCurrent) return;
@@ -72,7 +76,7 @@ export function RegisterProfilePage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const trimmedFirstName = firstName.trim();
+    const trimmedFirstName = normalizeFirstName(firstName);
 
     if (!trimmedFirstName) {
       setErrorMessage("請輸入姓氏。");
@@ -139,9 +143,11 @@ export function RegisterProfilePage() {
               <span className="text-sm font-black text-ink-700">姓氏</span>
               <input
                 value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
+                onChange={(event) =>
+                  setFirstName(normalizeFirstName(event.target.value))
+                }
                 className="h-12 rounded-2xl border border-bus-100 bg-ink-50 px-4 text-base font-bold text-ink-900 outline-none transition focus:border-bus-500 focus:bg-white focus:ring-4 focus:ring-bus-100"
-                maxLength={20}
+                maxLength={1}
                 placeholder="請輸入姓氏"
                 autoComplete="family-name"
               />

@@ -1,6 +1,7 @@
 export interface AdminReservationListItem {
   reservationId: string;
   sequence: number;
+  name: string;
   lineDisplayName: string;
   activeCode: string;
   phone: string;

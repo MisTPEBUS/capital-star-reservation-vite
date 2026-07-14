@@ -45,17 +45,29 @@ export interface BatchDailyOpenScheduleResult {
   failedItems: BatchDailyOpenScheduleFailedItem[];
 }
 
+export interface CancelDailyOpenScheduleResult {
+  dailyOpenScheduleId: string;
+  routeId: string;
+  departureTime: string;
+  openDate: string;
+  quota: number;
+  status: DailyOpenScheduleStatus | string;
+  cancelledReservationCount: number;
+  passengerNotificationText: string;
+  updatedAt: string;
+}
+
 function getErrorMessage(error: unknown) {
   if (axios.isAxiosError<ApiResponse<unknown>>(error)) {
-    return error.response?.data?.message || "班次建立失敗，請稍後再試。";
+    return error.response?.data?.message || "班次操作失敗，請稍後再試。";
   }
 
-  return error instanceof Error ? error.message : "班次建立失敗，請稍後再試。";
+  return error instanceof Error ? error.message : "班次操作失敗，請稍後再試。";
 }
 
 function unwrapResponse<T>(response: ApiResponse<T>) {
   if (![0, 200].includes(response.code) || !response.data) {
-    throw new Error(response.message || "班次建立失敗，請稍後再試。");
+    throw new Error(response.message || "班次操作失敗，請稍後再試。");
   }
 
   return response.data;
@@ -83,6 +95,24 @@ export async function createDailyOpenSchedulesBatch(
       "/api/v1/admin/daily-open-schedules/batch",
       { schedules },
     );
+    return unwrapResponse(response.data);
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+export async function cancelDailyOpenSchedule(
+  dailyOpenScheduleId: string,
+  passengerNotificationText: string,
+) {
+  try {
+    const response = await apiClient.patch<
+      ApiResponse<CancelDailyOpenScheduleResult>
+    >(
+      `/api/v1/admin/daily-open-schedules/${dailyOpenScheduleId}/cancel`,
+      { passengerNotificationText },
+    );
+
     return unwrapResponse(response.data);
   } catch (error) {
     throw new Error(getErrorMessage(error));

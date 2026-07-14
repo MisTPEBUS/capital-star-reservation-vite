@@ -3,14 +3,9 @@ import type { ReservationResult } from "../types/reservation";
 interface SuccessModalProps {
   result: ReservationResult | null;
   onClose: () => void;
-  onViewTicket?: () => void;
 }
 
-export function SuccessModal({
-  result,
-  onClose,
-  onViewTicket,
-}: SuccessModalProps) {
+export function SuccessModal({ result, onClose }: SuccessModalProps) {
   if (!result) return null;
 
   return (
@@ -41,20 +36,11 @@ export function SuccessModal({
             <DetailRow label="預約時間" value={result.bookedAt} />
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {onViewTicket && (
-              <button
-                type="button"
-                onClick={onViewTicket}
-                className="h-11 rounded-xl border border-bus-700 bg-white text-base font-black text-bus-800 outline-none transition hover:bg-bus-50 focus-visible:ring-4 focus-visible:ring-bus-100"
-              >
-                查看乘車憑證
-              </button>
-            )}
+          <div className="mt-4">
             <button
               type="button"
               onClick={onClose}
-              className="h-11 rounded-xl bg-bus-900 text-base font-black text-white outline-none transition hover:bg-bus-700 focus-visible:ring-4 focus-visible:ring-bus-100"
+              className="h-11 w-full rounded-xl bg-bus-900 text-base font-black text-white outline-none transition hover:bg-bus-700 focus-visible:ring-4 focus-visible:ring-bus-100"
             >
               完成
             </button>
