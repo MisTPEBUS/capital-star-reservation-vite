@@ -2,8 +2,6 @@ import { Link } from "react-router-dom";
 import { clearAdminSession, getAdminSession } from "../../api/admin/session";
 
 interface HeaderProps {
-  theme: "dark" | "light";
-  onThemeToggle: () => void;
   fontSize: number;
   canDecreaseFontSize: boolean;
   canIncreaseFontSize: boolean;
@@ -12,8 +10,6 @@ interface HeaderProps {
 }
 
 export function Header({
-  theme,
-  onThemeToggle,
   fontSize,
   canDecreaseFontSize,
   canIncreaseFontSize,
@@ -57,15 +53,6 @@ export function Header({
             A+
           </button>
         </div>
-        <button
-          aria-pressed={theme === "light"}
-          className="rounded-adminControl border border-admin-borderStrong px-3 py-2 text-sm font-semibold text-admin-softText transition hover:bg-admin-elevated hover:text-admin-text"
-          title={theme === "dark" ? "切換為淺色模式" : "切換為深色模式"}
-          type="button"
-          onClick={onThemeToggle}
-        >
-          {theme === "dark" ? "淺色模式" : "深色模式"}
-        </button>
         <span className="hidden text-sm text-admin-softText sm:inline">
           {displayName}
         </span>

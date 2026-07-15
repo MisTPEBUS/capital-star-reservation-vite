@@ -6,9 +6,6 @@ import { Sidebar } from "./components/Sidebar";
 import { useAdminFontSize } from "./hooks/useAdminFontSize";
 
 export function AdminLayout() {
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    return localStorage.getItem("admin-theme") === "light" ? "light" : "dark";
-  });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem("admin-sidebar-collapsed") === "true";
   });
@@ -19,10 +16,6 @@ export function AdminLayout() {
     decreaseFontSize,
     increaseFontSize,
   } = useAdminFontSize();
-
-  useEffect(() => {
-    localStorage.setItem("admin-theme", theme);
-  }, [theme]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -43,7 +36,6 @@ export function AdminLayout() {
           : "lg:grid-cols-[280px_minmax(0,1fr)]"
       }`}
       data-font-size={fontSize}
-      data-theme={theme}
     >
       <Sidebar
         isCollapsed={isSidebarCollapsed}
@@ -51,12 +43,6 @@ export function AdminLayout() {
       />
       <div className="min-w-0">
         <Header
-          theme={theme}
-          onThemeToggle={() =>
-            setTheme((currentTheme) =>
-              currentTheme === "dark" ? "light" : "dark",
-            )
-          }
           fontSize={fontSize}
           canDecreaseFontSize={canDecreaseFontSize}
           canIncreaseFontSize={canIncreaseFontSize}

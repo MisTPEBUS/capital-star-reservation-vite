@@ -9,8 +9,6 @@ import {
 import { cancelDailyOpenSchedule } from "../../api/admin/schedules";
 import { DataTable } from "../components/DataTable";
 
-type DashboardViewMode = "CARDS" | "SPLIT";
-
 const defaultPassengerNotificationText =
   "您好，您預約的首都之星班次因故取消。造成不便，敬請見諒。";
 
@@ -94,7 +92,6 @@ function getStatusText(status: string) {
 
 export function DashboardPage() {
   const [openDate, setOpenDate] = useState(getTodayValue());
-  const [viewMode, setViewMode] = useState<DashboardViewMode>("SPLIT");
   const [schedules, setSchedules] = useState<DashboardDailyOpenSchedule[]>([]);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
     null,
@@ -444,30 +441,6 @@ export function DashboardPage() {
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="admin-page-title">今日預約概況</h1>
-            <div className="flex rounded-adminControl border border-admin-borderStrong bg-admin-bg p-1 text-sm font-bold">
-              <button
-                className={`h-9 rounded-adminControl px-4 transition ${
-                  viewMode === "CARDS"
-                    ? "bg-adminStatus-enabled text-admin-bg"
-                    : "text-admin-softText hover:text-adminStatus-enabled"
-                }`}
-                type="button"
-                onClick={() => setViewMode("CARDS")}
-              >
-                卡片
-              </button>
-              <button
-                className={`h-9 rounded-adminControl px-4 transition ${
-                  viewMode === "SPLIT"
-                    ? "bg-adminStatus-enabled text-admin-bg"
-                    : "text-admin-softText hover:text-adminStatus-enabled"
-                }`}
-                type="button"
-                onClick={() => setViewMode("SPLIT")}
-              >
-                清單
-              </button>
-            </div>
           </div>
           <p className="admin-page-description">
             選擇日期查看當日開放預約班次，點選班次後查詢乘客預約清單。
@@ -567,90 +540,6 @@ export function DashboardPage() {
         <div className="rounded-adminPanel border border-dashed border-admin-borderStrong bg-admin-surface px-5 py-10 text-center text-sm text-admin-muted">
           此日期沒有開放預約班次。
         </div>
-      ) : viewMode === "CARDS" ? (
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {schedules.map((schedule) => {
-            const isSelected =
-              schedule.dailyOpenScheduleId === selectedScheduleId;
-            const isInactive = schedule.status === "INACTIVE";
-
-            return (
-              <button
-                key={schedule.dailyOpenScheduleId}
-                aria-pressed={isSelected}
-                className={`rounded-adminCard border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
-                  isSelected && isInactive
-                    ? "border-red-400/60 bg-red-400/10 ring-1 ring-red-400/20"
-                    : isSelected
-                      ? "border-adminStatus-enabled bg-adminStatus-enabled/10 ring-1 ring-adminStatus-enabled/30"
-                      : isInactive
-                        ? "border-admin-borderStrong bg-admin-bg/70 opacity-80 hover:border-red-400/40"
-                        : "border-admin-border bg-admin-elevated hover:border-admin-borderStrong"
-                }`}
-                type="button"
-                onClick={() => {
-                  setSelectedScheduleId(schedule.dailyOpenScheduleId);
-                  setViewMode("SPLIT");
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p
-                      className={`text-4xl font-bold leading-none ${
-                        isInactive ? "text-admin-muted" : "text-admin-text"
-                      }`}
-                    >
-                      {formatDepartureTime(schedule.departureTime)}
-                    </p>
-                    <p
-                      className={`mt-2 text-sm font-semibold ${
-                        isInactive ? "text-admin-muted" : "text-admin-softText"
-                      }`}
-                    >
-                      {schedule.routeNumber}｜{schedule.routeName}
-                    </p>
-                  </div>
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs font-bold ${
-                      schedule.status === "ACTIVE"
-                        ? "bg-adminStatus-enabled/10 text-adminStatus-enabled"
-                        : "bg-red-400/10 text-red-300 ring-1 ring-red-400/25"
-                    }`}
-                  >
-                    {getStatusText(schedule.status)}
-                  </span>
-                </div>
-
-                <div className="mt-4 grid grid-cols-4 gap-2 border-t border-admin-border pt-4 text-sm">
-                  <div>
-                    <p className="text-admin-muted">名額</p>
-                    <p className="font-bold text-admin-text">
-                      {schedule.quota}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-admin-muted">預約</p>
-                    <p className="font-bold text-admin-text">
-                      {schedule.reservedCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-admin-muted">取消</p>
-                    <p className="font-bold text-admin-text">
-                      {schedule.cancelledCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-admin-muted">剩餘</p>
-                    <p className="font-bold text-admin-text">
-                      {schedule.availableSeats}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </section>
       ) : (
         <section className="grid items-start gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
           <div className="admin-panel-body">
