@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaCaretLeft, FaCaretRight } from "react-icons/fa";
 import {
   type DashboardDailyOpenSchedule,
   type DashboardReservation,
@@ -485,23 +486,27 @@ export function DashboardPage() {
                 onChange={(event) => setOpenDate(event.target.value)}
               />
             </label>
-            <div className="grid h-11 w-[288px] max-w-full shrink-0 grid-cols-[88px_minmax(112px,1fr)_88px] items-center overflow-hidden whitespace-nowrap rounded-adminControl border border-admin-borderStrong bg-admin-bg text-sm font-bold text-admin-text">
+            <div className="grid h-11 w-[216px] max-w-full shrink-0 grid-cols-[44px_minmax(112px,1fr)_44px] items-center overflow-hidden whitespace-nowrap rounded-adminControl border border-admin-borderStrong bg-admin-bg text-sm font-bold text-admin-text">
               <button
-                className="h-full px-2 text-admin-softText hover:text-adminStatus-enabled"
+                aria-label="前一天"
+                className="grid h-full place-items-center text-admin-softText hover:text-adminStatus-enabled"
+                title="前一天"
                 type="button"
                 onClick={() => shiftOpenDate(-1)}
               >
-                前一天
+                <FaCaretLeft aria-hidden="true" className="text-xl" />
               </button>
               <span className="flex h-full min-w-0 items-center justify-center border-x border-admin-borderStrong px-3 text-center">
                 {getDateLabel(openDate)}
               </span>
               <button
-                className="h-full px-2 text-admin-softText hover:text-adminStatus-enabled"
+                aria-label="後一天"
+                className="grid h-full place-items-center text-admin-softText hover:text-adminStatus-enabled"
+                title="後一天"
                 type="button"
                 onClick={() => shiftOpenDate(1)}
               >
-                後一天
+                <FaCaretRight aria-hidden="true" className="text-xl" />
               </button>
             </div>
             <div className="flex flex-wrap gap-2">

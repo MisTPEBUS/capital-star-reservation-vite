@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { FaCaretLeft, FaCaretRight } from "react-icons/fa";
 import {
   createDailyOpenSchedule,
   createDailyOpenSchedulesBatch,
@@ -892,18 +893,22 @@ export function ScheduleManagementPage() {
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
-                    className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                    aria-label="前一天"
+                    className="grid h-8 w-9 place-items-center rounded-adminControl border border-admin-borderStrong text-admin-softText hover:border-adminStatus-enabled hover:text-adminStatus-enabled"
+                    title="前一天"
                     type="button"
                     onClick={() => shiftOperationDate(-1)}
                   >
-                    前一天
+                    <FaCaretLeft aria-hidden="true" className="text-lg" />
                   </button>
                   <button
-                    className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                    aria-label="後一天"
+                    className="grid h-8 w-9 place-items-center rounded-adminControl border border-admin-borderStrong text-admin-softText hover:border-adminStatus-enabled hover:text-adminStatus-enabled"
+                    title="後一天"
                     type="button"
                     onClick={() => shiftOperationDate(1)}
                   >
-                    後一天
+                    <FaCaretRight aria-hidden="true" className="text-lg" />
                   </button>
                   {dateQuickOptions.map((option) => {
                     const value = formatDate(
