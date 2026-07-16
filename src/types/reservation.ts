@@ -35,6 +35,7 @@ export interface OpenSchedule {
   routeId: string;
   scheduleCode: string;
   departureTime: string;
+  arriveAt?: number;
   openDate: string;
   pickupStopIds: string[];
   quota: number;

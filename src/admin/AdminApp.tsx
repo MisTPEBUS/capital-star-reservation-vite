@@ -1,4 +1,6 @@
 import "./admin.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "./AdminLayout";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -10,8 +12,18 @@ import { RouteManagementPage } from "./pages/RouteManagementPage";
 import { StopManagementPage } from "./pages/StopManagementPage";
 
 export default function AdminApp() {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: 1, refetchOnWindowFocus: false },
+        },
+      }),
+  );
+
   return (
-    <Routes>
+    <QueryClientProvider client={queryClient}>
+      <Routes>
       <Route path="login" element={<LoginPage />} />
       <Route element={<AdminLayout />}>
         <Route path="dashboard" element={<DashboardPage />} />
@@ -35,6 +47,7 @@ export default function AdminApp() {
         />
       </Route>
       <Route path="*" element={<Navigate replace to="login" />} />
-    </Routes>
+      </Routes>
+    </QueryClientProvider>
   );
 }

@@ -12,6 +12,7 @@ import {
   createDailyOpenSchedulesBatch,
   type DailyOpenSchedulePayload,
 } from "../../api/admin/schedules";
+import { getDashboardDailyOpenSchedules } from "../../api/admin/dashboard";
 import {
   type AdminRoute,
   getRoutes,
@@ -333,6 +334,11 @@ export function ScheduleManagementPage() {
   const [batchPreview, setBatchPreview] = useState<PreviewSchedule[]>([]);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
+  const [isImportDateModalOpen, setIsImportDateModalOpen] = useState(false);
+  const [importSourceDate, setImportSourceDate] = useState(() =>
+    formatDate(new Date()),
+  );
+  const [isImportingSchedules, setIsImportingSchedules] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedRoute = useMemo(
@@ -642,6 +648,52 @@ export function ScheduleManagementPage() {
     );
   };
 
+  const importSchedulesFromDate = async () => {
+    if (!importSourceDate) return;
+
+    try {
+      setIsImportingSchedules(true);
+      const sourceSchedules = await getDashboardDailyOpenSchedules(
+        importSourceDate,
+      );
+      const operationDate = formatDate(addDays(new Date(), 1));
+      const importedSchedules = sourceSchedules.map((schedule, index) => {
+        const time = schedule.departureTime.slice(0, 5);
+
+        return {
+          id: `import-${operationDate}-${schedule.routeId}-${time}-${index}`,
+          date: operationDate,
+          time,
+          routeId: schedule.routeId,
+          routeNumber: schedule.routeNumber,
+          quota: schedule.quota,
+          bookingCloseRule: normalizeBookingCloseAt(
+            operationDate,
+            time,
+            getBookingCloseAt(operationDate, time),
+          ),
+        };
+      });
+
+      setBatchPreview(importedSchedules);
+      setIsImportDateModalOpen(false);
+      setNotice({
+        type: importedSchedules.length ? "success" : "error",
+        message: importedSchedules.length
+          ? `已匯入 ${importSourceDate} 的 ${importedSchedules.length} 筆班次；營運日期已調整為 ${operationDate}，截止日期已依發車前 30 分鐘規則設定。`
+          : `${importSourceDate} 沒有可匯入的班次。`,
+      });
+    } catch (error) {
+      setNotice({
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "讀取指定日期班次失敗。",
+      });
+    } finally {
+      setIsImportingSchedules(false);
+    }
+  };
+
   const downloadBatchTemplate = async () => {
     const { default: ExcelJS } = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
@@ -814,15 +866,6 @@ export function ScheduleManagementPage() {
 
   return (
     <div className="space-y-4">
-      <section className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="admin-page-title">班次設定</h1>
-          <p className="admin-page-description">
-            建立營運預約班次，提供路線、站位、預約時段與可預約人數設定。
-          </p>
-        </div>
-      </section>
-
       {notice && (
         <p
           className={`rounded-adminControl border px-4 py-3 text-sm ${
@@ -1208,6 +1251,13 @@ export function ScheduleManagementPage() {
             </p>
           </div>
           <button
+            className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
+            type="button"
+            onClick={() => setIsImportDateModalOpen(true)}
+          >
+            依日期匯入班次
+          </button>
+          <button
             className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText disabled:opacity-50"
             disabled={batchPreview.length === 0 || isSavingBatch}
             type="button"
@@ -1363,6 +1413,52 @@ export function ScheduleManagementPage() {
           </div>
         )}
       </section>
+
+      {isImportDateModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="import-schedules-title"
+        >
+          <section className="w-full max-w-md rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-5 shadow-adminPanel">
+            <h2 className="admin-section-title" id="import-schedules-title">
+              依日期匯入班次
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-admin-muted">
+              選擇要複製的日期。系統會帶入該日的班次編號與班次時間，並將營運日期設為明日、截止日期設為發車前 30 分鐘。
+            </p>
+            <label className="mt-5 block text-sm font-medium text-admin-softText">
+              來源日期
+              <input
+                className={inputClass}
+                type="date"
+                value={importSourceDate}
+                onClick={openInputPicker}
+                onChange={(event) => setImportSourceDate(event.target.value)}
+              />
+            </label>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
+                disabled={isImportingSchedules}
+                type="button"
+                onClick={() => setIsImportDateModalOpen(false)}
+              >
+                取消
+              </button>
+              <button
+                className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg disabled:opacity-50"
+                disabled={!importSourceDate || isImportingSchedules}
+                type="button"
+                onClick={() => void importSchedulesFromDate()}
+              >
+                {isImportingSchedules ? "讀取中…" : "讀取並匯入"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

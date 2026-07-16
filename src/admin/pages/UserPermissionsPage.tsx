@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { FaTimes } from "react-icons/fa";
 import {
   type AdminUser,
   type UserRole,
@@ -104,13 +105,6 @@ export function UserPermissionsPage() {
     });
   }, [keyword, users]);
 
-  const userCountLabel = useMemo(() => {
-    if (isLoading) return "讀取中";
-    return keyword.trim()
-      ? `${filteredUsers.length} / ${users.length} 位使用者`
-      : `${users.length} 位使用者`;
-  }, [filteredUsers.length, isLoading, keyword, users.length]);
-
   const handleRoleChange = async (user: AdminUser, role: UserRole) => {
     if (user.role === role) return;
 
@@ -149,26 +143,10 @@ export function UserPermissionsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <section className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="admin-page-title">權限設定</h1>
-          <p className="admin-page-description">
-            依照身分篩選使用者，並可直接在表格中調整權限。
-          </p>
-        </div>
-        <button
-          className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText disabled:opacity-50"
-          disabled={isLoading}
-          type="button"
-          onClick={() => void loadUsers(selectedRole)}
-        >
-          重新整理
-        </button>
-      </section>
-
-      <section className="admin-panel-body">
-        <div className="grid gap-3 lg:grid-cols-[1fr_minmax(260px,360px)_auto] lg:items-center">
+    <div>
+      <section className="admin-panel-body overflow-hidden p-0">
+        <div className="p-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] lg:items-center">
           <div
             aria-label="使用者角色篩選"
             className="flex flex-wrap gap-2"
@@ -194,9 +172,6 @@ export function UserPermissionsPage() {
             })}
           </div>
           <div className="flex min-w-0 gap-2">
-            <label className="sr-only" htmlFor="user-keyword">
-              關鍵字篩選
-            </label>
             <input
               id="user-keyword"
               className="h-10 min-w-0 flex-1 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm text-admin-text outline-none placeholder:text-admin-muted focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15"
@@ -206,17 +181,16 @@ export function UserPermissionsPage() {
             />
             {keyword && (
               <button
-                className="h-10 rounded-adminControl border border-admin-borderStrong px-3 text-sm font-semibold text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
+                aria-label="清除搜尋文字"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
+                title="清除搜尋文字"
                 type="button"
                 onClick={() => setKeyword("")}
               >
-                清除
+                <FaTimes aria-hidden="true" />
               </button>
             )}
           </div>
-          <span className="text-sm font-semibold text-admin-muted">
-            {userCountLabel}
-          </span>
         </div>
 
         {error && (
@@ -235,9 +209,9 @@ export function UserPermissionsPage() {
             {success}
           </p>
         )}
-      </section>
+        </div>
 
-      <section className="admin-panel-body overflow-hidden p-0">
+        <div className="border-t border-admin-border">
         {isLoading ? (
           <p className="px-4 py-8 text-center text-admin-muted">
             讀取使用者清單中…
@@ -337,6 +311,7 @@ export function UserPermissionsPage() {
             </table>
           </div>
         )}
+        </div>
       </section>
     </div>
   );

@@ -1,4 +1,4 @@
-import { type MouseEvent, useEffect, useMemo, useState } from "react";
+import { type MouseEvent, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 interface FaqItem {
@@ -98,12 +98,6 @@ const faqSections: Array<{
   },
 ];
 
-function getAnswerText(answer: FaqAnswer) {
-  return typeof answer === "string"
-    ? answer
-    : answer.map((part) => part.text).join("");
-}
-
 function renderAnswer(answer: FaqAnswer) {
   if (typeof answer === "string") return answer;
 
@@ -122,28 +116,6 @@ function renderAnswer(answer: FaqAnswer) {
 }
 
 export function FaqPage() {
-  const [keyword, setKeyword] = useState("");
-  const normalizedKeyword = keyword.trim().toLowerCase();
-  const filteredSections = useMemo(() => {
-    if (!normalizedKeyword) return faqSections;
-
-    return faqSections
-      .map((section) => ({
-        ...section,
-        items: section.items.filter((item) => {
-          const question = item.question.toLowerCase();
-          const answer = getAnswerText(item.answer).toLowerCase();
-
-          return (
-            question.includes(normalizedKeyword) ||
-            answer.includes(normalizedKeyword)
-          );
-        }),
-      }))
-      .filter((section) => section.items.length > 0);
-  }, [normalizedKeyword]);
-  const hasResults = filteredSections.length > 0;
-
   useEffect(() => {
     const previousFontSize = document.documentElement.style.fontSize;
     document.title = "使用說明 — Capital Star";
@@ -204,31 +176,10 @@ export function FaqPage() {
               </div>
             ))}
           </div>
-
-          <div className="mt-5 border-t border-ink-100 pt-4">
-            <label className="block text-sm font-black tracking-[0.16em] text-bus-600">
-              搜尋問題
-            </label>
-            <input
-              type="search"
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              placeholder="輸入關鍵字"
-              className="mt-2 h-12 w-full rounded-xl border-2 border-bus-100 bg-white px-4 text-base font-bold text-ink-900 outline-none transition placeholder:text-ink-300 focus:border-bus-600 focus:ring-4 focus:ring-bus-500/20"
-            />
-          </div>
         </header>
 
         <div className="mt-6 space-y-6">
-          {!hasResults && (
-            <div className="rounded-xl border-2 border-bus-100 bg-white p-4 text-center shadow-card">
-              <p className="text-xl font-black text-ink-900">
-                沒有符合的問題，請聯繫客服
-              </p>
-            </div>
-          )}
-
-          {filteredSections.map((section) => (
+          {faqSections.map((section) => (
             <section key={section.title}>
               <div className="mb-3">
                 <h2 className="mt-1 text-2xl font-black tracking-tight text-bus-600">

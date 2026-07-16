@@ -271,22 +271,6 @@ export function RouteManagementPage() {
 
   return (
     <div className="space-y-4">
-      <section className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="admin-page-title">路線設定</h1>
-          <p className="admin-page-description">
-            管理營運路線與各路線使用的站位。
-          </p>
-        </div>
-        <button
-          className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg transition hover:bg-emerald-300"
-          type="button"
-          onClick={openCreateForm}
-        >
-          新增路線
-        </button>
-      </section>
-
       {notice && (
         <p
           className={`rounded-adminControl border px-4 py-3 text-sm ${
@@ -304,11 +288,11 @@ export function RouteManagementPage() {
         <div className="flex items-center justify-between border-b border-admin-border px-4 py-3">
           <h2 className="admin-section-title">路線清單</h2>
           <button
-            className="text-sm font-semibold text-adminStatus-enabled"
+            className="rounded-adminControl bg-adminStatus-enabled px-3 py-2 text-sm font-bold text-admin-bg transition hover:bg-emerald-300"
             type="button"
-            onClick={loadRoutes}
+            onClick={openCreateForm}
           >
-            重新整理
+            新增路線
           </button>
         </div>
         {isLoading ? (

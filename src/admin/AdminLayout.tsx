@@ -18,10 +18,7 @@ export function AdminLayout() {
   } = useAdminFontSize();
 
   useEffect(() => {
-    localStorage.setItem(
-      "admin-sidebar-collapsed",
-      String(isSidebarCollapsed),
-    );
+    localStorage.setItem("admin-sidebar-collapsed", String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
   if (!hasValidAdminSession()) {

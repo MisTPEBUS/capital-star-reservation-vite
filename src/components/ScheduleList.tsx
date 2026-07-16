@@ -85,6 +85,15 @@ const getDeadlineBadge = (schedule: OpenSchedule) => {
   };
 };
 
+const getArrivalBadge = (arriveAt?: number) => {
+  if (typeof arriveAt !== "number") return null;
+
+  return {
+    text: `預估 ${arriveAt} 分鐘抵達`,
+    className: "bg-star-300 text-bus-900",
+  };
+};
+
 function ScheduleSkeleton() {
   return (
     <div className="grid gap-2.5">
@@ -123,7 +132,7 @@ export function ScheduleList({
         <SectionTitle
           eyebrow="班次清單"
           title=""
-          description="列表會依照上車地點、日期、時段篩選。"
+          description="預估時間為班次發車預估抵達時間，實際須依照當日車況為主。"
         />
 
         {/*  <div className="shrink-0 rounded-2xl bg-bus-50 px-3 py-2 text-right ring-1 ring-bus-100">
@@ -178,6 +187,7 @@ export function ScheduleList({
             const isFull = schedule.availableSeats <= 0;
             const isReserved = schedule.userReservation === "RESERVED";
             const deadlineBadge = getDeadlineBadge(schedule);
+            const arrivalBadge = getArrivalBadge(schedule.arriveAt);
             const isPastDeadline = deadlineBadge.text === "已截止";
             const isSelected =
               selectedScheduleId === schedule.dailyOpenScheduleId;
@@ -215,14 +225,16 @@ export function ScheduleList({
                           {schedule.scheduleCode}
                         </p>
                         <p className="mt-1 flex flex-wrap gap-1.5 text-sm font-black">
-                          <span
-                            className={
-                              deadlineBadge.className +
-                              " rounded-full px-2 py-0.5"
-                            }
-                          >
-                            {deadlineBadge.text}
-                          </span>
+                          {arrivalBadge && (
+                            <span
+                              className={
+                                arrivalBadge.className +
+                                " rounded-full px-2 py-0.5"
+                              }
+                            >
+                              {arrivalBadge.text}
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>

@@ -1,10 +1,77 @@
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+} from "@tanstack/react-table";
 import type { AdminReservationListItem } from "../types/admin";
 
+type ReservationRow = AdminReservationListItem & { departureTime: string };
+
 interface DataTableProps {
-  reservations: Array<AdminReservationListItem & { departureTime: string }>;
+  reservations: ReservationRow[];
 }
 
+const columns: ColumnDef<ReservationRow>[] = [
+  {
+    accessorKey: "departureTime",
+    header: "班次",
+    cell: ({ getValue }) => (
+      <span className="font-semibold text-admin-text">{getValue<string>()}</span>
+    ),
+  },
+  {
+    accessorKey: "sequence",
+    header: "序號",
+    cell: ({ getValue }) => String(getValue<number>()).padStart(2, "0"),
+  },
+  {
+    accessorKey: "name",
+    header: "乘客",
+    cell: ({ row }) => (
+      <>
+        <p className="font-semibold text-admin-text">{row.original.name}</p>
+        <p className="mt-1 text-xs text-admin-muted">
+          LINE：{row.original.lineDisplayName}
+        </p>
+      </>
+    ),
+  },
+  {
+    accessorKey: "activeCode",
+    header: "識別碼",
+    cell: ({ getValue }) => <span className="font-mono">{getValue<string>()}</span>,
+  },
+  { accessorKey: "pickupStopName", header: "上車站" },
+  { accessorKey: "bookedAt", header: "預約時間" },
+  {
+    accessorKey: "status",
+    header: "狀態",
+    cell: ({ getValue }) => {
+      const status = getValue<string>();
+
+      return (
+        <span
+          className={
+            status === "RESERVED"
+              ? "font-semibold text-adminStatus-enabled"
+              : "font-semibold text-admin-muted"
+          }
+        >
+          {status === "RESERVED" ? "已預約" : "已取消"}
+        </span>
+      );
+    },
+  },
+];
+
 export function DataTable({ reservations }: DataTableProps) {
+  const table = useReactTable({
+    data: reservations,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   if (reservations.length === 0) {
     return (
       <div className="rounded-adminControl border border-dashed border-admin-borderStrong px-3 py-8 text-center text-sm text-admin-muted">
@@ -17,48 +84,29 @@ export function DataTable({ reservations }: DataTableProps) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[760px] text-left text-sm">
         <thead className="border-b border-admin-border text-xs text-admin-muted">
-          <tr>
-            <th className="px-3 py-2.5 font-semibold">班次</th>
-            <th className="px-3 py-2.5 font-semibold">序號</th>
-            <th className="px-3 py-2.5 font-semibold">乘客</th>
-            <th className="px-3 py-2.5 font-semibold">識別碼</th>
-            <th className="px-3 py-2.5 font-semibold">上車站</th>
-            <th className="px-3 py-2.5 font-semibold">預約時間</th>
-
-            <th className="px-3 py-2.5 font-semibold">狀態</th>
-          </tr>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th key={header.id} className="px-3 py-2.5 font-semibold">
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                </th>
+              ))}
+            </tr>
+          ))}
         </thead>
         <tbody className="divide-y divide-admin-border">
-          {reservations.map((reservation) => (
-            <tr key={reservation.reservationId} className="text-admin-softText">
-              <td className="px-3 py-3 font-semibold text-admin-text">
-                {reservation.departureTime}
-              </td>
-              <td className="px-3 py-3">
-                {String(reservation.sequence).padStart(2, "0")}
-              </td>
-              <td className="px-3 py-3">
-                <p className="font-semibold text-admin-text">
-                  {reservation.name}
-                </p>
-                <p className="mt-1 text-xs text-admin-muted">
-                  LINE：{reservation.lineDisplayName}
-                </p>
-              </td>
-              <td className="px-3 py-3 font-mono">{reservation.activeCode}</td>
-              <td className="px-3 py-3">{reservation.pickupStopName}</td>
-              <td className="px-3 py-3">{reservation.bookedAt}</td>
-              <td className="px-3 py-3">
-                <span
-                  className={
-                    reservation.status === "RESERVED"
-                      ? "font-semibold text-adminStatus-enabled"
-                      : "font-semibold text-admin-muted"
-                  }
-                >
-                  {reservation.status === "RESERVED" ? "已預約" : "已取消"}
-                </span>
-              </td>
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id} className="text-admin-softText">
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id} className="px-3 py-3">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>

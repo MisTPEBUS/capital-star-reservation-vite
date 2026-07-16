@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
-type SidebarIconName = "dashboard" | "users" | "dispatch" | "schedule" | "stop" | "route";
+type SidebarIconName =
+  | "dashboard"
+  | "users"
+  | "dispatch"
+  | "schedule"
+  | "stop"
+  | "route";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -15,7 +21,11 @@ const navigation = [
 ];
 
 const dispatchNavigation = [
-  { to: "/admin/dispatch/schedules", label: "營運預約班次", icon: "schedule" as const },
+  {
+    to: "/admin/dispatch/schedules",
+    label: "班次設定",
+    icon: "schedule" as const,
+  },
   /* { to: "/admin/dispatch/reservations", label: "營運預約班次" }, */
   { to: "/admin/dispatch/stops", label: "站位設定", icon: "stop" as const },
   { to: "/admin/dispatch/routes", label: "路線設定", icon: "route" as const },
@@ -101,7 +111,8 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
   const location = useLocation();
   const isDispatchActive = location.pathname.startsWith("/admin/dispatch/");
   const [isDispatchOpen, setIsDispatchOpen] = useState(isDispatchActive);
-  const showDispatchChildren = !isCollapsed && (isDispatchOpen || isDispatchActive);
+  const showDispatchChildren =
+    !isCollapsed && (isDispatchOpen || isDispatchActive);
 
   return (
     <aside
@@ -180,7 +191,9 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
             }}
           >
             <SidebarIcon name="dispatch" />
-            <span className={`min-w-0 truncate ${isCollapsed ? "lg:hidden" : ""}`}>
+            <span
+              className={`min-w-0 truncate ${isCollapsed ? "lg:hidden" : ""}`}
+            >
               派班管理
             </span>
             <span

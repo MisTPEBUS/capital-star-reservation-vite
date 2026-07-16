@@ -15,6 +15,7 @@ interface ScheduleApiItem {
   routeId: string;
   name: string;
   departureTime: string;
+  arriveAt?: number;
   openDate: string;
   quota: number;
   availableSeats: number;
@@ -63,6 +64,7 @@ function toOpenSchedule(
     routeId: schedule.routeId,
     scheduleCode: schedule.name,
     departureTime: normalizeDepartureTime(schedule.departureTime),
+    arriveAt: schedule.arriveAt,
     openDate: schedule.openDate,
     pickupStopIds: [pickupStopId],
     quota: schedule.quota,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import busHero from "./assets/bus-main.png";
 import busSide from "./assets/bus-side.png";
@@ -87,6 +87,12 @@ const getReservationDepartureTimestamp = (reservation: UpcomingReservation) => {
 function App() {
   const navigate = useNavigate();
   const availableDates = useMemo(() => getAvailableDates(), []);
+  const requestedStopId = useMemo(
+    () => new URLSearchParams(window.location.search).get("stopId")?.trim() ?? "",
+    [],
+  );
+  const hasAppliedInitialStop = useRef(false);
+  const hasScrolledToRequestedStop = useRef(false);
   const [liffProfile, setLiffProfile] = useState<LiffProfile | null>(null);
   const [liffLoading, setLiffLoading] = useState(true);
   const [liffError, setLiffError] = useState("");
@@ -115,9 +121,11 @@ function App() {
     null,
   );
   const [pendingScrollTarget, setPendingScrollTarget] = useState<
-    "time" | "schedules" | null
+    "date" | "time" | "schedules" | null
   >(null);
   const [isScheduleControlsVisible, setIsScheduleControlsVisible] =
+    useState(false);
+  const [isStickyReservationVisible, setIsStickyReservationVisible] =
     useState(false);
   const [reservingScheduleId, setReservingScheduleId] = useState<string | null>(
     null,
@@ -183,13 +191,17 @@ function App() {
     if (!pendingScrollTarget || schedulesLoading) return;
 
     const hasSchedules =
-      pendingScrollTarget === "time"
+      pendingScrollTarget === "time" || pendingScrollTarget === "date"
         ? schedules.length > 0
         : filteredSchedules.length > 0;
 
     if (!schedulesError && hasSchedules) {
       const targetId =
-        pendingScrollTarget === "time" ? "booking-time" : "schedule-list";
+        pendingScrollTarget === "date"
+          ? "booking-date"
+          : pendingScrollTarget === "time"
+            ? "booking-time"
+            : "schedule-list";
 
       window.setTimeout(() => {
         document
@@ -209,15 +221,16 @@ function App() {
 
   useEffect(() => {
     const updateScheduleControlsVisibility = () => {
-      const scheduleList = document.getElementById("schedule-list");
+      const bookingPickup = document.getElementById("booking-pickup");
 
-      if (!scheduleList) {
+      if (!bookingPickup) {
         setIsScheduleControlsVisible(false);
         return;
       }
 
-      const rect = scheduleList.getBoundingClientRect();
-      setIsScheduleControlsVisible(rect.top <= window.innerHeight * 0.55);
+      setIsScheduleControlsVisible(
+        bookingPickup.getBoundingClientRect().bottom <= 0,
+      );
     };
 
     updateScheduleControlsVisibility();
@@ -231,6 +244,32 @@ function App() {
       window.removeEventListener("resize", updateScheduleControlsVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    const updateStickyReservationVisibility = () => {
+      const bookingPickup = document.getElementById("booking-pickup");
+
+      if (!bookingPickup || filteredSchedules.length === 0) {
+        setIsStickyReservationVisible(false);
+        return;
+      }
+
+      setIsStickyReservationVisible(
+        bookingPickup.getBoundingClientRect().bottom <= 0,
+      );
+    };
+
+    updateStickyReservationVisibility();
+    window.addEventListener("scroll", updateStickyReservationVisibility, {
+      passive: true,
+    });
+    window.addEventListener("resize", updateStickyReservationVisibility);
+
+    return () => {
+      window.removeEventListener("scroll", updateStickyReservationVisibility);
+      window.removeEventListener("resize", updateStickyReservationVisibility);
+    };
+  }, [filteredSchedules.length]);
 
   const displayPassengerProfile = {
     ...passengerProfile,
@@ -286,6 +325,9 @@ function App() {
         const activeStops = stops
           .filter((stop) => stop.status === "ACTIVE")
           .map(toPickupStop);
+        const requestedStopExists = activeStops.some(
+          (stop) => stop.stopId === requestedStopId,
+        );
 
         if (!isCurrent) return;
 
@@ -295,13 +337,32 @@ function App() {
             (stop) => stop.stopId === current.pickupStopId,
           );
 
+          const pickupStopId = !hasAppliedInitialStop.current
+            ? requestedStopExists
+              ? requestedStopId
+              : (activeStops[0]?.stopId ?? "")
+            : hasCurrentStop
+              ? current.pickupStopId
+              : (activeStops[0]?.stopId ?? "");
+
+          if (activeStops.length > 0) {
+            hasAppliedInitialStop.current = true;
+          }
+
           return {
             ...current,
-            pickupStopId: hasCurrentStop
-              ? current.pickupStopId
-              : (activeStops[0]?.stopId ?? ""),
+            pickupStopId,
           };
         });
+
+        if (requestedStopExists && !hasScrolledToRequestedStop.current) {
+          hasScrolledToRequestedStop.current = true;
+          window.setTimeout(() => {
+            document
+              .getElementById("booking-pickup")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 0);
+        }
       } catch (error) {
         if (!isCurrent) return;
 
@@ -325,7 +386,7 @@ function App() {
     return () => {
       isCurrent = false;
     };
-  }, [pickupStopsRetryKey]);
+  }, [pickupStopsRetryKey, requestedStopId]);
 
   useEffect(() => {
     async function loadAuthProfile() {
@@ -552,7 +613,13 @@ function App() {
       setSchedulesLoading(true);
     }
     setPendingScrollTarget(
-      source === "date" ? "time" : source === "time" ? "schedules" : null,
+      source === "pickup"
+        ? "date"
+        : source === "date"
+          ? "time"
+          : source === "time"
+            ? "schedules"
+            : null,
     );
     setSelection(nextSelection);
   };
@@ -746,7 +813,7 @@ function App() {
 
         <div
           className={`fixed inset-x-0 bottom-0 z-40 border-t border-bus-100 bg-white/95 px-4 py-3 shadow-[0_-12px_30px_rgba(7,43,80,0.12)] backdrop-blur transition ${
-            isScheduleControlsVisible
+            isStickyReservationVisible
               ? "translate-y-0 opacity-100"
               : "pointer-events-none translate-y-full opacity-0"
           }`}

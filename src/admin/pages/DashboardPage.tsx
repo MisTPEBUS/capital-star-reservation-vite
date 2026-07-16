@@ -35,15 +35,6 @@ function getTodayValue() {
   return formatDateValue(new Date());
 }
 
-function getDateLabel(value: string) {
-  const date = getDateFromValue(value);
-  return new Intl.DateTimeFormat("zh-TW", {
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-  }).format(date);
-}
-
 function openInputPicker(event: React.MouseEvent<HTMLInputElement>) {
   event.currentTarget.showPicker?.();
 }
@@ -93,6 +84,7 @@ function getStatusText(status: string) {
 export function DashboardPage() {
   const [openDate, setOpenDate] = useState(getTodayValue());
   const [schedules, setSchedules] = useState<DashboardDailyOpenSchedule[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState("ALL");
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
     null,
   );
@@ -110,7 +102,30 @@ export function DashboardPage() {
   const [schedulesError, setSchedulesError] = useState("");
   const [reservationsError, setReservationsError] = useState("");
   const todayValue = getTodayValue();
-  const tomorrowValue = formatDateValue(addDays(new Date(), 1));
+
+  const routeOptions = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          schedules.map((schedule) => [
+            schedule.routeId,
+            {
+              routeNumber: schedule.routeNumber,
+              routeName: schedule.routeName,
+            },
+          ]),
+        ).entries(),
+      ).map(([routeId, route]) => ({ routeId, ...route })),
+    [schedules],
+  );
+
+  const filteredSchedules = useMemo(
+    () =>
+      selectedRouteId === "ALL"
+        ? schedules
+        : schedules.filter((schedule) => schedule.routeId === selectedRouteId),
+    [schedules, selectedRouteId],
+  );
 
   const selectedSchedule = useMemo(
     () =>
@@ -154,41 +169,6 @@ export function DashboardPage() {
     0,
   );
 
-  const loadDailyOpenSchedules = async () => {
-    try {
-      setIsSchedulesLoading(true);
-      setSchedulesError("");
-      setReservations([]);
-
-      const result = await getDashboardDailyOpenSchedules(openDate);
-      const sortedSchedules = [...result].sort((a, b) =>
-        a.departureTime.localeCompare(b.departureTime),
-      );
-
-      setSchedules(sortedSchedules);
-      setSelectedScheduleId((current) => {
-        if (
-          current &&
-          sortedSchedules.some(
-            (schedule) => schedule.dailyOpenScheduleId === current,
-          )
-        ) {
-          return current;
-        }
-
-        return sortedSchedules[0]?.dailyOpenScheduleId ?? null;
-      });
-    } catch (error) {
-      setSchedules([]);
-      setSelectedScheduleId(null);
-      setSchedulesError(
-        error instanceof Error ? error.message : "讀取當日開放班次失敗。",
-      );
-    } finally {
-      setIsSchedulesLoading(false);
-    }
-  };
-
   useEffect(() => {
     let isCurrent = true;
 
@@ -228,6 +208,19 @@ export function DashboardPage() {
       isCurrent = false;
     };
   }, [openDate]);
+
+  useEffect(() => {
+    if (
+      selectedScheduleId &&
+      filteredSchedules.some(
+        (schedule) => schedule.dailyOpenScheduleId === selectedScheduleId,
+      )
+    ) {
+      return;
+    }
+
+    setSelectedScheduleId(filteredSchedules[0]?.dailyOpenScheduleId ?? null);
+  }, [filteredSchedules, selectedScheduleId]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -436,87 +429,7 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <section className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="admin-page-title">今日預約概況</h1>
-          </div>
-          <p className="admin-page-description">
-            選擇日期查看當日開放預約班次，點選班次後查詢乘客預約清單。
-          </p>
-        </div>
-
-        <div className="max-w-full rounded-adminControl border border-admin-border bg-admin-surface p-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="text-sm font-medium text-admin-softText">
-              查詢日期
-              <input
-                className="mt-2 h-11 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-                type="date"
-                value={openDate}
-                onClick={openInputPicker}
-                onChange={(event) => setOpenDate(event.target.value)}
-              />
-            </label>
-            <div className="grid h-11 w-[216px] max-w-full shrink-0 grid-cols-[44px_minmax(112px,1fr)_44px] items-center overflow-hidden whitespace-nowrap rounded-adminControl border border-admin-borderStrong bg-admin-bg text-sm font-bold text-admin-text">
-              <button
-                aria-label="前一天"
-                className="grid h-full place-items-center text-admin-softText hover:text-adminStatus-enabled"
-                title="前一天"
-                type="button"
-                onClick={() => shiftOpenDate(-1)}
-              >
-                <FaCaretLeft aria-hidden="true" className="text-xl" />
-              </button>
-              <span className="flex h-full min-w-0 items-center justify-center border-x border-admin-borderStrong px-3 text-center">
-                {getDateLabel(openDate)}
-              </span>
-              <button
-                aria-label="後一天"
-                className="grid h-full place-items-center text-admin-softText hover:text-adminStatus-enabled"
-                title="後一天"
-                type="button"
-                onClick={() => shiftOpenDate(1)}
-              >
-                <FaCaretRight aria-hidden="true" className="text-xl" />
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                className={`h-11 rounded-adminControl border px-4 text-sm font-semibold ${
-                  openDate === todayValue
-                    ? "border-adminStatus-enabled bg-adminStatus-enabled/10 text-adminStatus-enabled"
-                    : "border-admin-borderStrong text-admin-softText"
-                }`}
-                type="button"
-                onClick={() => setOpenDate(todayValue)}
-              >
-                今日
-              </button>
-              <button
-                className={`h-11 rounded-adminControl border px-4 text-sm font-semibold ${
-                  openDate === tomorrowValue
-                    ? "border-adminStatus-enabled bg-adminStatus-enabled/10 text-adminStatus-enabled"
-                    : "border-admin-borderStrong text-admin-softText"
-                }`}
-                type="button"
-                onClick={() => setOpenDate(tomorrowValue)}
-              >
-                明日
-              </button>
-            </div>
-            <button
-              className="h-11 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
-              type="button"
-              onClick={loadDailyOpenSchedules}
-            >
-              重新整理
-            </button>
-          </div>
-        </div>
-      </section>
-
+    <div className="flex min-h-[calc(100vh-4.5rem)] flex-col space-y-4">
       <section className=" gap-3 sm:grid-cols-3 hidden">
         <div className="admin-stat-card">
           <p className="admin-stat-label">當日開放班次</p>
@@ -536,107 +449,171 @@ export function DashboardPage() {
         <p className="rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
           {schedulesError}
         </p>
-      ) : schedules.length === 0 && !isSchedulesLoading ? (
-        <div className="rounded-adminPanel border border-dashed border-admin-borderStrong bg-admin-surface px-5 py-10 text-center text-sm text-admin-muted">
-          此日期沒有開放預約班次。
-        </div>
       ) : (
-        <section className="grid items-start gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-          <div className="admin-panel-body">
+        <section className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="admin-panel-body flex min-h-0 flex-col">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-semibold text-admin-text">
                   班次
                 </h3>
-                <p className="mt-1 text-sm text-admin-muted">
-                  點選左側班次，右側立即更新。
-                </p>
               </div>
-              <span className="text-sm font-semibold text-admin-muted">
-                {schedules.length} 班
-              </span>
             </div>
 
-            <div className="max-h-[calc(100vh-330px)] min-h-[420px] space-y-2 overflow-auto pr-1">
-              {schedules.map((schedule) => {
-                const isSelected =
-                  schedule.dailyOpenScheduleId === selectedScheduleId;
-                const isInactive = schedule.status === "INACTIVE";
+            <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-1">
+              {isSchedulesLoading ? (
+                <p className="px-3 py-6 text-center text-sm text-admin-muted">
+                  讀取班次中…
+                </p>
+              ) : filteredSchedules.length === 0 ? (
+                <div className="rounded-adminControl border border-dashed border-admin-borderStrong bg-admin-bg px-4 py-8 text-center text-sm text-admin-muted">
+                  此日期沒有符合路線的開放預約班次。
+                </div>
+              ) : (
+                filteredSchedules.map((schedule) => {
+                  const isSelected =
+                    schedule.dailyOpenScheduleId === selectedScheduleId;
+                  const isInactive = schedule.status === "INACTIVE";
 
-                return (
-                  <button
-                    key={schedule.dailyOpenScheduleId}
-                    aria-pressed={isSelected}
-                    className={`w-full rounded-adminControl border px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
-                      isSelected && isInactive
-                        ? "border-red-400/60 bg-red-400/10"
-                        : isSelected
-                          ? "border-adminStatus-enabled bg-adminStatus-enabled/10"
-                          : isInactive
-                            ? "border-admin-borderStrong bg-admin-bg/70 opacity-80 hover:border-red-400/40"
-                            : "border-admin-border bg-admin-elevated hover:border-admin-borderStrong"
-                    }`}
-                    type="button"
-                    onClick={() =>
-                      setSelectedScheduleId(schedule.dailyOpenScheduleId)
-                    }
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p
-                          className={`text-2xl font-bold leading-none ${
-                            isInactive ? "text-admin-muted" : "text-admin-text"
+                  return (
+                    <button
+                      key={schedule.dailyOpenScheduleId}
+                      aria-pressed={isSelected}
+                      className={`w-full rounded-adminControl border px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
+                        isSelected && isInactive
+                          ? "border-red-400/60 bg-red-400/10"
+                          : isSelected
+                            ? "border-adminStatus-enabled bg-adminStatus-enabled/10"
+                            : isInactive
+                              ? "border-admin-borderStrong bg-admin-bg/70 opacity-80 hover:border-red-400/40"
+                              : "border-admin-border bg-admin-elevated hover:border-admin-borderStrong"
+                      }`}
+                      type="button"
+                      onClick={() =>
+                        setSelectedScheduleId(schedule.dailyOpenScheduleId)
+                      }
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p
+                            className={`text-2xl font-bold leading-none ${
+                              isInactive
+                                ? "text-admin-muted"
+                                : "text-admin-text"
+                            }`}
+                          >
+                            {formatDepartureTime(schedule.departureTime)}
+                          </p>
+                          <p
+                            className={`mt-2 truncate text-sm font-semibold ${
+                              isInactive
+                                ? "text-admin-muted"
+                                : "text-admin-softText"
+                            }`}
+                          >
+                            {schedule.routeNumber}｜{schedule.routeName}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
+                            schedule.status === "ACTIVE"
+                              ? "bg-adminStatus-enabled/10 text-adminStatus-enabled"
+                              : "bg-red-400/10 text-red-300 ring-1 ring-red-400/25"
                           }`}
                         >
-                          {formatDepartureTime(schedule.departureTime)}
-                        </p>
-                        <p
-                          className={`mt-2 truncate text-sm font-semibold ${
-                            isInactive
-                              ? "text-admin-muted"
-                              : "text-admin-softText"
-                          }`}
-                        >
-                          {schedule.routeNumber}｜{schedule.routeName}
-                        </p>
+                          {getStatusText(schedule.status)}
+                        </span>
                       </div>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
-                          schedule.status === "ACTIVE"
-                            ? "bg-adminStatus-enabled/10 text-adminStatus-enabled"
-                            : "bg-red-400/10 text-red-300 ring-1 ring-red-400/25"
-                        }`}
-                      >
-                        {getStatusText(schedule.status)}
-                      </span>
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <p className="text-admin-muted">已預約</p>
-                        <p className="mt-1 font-bold text-admin-text">
-                          {schedule.reservedCount}
-                        </p>
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <p className="text-admin-muted">已預約</p>
+                          <p className="mt-1 font-bold text-admin-text">
+                            {schedule.reservedCount}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-admin-muted">剩餘</p>
+                          <p className="mt-1 font-bold text-admin-text">
+                            {schedule.availableSeats}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-admin-muted">名額</p>
+                          <p className="mt-1 font-bold text-admin-text">
+                            {schedule.quota}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-admin-muted">剩餘</p>
-                        <p className="mt-1 font-bold text-admin-text">
-                          {schedule.availableSeats}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-admin-muted">名額</p>
-                        <p className="mt-1 font-bold text-admin-text">
-                          {schedule.quota}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
-          <section className="admin-panel-body min-w-0">
+          <section className="admin-panel-body flex min-h-0 min-w-0 flex-col">
+            <section className="mb-4 max-w-full rounded-adminControl border border-admin-border bg-admin-surface p-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="grid h-11 w-[260px] max-w-full shrink-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center overflow-hidden rounded-adminControl border border-admin-borderStrong bg-admin-bg">
+                  <button
+                    aria-label="前一天"
+                    className="grid h-full place-items-center text-admin-softText hover:text-adminStatus-enabled"
+                    title="前一天"
+                    type="button"
+                    onClick={() => shiftOpenDate(-1)}
+                  >
+                    <FaCaretLeft aria-hidden="true" className="text-xl" />
+                  </button>
+                  <label className="h-full border-x border-admin-borderStrong">
+                    <input
+                      aria-label="選擇日期"
+                      className="h-full w-full bg-admin-bg px-3 text-center text-sm font-bold text-admin-text outline-none focus:ring-2 focus:ring-inset focus:ring-adminStatus-enabled"
+                      type="date"
+                      value={openDate}
+                      onClick={openInputPicker}
+                      onChange={(event) => setOpenDate(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    aria-label="後一天"
+                    className="grid h-full place-items-center text-admin-softText hover:text-adminStatus-enabled"
+                    title="後一天"
+                    type="button"
+                    onClick={() => shiftOpenDate(1)}
+                  >
+                    <FaCaretRight aria-hidden="true" className="text-xl" />
+                  </button>
+                </div>
+                <button
+                  className={`h-11 rounded-adminControl border px-4 text-sm font-semibold ${
+                    openDate === todayValue
+                      ? "border-adminStatus-enabled bg-adminStatus-enabled/10 text-adminStatus-enabled"
+                      : "border-admin-borderStrong text-admin-softText"
+                  }`}
+                  type="button"
+                  onClick={() => setOpenDate(todayValue)}
+                >
+                  今日
+                </button>
+                <label className="min-w-[190px] text-sm font-medium text-admin-softText">
+                  <span className="sr-only">路線篩選</span>
+                  <select
+                    aria-label="路線篩選"
+                    className="h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm font-semibold text-admin-text outline-none focus:border-adminStatus-enabled"
+                    value={selectedRouteId}
+                    onChange={(event) => setSelectedRouteId(event.target.value)}
+                  >
+                    <option value="ALL">全部路線</option>
+                    {routeOptions.map((route) => (
+                      <option key={route.routeId} value={route.routeId}>
+                        {route.routeNumber}｜{route.routeName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </section>
+
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="admin-section-title">
@@ -696,7 +673,7 @@ export function DashboardPage() {
               </p>
             )}
 
-            <div className="mt-4 max-h-[calc(100vh-330px)] min-h-[420px] overflow-auto rounded-adminControl border border-admin-border">
+            <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-adminControl border border-admin-border">
               {isReservationsLoading ? (
                 <div className="px-4 py-10 text-center text-sm text-admin-muted">
                   讀取預約清單中…
