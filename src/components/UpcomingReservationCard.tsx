@@ -3,7 +3,6 @@ import {
   cancelReservation,
   type UpcomingReservation,
 } from "../api/reservations";
-import { SectionTitle } from "./SectionTitle";
 import { Toast, type ToastMessage } from "./Toast";
 
 interface UpcomingReservationCardProps {
@@ -77,18 +76,18 @@ export function UpcomingReservationCard({
 
   if (!reservation) {
     return (
-      <section className="rounded-panel bg-white p-4 shadow-card ring-1 ring-bus-100/80 md:p-5">
-        <SectionTitle eyebrow="" title="預約乘車憑證" description="" />
-        <div className="mt-3 rounded-card bg-ink-50 p-4 text-center ring-1 ring-bus-100">
-          <p className="text-xl font-black text-ink-900">目前尚未預約班次</p>
-          <button
-            type="button"
-            onClick={scrollToBookingForm}
-            className="mt-4 h-11 rounded-xl bg-bus-900 px-5 text-base font-black text-white transition hover:bg-bus-700"
-          >
-            立即預約
-          </button>
-        </div>
+      <section
+        id="upcoming-reservation"
+        className="rounded-card bg-ink-50 p-4 text-center ring-1 ring-bus-100"
+      >
+        <p className="text-xl font-black text-ink-900">目前尚未預約班次</p>
+        <button
+          type="button"
+          onClick={scrollToBookingForm}
+          className="mt-4 h-11 rounded-xl bg-bus-900 px-5 text-base font-black text-white transition hover:bg-bus-700"
+        >
+          立即預約
+        </button>
       </section>
     );
   }
@@ -136,9 +135,9 @@ export function UpcomingReservationCard({
   return (
     <section
       id="upcoming-reservation"
-      className="overflow-hidden rounded-panel bg-white p-4 shadow-card ring-1 ring-[#D7B94A]/70 md:p-5"
+      className="overflow-hidden rounded-panel"
     >
-      <SectionTitle eyebrow="" title="預約乘車憑證" description="" />
+      {/* <SectionTitle eyebrow="" title="預約乘車憑證" description="" /> */}
       <article
         aria-label="預約乘車憑證，點擊可全螢幕檢視"
         aria-modal={isTicketExpanded || undefined}

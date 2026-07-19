@@ -16,7 +16,15 @@ import {
   hasValidAdminSession,
   saveAdminSession,
 } from "../../api/admin/session";
-import { useAdminFontSize } from "../hooks/useAdminFontSize";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 
 const OTP_LENGTH = 4;
 
@@ -34,13 +42,6 @@ function formatCountdown(seconds: number) {
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const {
-    fontSize,
-    canDecreaseFontSize,
-    canIncreaseFontSize,
-    decreaseFontSize,
-    increaseFontSize,
-  } = useAdminFontSize();
   const [step, setStep] = useState<"activityCode" | "otp">("activityCode");
   const [activityCode, setActivityCode] = useState("");
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
@@ -220,35 +221,6 @@ export function LoginPage() {
   return (
     <main className="admin-shell flex items-center justify-center p-4">
       <section className="w-full max-w-md">
-        <div className="mb-4 flex justify-end">
-          <div
-            aria-label="文字大小"
-            className="flex overflow-hidden rounded-adminControl border border-admin-borderStrong"
-            role="group"
-          >
-            <button
-              className="px-3 py-2 text-sm font-bold text-admin-softText transition hover:bg-admin-elevated hover:text-admin-text disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!canDecreaseFontSize}
-              title="縮小文字"
-              type="button"
-              onClick={decreaseFontSize}
-            >
-              A-
-            </button>
-            <span className="border-l border-admin-borderStrong px-2 py-2 text-xs font-bold text-admin-muted">
-              {fontSize}px
-            </span>
-            <button
-              className="border-l border-admin-borderStrong px-3 py-2 text-sm font-bold text-admin-softText transition hover:bg-admin-elevated hover:text-admin-text disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!canIncreaseFontSize}
-              title="放大文字"
-              type="button"
-              onClick={increaseFontSize}
-            >
-              A+
-            </button>
-          </div>
-        </div>
         <header className="mb-8 text-center">
           {/*  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-adminPanel border border-admin-borderStrong bg-admin-elevated text-2xl font-bold tracking-[0.1em] text-adminStatus-enabled">
            
@@ -357,38 +329,42 @@ export function LoginPage() {
         </p>
       </section>
 
-      {dialog && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="w-full max-w-sm rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-5 text-center shadow-adminPanel">
-            <div
-              className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full border text-2xl font-bold ${
-                dialog.type === "success"
-                  ? "border-adminStatus-enabled/30 bg-adminStatus-enabled/10 text-adminStatus-enabled"
-                  : "border-red-400/30 bg-red-400/10 text-red-300"
-              }`}
-            >
-              {dialog.type === "success" ? "OK" : "!"}
-            </div>
-            <h2 className="mt-5 text-xl font-bold text-admin-text">
-              {dialog.type === "success" ? "驗證完成" : "發生錯誤"}
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-admin-muted">
-              {dialog.message}
-            </p>
-            <button
-              className="mt-6 h-12 w-full rounded-adminControl bg-admin-elevated font-semibold text-admin-text transition hover:bg-admin-borderStrong"
-              type="button"
-              onClick={closeDialog}
-            >
-              確定
-            </button>
-          </div>
-        </div>
-      )}
+      <AlertDialog
+        open={Boolean(dialog)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen && dialog) closeDialog();
+        }}
+      >
+        {dialog && (
+          <AlertDialogContent className="!z-[60] !max-w-sm !rounded-adminPanel !border !border-admin-borderStrong !bg-admin-surface !p-5 !text-admin-text shadow-adminPanel">
+            <AlertDialogHeader className="!block !text-center">
+              <div
+                className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full border text-2xl font-bold ${
+                  dialog.type === "success"
+                    ? "border-adminStatus-enabled/30 bg-adminStatus-enabled/10 text-adminStatus-enabled"
+                    : "border-red-400/30 bg-red-400/10 text-red-300"
+                }`}
+              >
+                {dialog.type === "success" ? "OK" : "!"}
+              </div>
+              <AlertDialogTitle className="mt-5 text-xl font-bold !text-admin-text">
+                {dialog.type === "success" ? "驗證完成" : "登入異常"}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="mt-3 text-sm leading-6 !text-admin-muted">
+                {dialog.message}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="!mx-0 !mb-0 !mt-6 !block !border-0 !bg-transparent !p-0">
+              <AlertDialogAction
+                className="!h-12 !w-full !rounded-adminControl !bg-admin-elevated !font-semibold !text-admin-text hover:!bg-admin-borderStrong"
+                onClick={closeDialog}
+              >
+                確定
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
     </main>
   );
 }

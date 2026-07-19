@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { SidebarTrigger } from "../../components/ui/sidebar";
+import packageInfo from "../../../package.json";
+
+const APP_VERSION = `v${packageInfo.version}`;
 
 type SidebarIconName =
   | "dashboard"
@@ -116,7 +120,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
 
   return (
     <aside
-      className={`border-b border-admin-border bg-admin-surface transition-[width] duration-200 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-b-0 lg:border-r ${
+      className={`border-b border-admin-border bg-admin-surface transition-[width] duration-200 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:border-b-0 lg:border-r ${
         isCollapsed ? "lg:w-[76px]" : "lg:w-[280px]"
       }`}
     >
@@ -133,18 +137,12 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
             後台管理系統
           </p>
         </div>
-        <button
+        <SidebarTrigger
           aria-label={isCollapsed ? "展開側邊欄" : "收合側邊欄"}
-          className="hidden h-9 w-9 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong text-admin-softText hover:bg-admin-elevated hover:text-admin-text lg:grid"
-          type="button"
-          onClick={() => onCollapsedChange(!isCollapsed)}
-        >
-          <span className="text-lg leading-none" aria-hidden="true">
-            {isCollapsed ? "›" : "‹"}
-          </span>
-        </button>
+          className="hidden h-9 w-9 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong !text-admin-softText hover:!bg-admin-elevated hover:!text-admin-text lg:grid"
+        />
       </div>
-      <nav className="flex gap-1 overflow-x-auto border-t border-admin-border px-2 py-2 lg:block lg:space-y-1 lg:border-t-0 lg:px-3 lg:py-3">
+      <nav className="flex gap-1 overflow-x-auto border-t border-admin-border px-2 py-2 lg:block lg:flex-1 lg:space-y-1 lg:border-t-0 lg:px-3 lg:py-3">
         {navigation.slice(0, 1).map((item) => (
           <NavLink
             key={item.to}
@@ -249,6 +247,17 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
           </NavLink>
         ))}
       </nav>
+      <footer
+        className={`border-t border-admin-border px-4 py-3 text-xs font-medium text-admin-muted ${
+          isCollapsed ? "lg:px-2 lg:text-center" : ""
+        }`}
+        title={`系統版本 ${APP_VERSION}`}
+      >
+        {isCollapsed ? <span className="lg:hidden">系統版本 {APP_VERSION}</span> : `系統版本 ${APP_VERSION}`}
+        <span className={isCollapsed ? "hidden lg:inline" : "hidden"}>
+          {APP_VERSION}
+        </span>
+      </footer>
     </aside>
   );
 }

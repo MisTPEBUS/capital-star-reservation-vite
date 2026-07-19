@@ -18,6 +18,8 @@ export interface RouteStop {
   latitude: number | null;
   longitude: number | null;
   sequence: number;
+  /** 從班次起點到此站的預估行車時間（分鐘）。 */
+  arriveAt?: number;
   status?: string;
 }
 
@@ -40,6 +42,7 @@ export interface RoutePayload {
 export interface RouteStopPayload {
   stopId: string;
   sequence: number;
+  arriveAt?: number;
 }
 
 function getErrorMessage(error: unknown) {

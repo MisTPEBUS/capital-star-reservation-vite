@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { FaCaretLeft, FaCaretRight } from "react-icons/fa";
+import { CalendarIcon } from "lucide-react";
 import {
   createDailyOpenSchedule,
   createDailyOpenSchedulesBatch,
@@ -18,6 +19,28 @@ import {
   getRoutes,
   type RouteStop,
 } from "../../api/admin/routes";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "../../components/ui/sheet";
+import { Input } from "../../components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
+import { Calendar } from "../../components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../../components/ui/popover";
 
 interface StopReservationSetting extends Pick<
   RouteStop,
@@ -35,6 +58,12 @@ interface ScheduleForm {
   totalQuota: number;
   bookingCloseAt: string;
 }
+
+type ScheduleField =
+  | "routeId"
+  | "operationDate"
+  | "departureTime"
+  | "bookingCloseAt";
 
 interface PreviewSchedule {
   id: string;
@@ -193,16 +222,13 @@ function applyWorksheetStyle(
 }
 
 function createEmptyScheduleForm(): ScheduleForm {
-  const operationDate = formatDate(addDays(new Date(), 1));
-  const departureTime = "06:30";
-
   return {
     routeId: "",
-    operationDate,
-    departureTime,
+    operationDate: "",
+    departureTime: "",
     scheduleName: "",
     totalQuota: 20,
-    bookingCloseAt: getBookingCloseAt(operationDate, departureTime),
+    bookingCloseAt: "",
   };
 }
 
@@ -334,16 +360,58 @@ export function ScheduleManagementPage() {
   const [batchPreview, setBatchPreview] = useState<PreviewSchedule[]>([]);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
+  const [isSingleScheduleDrawerOpen, setIsSingleScheduleDrawerOpen] =
+    useState(false);
   const [isImportDateModalOpen, setIsImportDateModalOpen] = useState(false);
+  const [isImportCalendarOpen, setIsImportCalendarOpen] = useState(false);
+  const [isOperationDateCalendarOpen, setIsOperationDateCalendarOpen] =
+    useState(false);
+  const [isBookingCloseCalendarOpen, setIsBookingCloseCalendarOpen] =
+    useState(false);
+  const [batchOperationDateCalendarId, setBatchOperationDateCalendarId] =
+    useState<string | null>(null);
+  const [batchDeadlineCalendarId, setBatchDeadlineCalendarId] = useState<
+    string | null
+  >(null);
+  const [scheduleFieldErrors, setScheduleFieldErrors] = useState<
+    Partial<Record<ScheduleField, boolean>>
+  >({});
+  const [drawerNotice, setDrawerNotice] = useState<string | null>(null);
+  const [pendingExcelImport, setPendingExcelImport] = useState<{
+    fileName: string;
+    preview: PreviewSchedule[];
+    errors: string[];
+  } | null>(null);
   const [importSourceDate, setImportSourceDate] = useState(() =>
     formatDate(new Date()),
   );
   const [isImportingSchedules, setIsImportingSchedules] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const operationDateSegmentRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const departureTimeSegmentRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const routeSelectRef = useRef<HTMLSelectElement | null>(null);
+  const bookingCloseDateRef = useRef<HTMLButtonElement | null>(null);
+  const batchInputRefs = useRef<Record<string, HTMLElement | null>>({});
+  const activeRoutes = useMemo(
+    () => routes.filter((route) => route.status === "ACTIVE"),
+    [routes],
+  );
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeoutId = window.setTimeout(() => setNotice(null), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!drawerNotice) return;
+    const timeoutId = window.setTimeout(() => setDrawerNotice(null), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [drawerNotice]);
 
   const selectedRoute = useMemo(
-    () => getRoute(routes, scheduleForm.routeId),
-    [routes, scheduleForm.routeId],
+    () => getRoute(activeRoutes, scheduleForm.routeId),
+    [activeRoutes, scheduleForm.routeId],
   );
 
   const generatedScheduleName = selectedRoute
@@ -358,15 +426,18 @@ export function ScheduleManagementPage() {
       setIsRoutesLoading(true);
       setRoutesError("");
       const loadedRoutes = await getRoutes();
-      const firstRoute = loadedRoutes[0] ?? null;
+      const availableRoutes = loadedRoutes.filter(
+        (route) => route.status === "ACTIVE",
+      );
+      const firstRoute = availableRoutes[0] ?? null;
 
       setRoutes(loadedRoutes);
       setScheduleForm((current) => {
-        const currentRoute = getRoute(loadedRoutes, current.routeId);
+        const currentRoute = getRoute(availableRoutes, current.routeId);
         return { ...current, routeId: currentRoute?.routeId ?? "" };
       });
       setStopSettings((current) => {
-        const currentRoute = getRoute(loadedRoutes, scheduleForm.routeId);
+        const currentRoute = getRoute(availableRoutes, scheduleForm.routeId);
         return current.length && currentRoute?.routeId === scheduleForm.routeId
           ? current
           : buildStopSettings(
@@ -401,6 +472,7 @@ export function ScheduleManagementPage() {
     const routeId = event.target.value;
     const route = getRoute(routes, routeId);
     updateScheduleForm("routeId", routeId);
+    setScheduleFieldErrors((current) => ({ ...current, routeId: false }));
     setStopSettings(buildStopSettings(route, scheduleForm.totalQuota));
   };
 
@@ -409,10 +481,13 @@ export function ScheduleManagementPage() {
   };
 
   const setOperationDate = (operationDate: string) => {
+    setScheduleFieldErrors((current) => ({ ...current, operationDate: false }));
     setScheduleForm((current) => ({
       ...current,
       operationDate,
-      bookingCloseAt: getBookingCloseAt(operationDate, current.departureTime),
+      bookingCloseAt:
+        getBookingCloseAt(operationDate, current.departureTime) ||
+        current.bookingCloseAt,
     }));
   };
 
@@ -423,11 +498,43 @@ export function ScheduleManagementPage() {
   };
 
   const setDepartureTime = (departureTime: string) => {
+    setScheduleFieldErrors((current) => ({ ...current, departureTime: false }));
     setScheduleForm((current) => ({
       ...current,
       departureTime,
-      bookingCloseAt: getBookingCloseAt(current.operationDate, departureTime),
+      bookingCloseAt:
+        getBookingCloseAt(current.operationDate, departureTime) ||
+        current.bookingCloseAt,
     }));
+  };
+
+  const updateOperationDateSegment = (index: number, value: string) => {
+    const limits = [4, 2, 2];
+    const parts = scheduleForm.operationDate.split("-");
+    const normalizedValue = value.replace(/\D/g, "").slice(0, limits[index]);
+
+    parts[index] = normalizedValue;
+    setOperationDate(parts.slice(0, 3).join("-"));
+
+    if (normalizedValue.length === limits[index]) {
+      if (index < limits.length - 1) {
+        operationDateSegmentRefs.current[index + 1]?.focus();
+      } else {
+        departureTimeSegmentRefs.current[0]?.focus();
+      }
+    }
+  };
+
+  const updateDepartureTimeSegment = (index: number, value: string) => {
+    const parts = scheduleForm.departureTime.split(":");
+    const normalizedValue = value.replace(/\D/g, "").slice(0, 2);
+
+    parts[index] = normalizedValue;
+    setDepartureTime(parts.slice(0, 2).join(":"));
+
+    if (normalizedValue.length === 2 && index === 0) {
+      departureTimeSegmentRefs.current[1]?.focus();
+    }
   };
 
   const adjustDepartureTime = (minutes: number) => {
@@ -435,6 +542,10 @@ export function ScheduleManagementPage() {
   };
 
   const setBookingCloseAt = (bookingCloseAt: string) => {
+    setScheduleFieldErrors((current) => ({
+      ...current,
+      bookingCloseAt: false,
+    }));
     setScheduleForm((current) => ({
       ...current,
       bookingCloseAt: normalizeBookingCloseAt(
@@ -445,16 +556,44 @@ export function ScheduleManagementPage() {
     }));
   };
 
+  const setBookingCloseDate = (date: Date | undefined) => {
+    if (!date) return;
+
+    const time = scheduleForm.bookingCloseAt.split("T")[1] || "00:00";
+    setBookingCloseAt(`${formatDate(date)}T${time}`);
+    setIsBookingCloseCalendarOpen(false);
+  };
+
+  const updateBookingCloseTimeSegment = (index: number, value: string) => {
+    const date = scheduleForm.bookingCloseAt.split("T")[0];
+    if (!date) return;
+
+    const parts = scheduleForm.bookingCloseAt.split("T")[1]?.split(":") ?? [
+      "",
+      "",
+    ];
+    parts[index] = value.replace(/\D/g, "").slice(0, 2);
+    setScheduleFieldErrors((current) => ({
+      ...current,
+      bookingCloseAt: false,
+    }));
+    updateScheduleForm("bookingCloseAt", `${date}T${parts.join(":")}`);
+  };
+
   const setBookingCloseAtByRule = (
     rule: "previous-day-2359" | "previous-day-1800" | "departure-minus-30",
   ) => {
+    setScheduleFieldErrors((current) => ({
+      ...current,
+      bookingCloseAt: false,
+    }));
     const operationDate = getDateFromInputValue(scheduleForm.operationDate);
     if (!operationDate) return;
 
     if (rule === "previous-day-2359") {
       updateScheduleForm(
         "bookingCloseAt",
-        `${formatDate(addDays(operationDate, -1))}T23:59`,
+        `${formatDate(addDays(operationDate, -1))}T22:00`,
       );
       return;
     }
@@ -479,18 +618,37 @@ export function ScheduleManagementPage() {
   const saveSchedule = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (
-      !scheduleForm.routeId ||
-      !scheduleForm.operationDate ||
-      !scheduleForm.departureTime ||
-      !scheduleForm.bookingCloseAt
-    ) {
-      setNotice({
-        type: "error",
-        message: "請填寫路線、營運日期、班次時間與預約截止。",
+    const errors: Partial<Record<ScheduleField, boolean>> = {
+      routeId: !scheduleForm.routeId,
+      operationDate: !getDateFromInputValue(scheduleForm.operationDate),
+      departureTime: !/^([01]\d|2[0-3]):[0-5]\d$/.test(
+        scheduleForm.departureTime,
+      ),
+      bookingCloseAt: !getDateTimeFromInputValue(scheduleForm.bookingCloseAt),
+    };
+    const firstInvalidField = (Object.keys(errors) as ScheduleField[]).find(
+      (field) => errors[field],
+    );
+
+    if (firstInvalidField) {
+      setNotice(null);
+      setScheduleFieldErrors(errors);
+      const target =
+        firstInvalidField === "routeId"
+          ? routeSelectRef.current
+          : firstInvalidField === "operationDate"
+            ? operationDateSegmentRefs.current[0]
+            : firstInvalidField === "departureTime"
+              ? departureTimeSegmentRefs.current[0]
+              : bookingCloseDateRef.current;
+      requestAnimationFrame(() => {
+        target?.scrollIntoView({ behavior: "smooth", block: "center" });
+        target?.focus();
       });
       return;
     }
+
+    setScheduleFieldErrors({});
 
     if (enabledStopQuota <= 0) {
       setNotice({ type: "error", message: "可預約名額必須大於 0。" });
@@ -521,16 +679,17 @@ export function ScheduleManagementPage() {
 
     try {
       setIsSavingSchedule(true);
+      setDrawerNotice(null);
       const created = await createDailyOpenSchedule(payload);
       setNotice({
         type: "success",
         message: `已建立派班資料：${generatedScheduleName}，名額 ${created.quota}。`,
       });
+      setIsSingleScheduleDrawerOpen(false);
     } catch (error) {
-      setNotice({
-        type: "error",
-        message: error instanceof Error ? error.message : "建立派班資料失敗。",
-      });
+      setDrawerNotice(
+        error instanceof Error ? error.message : "建立派班資料失敗。",
+      );
     } finally {
       setIsSavingSchedule(false);
     }
@@ -538,6 +697,24 @@ export function ScheduleManagementPage() {
 
   const saveBatchSchedules = async () => {
     if (batchPreview.length === 0) return;
+
+    const invalidItem = batchPreview.find(
+      (item) =>
+        !item.routeId ||
+        !getDateFromInputValue(item.date) ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(item.time) ||
+        !Number.isFinite(item.quota) ||
+        item.quota <= 0 ||
+        !getDateTimeFromInputValue(item.bookingCloseRule),
+    );
+
+    if (invalidItem) {
+      setNotice({
+        type: "error",
+        message: "請完整填寫每一筆班次的路線、日期、時間、名額與截止日期。",
+      });
+      return;
+    }
 
     const expiredDeadlineItem = batchPreview.find((item) =>
       isDeadlineBeforeNow(item.bookingCloseRule),
@@ -629,7 +806,7 @@ export function ScheduleManagementPage() {
         if (rule === "previous-day-2359") {
           return {
             ...item,
-            bookingCloseRule: `${formatDate(addDays(operationDate, -1))}T23:59`,
+            bookingCloseRule: `${formatDate(addDays(operationDate, -1))}T22:00`,
           };
         }
 
@@ -648,14 +825,108 @@ export function ScheduleManagementPage() {
     );
   };
 
+  const addBatchPreviewItem = () => {
+    const route = activeRoutes[0];
+    setBatchPreview((current) => [
+      {
+        id: `manual-${Date.now()}`,
+        date: "",
+        time: "",
+        routeId: route?.routeId ?? "",
+        routeNumber: route?.routeNumber ?? "",
+        quota: 20,
+        bookingCloseRule: "",
+      },
+      ...current,
+    ]);
+  };
+
+  const updateBatchPreviewRoute = (id: string, routeId: string) => {
+    const route = activeRoutes.find((item) => item.routeId === routeId);
+    setBatchPreview((current) =>
+      current.map((item) =>
+        item.id === id
+          ? { ...item, routeId, routeNumber: route?.routeNumber ?? "" }
+          : item,
+      ),
+    );
+  };
+
+  const updateBatchDateSegment = (
+    item: PreviewSchedule,
+    index: number,
+    value: string,
+  ) => {
+    const limits = [4, 2, 2];
+    const parts = item.date.split("-");
+    parts[index] = value.replace(/\D/g, "").slice(0, limits[index]);
+    updateBatchPreviewItem(item.id, "date", parts.slice(0, 3).join("-"));
+    if (parts[index].length === limits[index]) {
+      const nextKey = index < 2 ? `date-${index + 1}` : "time-0";
+      requestAnimationFrame(() =>
+        batchInputRefs.current[`${item.id}-${nextKey}`]?.focus(),
+      );
+    }
+  };
+
+  const updateBatchTimeSegment = (
+    item: PreviewSchedule,
+    index: number,
+    value: string,
+  ) => {
+    const parts = item.time.split(":");
+    parts[index] = value.replace(/\D/g, "").slice(0, 2);
+    updateBatchPreviewItem(item.id, "time", parts.slice(0, 2).join(":"));
+    if (parts[index].length === 2) {
+      const nextKey = index === 0 ? "time-1" : "route";
+      requestAnimationFrame(() =>
+        batchInputRefs.current[`${item.id}-${nextKey}`]?.focus(),
+      );
+    }
+  };
+
+  const setBatchDeadlineDate = (id: string, value: Date | undefined) => {
+    if (!value) return;
+    setBatchPreview((current) =>
+      current.map((item) => {
+        if (item.id !== id) return item;
+        const time = item.bookingCloseRule.split("T")[1] || "00:00";
+        return { ...item, bookingCloseRule: `${formatDate(value)}T${time}` };
+      }),
+    );
+    setBatchDeadlineCalendarId(null);
+  };
+
+  const updateBatchDeadlineTimeSegment = (
+    item: PreviewSchedule,
+    index: number,
+    value: string,
+  ) => {
+    const date = item.bookingCloseRule.split("T")[0];
+    if (!date) return;
+    const parts = item.bookingCloseRule.split("T")[1]?.split(":") ?? ["", ""];
+    parts[index] = value.replace(/\D/g, "").slice(0, 2);
+    setBatchPreview((current) =>
+      current.map((currentItem) =>
+        currentItem.id === item.id
+          ? { ...currentItem, bookingCloseRule: `${date}T${parts.join(":")}` }
+          : currentItem,
+      ),
+    );
+    if (parts[index].length === 2 && index === 0) {
+      requestAnimationFrame(() =>
+        batchInputRefs.current[`${item.id}-deadline-1`]?.focus(),
+      );
+    }
+  };
+
   const importSchedulesFromDate = async () => {
     if (!importSourceDate) return;
 
     try {
       setIsImportingSchedules(true);
-      const sourceSchedules = await getDashboardDailyOpenSchedules(
-        importSourceDate,
-      );
+      const sourceSchedules =
+        await getDashboardDailyOpenSchedules(importSourceDate);
       const operationDate = formatDate(addDays(new Date(), 1));
       const importedSchedules = sourceSchedules.map((schedule, index) => {
         const time = schedule.departureTime.slice(0, 5);
@@ -760,10 +1031,7 @@ export function ScheduleManagementPage() {
     URL.revokeObjectURL(url);
   };
 
-  const importBatchExcel = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const importBatchExcel = async (file: File) => {
     try {
       const { default: ExcelJS } = await import("exceljs");
       const workbook = new ExcelJS.Workbook();
@@ -848,20 +1116,31 @@ export function ScheduleManagementPage() {
       });
 
       setBatchPreview(preview);
-      setNotice({
-        type: errors.length ? "error" : "success",
-        message: errors.length
-          ? `已匯入 ${preview.length} 筆，另有 ${errors.length} 筆錯誤：${errors.slice(0, 3).join("；")}`
-          : `已匯入 ${preview.length} 筆批次班次。`,
+      setPendingExcelImport({
+        fileName: file.name,
+        preview,
+        errors,
       });
     } catch (error) {
       setNotice({
         type: "error",
         message: error instanceof Error ? error.message : "匯入 Excel 失敗。",
       });
-    } finally {
-      event.target.value = "";
     }
+  };
+
+  const selectBatchExcel = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    void importBatchExcel(file);
+  };
+
+  const confirmBatchExcelImport = () => {
+    if (!pendingExcelImport) return;
+
+    setPendingExcelImport(null);
   };
 
   return (
@@ -879,540 +1158,920 @@ export function ScheduleManagementPage() {
         </p>
       )}
 
-      <form
-        className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]"
-        onSubmit={saveSchedule}
+      <Sheet
+        open={isSingleScheduleDrawerOpen}
+        onOpenChange={setIsSingleScheduleDrawerOpen}
       >
-        <div className="space-y-4">
-          <section className="admin-panel-body">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="admin-section-title">一、基本資料</h2>
-                <p className="mt-1 text-sm text-admin-muted">
-                  指定路線、日期、班次時間與預約截止。
-                </p>
-              </div>
-              <span className="rounded-full bg-admin-elevated px-3 py-1 text-xs font-bold text-admin-softText">
-                單筆建立
-              </span>
-            </div>
+        <SheetContent
+          className="admin-single-schedule-drawer !w-[min(35vw,1280px)] !max-w-none !bg-admin-surface !text-admin-text"
+          overlayClassName="bg-black/55 supports-backdrop-filter:backdrop-blur-sm"
+          side="right"
+        >
+          <SheetHeader className="border-b border-admin-border bg-admin-elevated px-6 py-5 pr-14">
+            <SheetTitle className="text-xl font-bold tracking-tight !text-admin-text">
+              建立單筆班次
+            </SheetTitle>
+            {/*  <SheetDescription className="mt-1 !text-admin-muted">
+              完成班次基本資料、開放站位與名額後，即可建立預約班次。
+            </SheetDescription> */}
+          </SheetHeader>
+          <form
+            className="flex min-h-0 flex-1 flex-col"
+            onSubmit={saveSchedule}
+          >
+            {drawerNotice && (
+              <p
+                className="mx-5 mt-5 rounded-adminControl border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm text-red-200"
+                role="alert"
+              >
+                {drawerNotice}
+              </p>
+            )}
+            <main className="min-h-0 flex-1 overflow-y-auto p-5">
+              <article className="mx-auto max-w-4xl space-y-4">
+                <section className="admin-panel-body p-5">
+                  <fieldset>
+                    <legend className="admin-section-title flex items-center gap-3">
+                      <span className="grid h-7 w-7 place-items-center rounded-full bg-adminStatus-enabled/15 text-xs text-adminStatus-enabled">
+                        1
+                      </span>
+                      班次基本資料
+                    </legend>
+                    <div className="mt-5 grid gap-5 grid-cols-1">
+                      <label className="text-sm font-medium text-admin-softText">
+                        路線 <span className="text-red-300">*</span>
+                        <select
+                          className={`${inputClass} ${scheduleFieldErrors.routeId ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                          disabled={
+                            isRoutesLoading || activeRoutes.length === 0
+                          }
+                          ref={routeSelectRef}
+                          value={scheduleForm.routeId}
+                          onChange={handleRouteChange}
+                        >
+                          {isRoutesLoading ? (
+                            <option value="">讀取路線中…</option>
+                          ) : activeRoutes.length === 0 ? (
+                            <option value="">目前沒有啟用中的路線</option>
+                          ) : (
+                            activeRoutes.map((route) => (
+                              <option key={route.routeId} value={route.routeId}>
+                                {route.routeNumber}｜{route.routeName}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                        {routesError && (
+                          <span className="mt-1 block text-xs text-red-300">
+                            {routesError}
+                          </span>
+                        )}
+                      </label>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="text-sm font-medium text-admin-softText">
-                路線 <span className="text-red-300">*</span>
-                <select
-                  className={inputClass}
-                  disabled={isRoutesLoading || routes.length === 0}
-                  value={scheduleForm.routeId}
-                  onChange={handleRouteChange}
-                >
-                  {isRoutesLoading ? (
-                    <option value="">讀取路線中…</option>
-                  ) : routes.length === 0 ? (
-                    <option value="">目前沒有路線資料</option>
-                  ) : (
-                    routes.map((route) => (
-                      <option key={route.routeId} value={route.routeId}>
-                        {route.routeNumber}｜{route.routeName}
-                      </option>
-                    ))
-                  )}
-                </select>
-                {routesError && (
-                  <span className="mt-1 block text-xs text-red-300">
-                    {routesError}
-                  </span>
-                )}
-              </label>
+                      <label className="text-sm font-medium text-admin-softText">
+                        營運日期 <span className="text-red-300">*</span>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Input
+                            aria-label="營運日期年份"
+                            className={`h-12 w-24 rounded-adminControl border-admin-borderStrong bg-admin-bg px-2 text-center font-mono text-lg font-bold tracking-[0.16em] text-admin-text ${scheduleFieldErrors.operationDate ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                            inputMode="numeric"
+                            maxLength={4}
+                            placeholder="YYYY"
+                            ref={(element) => {
+                              operationDateSegmentRefs.current[0] = element;
+                            }}
+                            type="text"
+                            value={
+                              scheduleForm.operationDate.split("-")[0] ?? ""
+                            }
+                            onChange={(event) =>
+                              updateOperationDateSegment(0, event.target.value)
+                            }
+                          />
+                          <span className="text-xl font-bold text-admin-muted">
+                            /
+                          </span>
+                          <Input
+                            aria-label="營運日期月份"
+                            className={`h-12 w-16 rounded-adminControl border-admin-borderStrong bg-admin-bg px-2 text-center font-mono text-lg font-bold tracking-[0.16em] text-admin-text ${scheduleFieldErrors.operationDate ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                            inputMode="numeric"
+                            maxLength={2}
+                            placeholder="MM"
+                            ref={(element) => {
+                              operationDateSegmentRefs.current[1] = element;
+                            }}
+                            type="text"
+                            value={
+                              scheduleForm.operationDate.split("-")[1] ?? ""
+                            }
+                            onChange={(event) =>
+                              updateOperationDateSegment(1, event.target.value)
+                            }
+                          />
+                          <span className="text-xl font-bold text-admin-muted">
+                            /
+                          </span>
+                          <Input
+                            aria-label="營運日期日期"
+                            className={`h-12 w-16 rounded-adminControl border-admin-borderStrong bg-admin-bg px-2 text-center font-mono text-lg font-bold tracking-[0.16em] text-admin-text ${scheduleFieldErrors.operationDate ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                            inputMode="numeric"
+                            maxLength={2}
+                            placeholder="DD"
+                            ref={(element) => {
+                              operationDateSegmentRefs.current[2] = element;
+                            }}
+                            type="text"
+                            value={
+                              scheduleForm.operationDate.split("-")[2] ?? ""
+                            }
+                            onChange={(event) =>
+                              updateOperationDateSegment(2, event.target.value)
+                            }
+                          />
+                          <Popover
+                            open={isOperationDateCalendarOpen}
+                            onOpenChange={setIsOperationDateCalendarOpen}
+                          >
+                            <PopoverTrigger asChild>
+                              <button
+                                aria-label="選擇營運日期"
+                                className="grid h-12 w-12 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong bg-admin-bg text-admin-muted transition hover:border-adminStatus-enabled hover:text-adminStatus-enabled"
+                                type="button"
+                              >
+                                <CalendarIcon
+                                  aria-hidden="true"
+                                  className="h-5 w-5"
+                                />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              align="end"
+                              className="!z-[60] !w-auto !bg-admin-surface !p-2 !text-admin-text"
+                            >
+                              <Calendar
+                                mode="single"
+                                selected={
+                                  getDateFromInputValue(
+                                    scheduleForm.operationDate,
+                                  ) ?? undefined
+                                }
+                                onSelect={(date) => {
+                                  if (!date) return;
+                                  setOperationDate(formatDate(date));
+                                  setIsOperationDateCalendarOpen(false);
+                                }}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </label>
 
-              <label className="text-sm font-medium text-admin-softText">
-                營運日期 <span className="text-red-300">*</span>
-                <input
-                  className={inputClass}
-                  type="date"
-                  value={scheduleForm.operationDate}
-                  onClick={openInputPicker}
-                  onChange={handleOperationDateChange}
-                />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    aria-label="前一天"
-                    className="grid h-8 w-9 place-items-center rounded-adminControl border border-admin-borderStrong text-admin-softText hover:border-adminStatus-enabled hover:text-adminStatus-enabled"
-                    title="前一天"
-                    type="button"
-                    onClick={() => shiftOperationDate(-1)}
-                  >
-                    <FaCaretLeft aria-hidden="true" className="text-lg" />
-                  </button>
-                  <button
-                    aria-label="後一天"
-                    className="grid h-8 w-9 place-items-center rounded-adminControl border border-admin-borderStrong text-admin-softText hover:border-adminStatus-enabled hover:text-adminStatus-enabled"
-                    title="後一天"
-                    type="button"
-                    onClick={() => shiftOperationDate(1)}
-                  >
-                    <FaCaretRight aria-hidden="true" className="text-lg" />
-                  </button>
-                  {dateQuickOptions.map((option) => {
-                    const value = formatDate(
-                      addDays(new Date(), option.offset),
-                    );
-                    const isActive = scheduleForm.operationDate === value;
+                      <label className="text-sm font-medium text-admin-softText">
+                        班次時間 <span className="text-red-300">*</span>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Input
+                            aria-label="班次時間小時"
+                            className={`h-12 w-16 rounded-adminControl border-admin-borderStrong bg-admin-bg px-2 text-center font-mono text-lg font-bold tracking-[0.16em] text-admin-text ${scheduleFieldErrors.departureTime ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                            inputMode="numeric"
+                            maxLength={2}
+                            placeholder="HH"
+                            ref={(element) => {
+                              departureTimeSegmentRefs.current[0] = element;
+                            }}
+                            type="text"
+                            value={
+                              scheduleForm.departureTime.split(":")[0] ?? ""
+                            }
+                            onChange={(event) =>
+                              updateDepartureTimeSegment(0, event.target.value)
+                            }
+                          />
+                          <span className="text-xl font-bold text-admin-muted">
+                            :
+                          </span>
+                          <Input
+                            aria-label="班次時間分鐘"
+                            className={`h-12 w-16 rounded-adminControl border-admin-borderStrong bg-admin-bg px-2 text-center font-mono text-lg font-bold tracking-[0.16em] text-admin-text ${scheduleFieldErrors.departureTime ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                            inputMode="numeric"
+                            maxLength={2}
+                            placeholder="MM"
+                            ref={(element) => {
+                              departureTimeSegmentRefs.current[1] = element;
+                            }}
+                            type="text"
+                            value={
+                              scheduleForm.departureTime.split(":")[1] ?? ""
+                            }
+                            onChange={(event) =>
+                              updateDepartureTimeSegment(1, event.target.value)
+                            }
+                          />
+                        </div>
+                      </label>
 
-                    return (
-                      <button
-                        className={`rounded-adminControl border px-3 py-1.5 text-xs font-semibold ${
-                          isActive
-                            ? "border-adminStatus-enabled bg-adminStatus-enabled/10 text-adminStatus-enabled"
-                            : "border-admin-borderStrong text-admin-softText"
-                        }`}
-                        key={option.label}
-                        type="button"
-                        onClick={() => setOperationDate(value)}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </label>
+                      <label className="text-sm font-medium text-admin-softText">
+                        預約截止 <span className="text-red-300">*</span>
+                        <span className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                          <Popover
+                            open={isBookingCloseCalendarOpen}
+                            onOpenChange={setIsBookingCloseCalendarOpen}
+                          >
+                            <PopoverTrigger asChild>
+                              <button
+                                className={`flex h-11 w-full items-center justify-between rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-left font-normal text-admin-text outline-none hover:border-adminStatus-enabled focus:border-adminStatus-enabled ${scheduleFieldErrors.bookingCloseAt ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                                ref={bookingCloseDateRef}
+                                type="button"
+                              >
+                                <span
+                                  className={
+                                    scheduleForm.bookingCloseAt
+                                      ? ""
+                                      : "text-admin-muted"
+                                  }
+                                >
+                                  {scheduleForm.bookingCloseAt.split("T")[0] ||
+                                    "選擇截止日期"}
+                                </span>
+                                <CalendarIcon
+                                  aria-hidden="true"
+                                  className="h-4 w-4 text-admin-muted"
+                                />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              align="start"
+                              className="!z-[60] !w-auto !bg-admin-surface !p-2 !text-admin-text"
+                            >
+                              <Calendar
+                                mode="single"
+                                selected={
+                                  getDateFromInputValue(
+                                    scheduleForm.bookingCloseAt.split("T")[0],
+                                  ) ?? undefined
+                                }
+                                onSelect={setBookingCloseDate}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <span className="flex items-center gap-1">
+                            <Input
+                              aria-label="預約截止時間小時"
+                              className={`h-11 w-14 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono font-bold text-admin-text ${scheduleFieldErrors.bookingCloseAt ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                              disabled={!scheduleForm.bookingCloseAt}
+                              inputMode="numeric"
+                              maxLength={2}
+                              placeholder="HH"
+                              type="text"
+                              value={
+                                scheduleForm.bookingCloseAt
+                                  .split("T")[1]
+                                  ?.split(":")[0] ?? ""
+                              }
+                              onChange={(event) =>
+                                updateBookingCloseTimeSegment(
+                                  0,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                            <span className="font-bold text-admin-muted">
+                              :
+                            </span>
+                            <Input
+                              aria-label="預約截止時間分鐘"
+                              className={`h-11 w-14 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono font-bold text-admin-text ${scheduleFieldErrors.bookingCloseAt ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                              disabled={!scheduleForm.bookingCloseAt}
+                              inputMode="numeric"
+                              maxLength={2}
+                              placeholder="MM"
+                              type="text"
+                              value={
+                                scheduleForm.bookingCloseAt
+                                  .split("T")[1]
+                                  ?.split(":")[1] ?? ""
+                              }
+                              onChange={(event) =>
+                                updateBookingCloseTimeSegment(
+                                  1,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </span>
+                        </span>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                            type="button"
+                            onClick={() =>
+                              setBookingCloseAtByRule("previous-day-2359")
+                            }
+                          >
+                            前一天 22:00
+                          </button>
 
-              <label className="text-sm font-medium text-admin-softText">
-                班次時間 <span className="text-red-300">*</span>
-                <input
-                  className={inputClass}
-                  type="time"
-                  value={scheduleForm.departureTime}
-                  onClick={openInputPicker}
-                  onChange={(event) => setDepartureTime(event.target.value)}
-                />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
-                    type="button"
-                    onClick={() => adjustDepartureTime(-10)}
-                  >
-                    -10 分
-                  </button>
-                  <button
-                    className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
-                    type="button"
-                    onClick={() => adjustDepartureTime(10)}
-                  >
-                    +10 分
-                  </button>
-                  {departureTimeOptions.map((time) => {
-                    const isActive = scheduleForm.departureTime === time;
+                          <button
+                            className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                            type="button"
+                            onClick={() =>
+                              setBookingCloseAtByRule("departure-minus-30")
+                            }
+                          >
+                            發車前 30 分
+                          </button>
+                        </div>
+                      </label>
+                    </div>
+                  </fieldset>
+                </section>
 
-                    return (
-                      <button
-                        className={`rounded-adminControl border px-3 py-1.5 text-xs font-semibold ${
-                          isActive
-                            ? "border-adminStatus-enabled bg-adminStatus-enabled/10 text-adminStatus-enabled"
-                            : "border-admin-borderStrong text-admin-softText"
-                        }`}
-                        key={time}
-                        type="button"
-                        onClick={() => setDepartureTime(time)}
-                      >
-                        {time}
-                      </button>
-                    );
-                  })}
-                </div>
-              </label>
-
-              <label className="text-sm font-medium text-admin-softText">
-                班次名稱
-                <input
-                  className={inputClass}
-                  placeholder={generatedScheduleName}
-                  value={scheduleForm.scheduleName}
-                  onChange={(event) =>
-                    updateScheduleForm("scheduleName", event.target.value)
-                  }
-                />
-                <span className="mt-1 block text-xs text-admin-muted">
-                  留空會使用：{generatedScheduleName}
-                </span>
-              </label>
-
-              <label className="text-sm font-medium text-admin-softText">
-                預約截止 <span className="text-red-300">*</span>
-                <input
-                  className={inputClass}
-                  type="datetime-local"
-                  value={scheduleForm.bookingCloseAt}
-                  onClick={openInputPicker}
-                  onChange={(event) => setBookingCloseAt(event.target.value)}
-                />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
-                    type="button"
-                    onClick={() => setBookingCloseAtByRule("previous-day-2359")}
-                  >
-                    前一天 23:59
-                  </button>
-                  <button
-                    className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
-                    type="button"
-                    onClick={() => setBookingCloseAtByRule("previous-day-1800")}
-                  >
-                    前一天 18:00
-                  </button>
-                  <button
-                    className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
-                    type="button"
-                    onClick={() =>
-                      setBookingCloseAtByRule("departure-minus-30")
-                    }
-                  >
-                    發車前 30 分
-                  </button>
-                </div>
-              </label>
-            </div>
-          </section>
-
-          <section className="admin-panel-body">
-            <h2 className="admin-section-title">二、站位預約設定</h2>
-            <p className="mt-1 text-sm text-admin-muted">
-              依路線帶出站位，可控制該班次哪些站位開放預約與站位名額。
-            </p>
-
-            <div className="mt-5 space-y-3">
-              {stopSettings.map((stop, index) => (
-                <div
-                  className={`grid gap-3 rounded-adminControl border px-4 py-3 md:grid-cols-[auto_minmax(0,1fr)_160px_auto] md:items-center ${
-                    stop.isEnabled
-                      ? "border-adminStatus-enabled/40 bg-adminStatus-enabled/10"
-                      : "border-admin-borderStrong bg-admin-bg"
-                  }`}
-                  key={stop.stopId}
-                >
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-admin-surface text-sm font-black text-admin-softText">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <p className="font-bold text-admin-text">{stop.stopName}</p>
-                    <p className="mt-1 text-xs text-admin-muted">
-                      {stop.isEnabled ? "此站開放預約" : "此站不開放預約"}
+                <section className="admin-panel-body p-5">
+                  <fieldset>
+                    <legend className="admin-section-title flex items-center gap-3">
+                      <span className="grid h-7 w-7 place-items-center rounded-full bg-adminStatus-enabled/15 text-xs text-adminStatus-enabled">
+                        2
+                      </span>
+                      開放站位與名額
+                    </legend>
+                    <p className="mt-1 text-sm text-admin-muted">
+                      依路線帶出站位，可控制該班次哪些站位開放預約與站位名額。
                     </p>
-                  </div>
-                  <label className="text-xs font-medium text-admin-softText">
-                    站位名額
-                    <input
-                      className="mt-1 h-10 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled disabled:opacity-50"
-                      disabled={!stop.isEnabled}
-                      min={0}
-                      type="number"
-                      value={stop.quota}
-                      onChange={(event) =>
-                        setStopSettings((current) =>
-                          current.map((item) =>
-                            item.stopId === stop.stopId
-                              ? { ...item, quota: Number(event.target.value) }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
+
+                    <ol className="mt-5 space-y-2">
+                      {stopSettings.map((stop, index) => (
+                        <li
+                          className={`grid gap-3 rounded-adminControl border px-4 py-3 md:items-center ${
+                            stopSettings.length === 1
+                              ? "md:grid-cols-[auto_minmax(0,1fr)_160px]"
+                              : "md:grid-cols-[auto_minmax(0,1fr)_160px_auto]"
+                          } ${
+                            stop.isEnabled
+                              ? "border-adminStatus-enabled/40 bg-adminStatus-enabled/10"
+                              : "border-admin-borderStrong bg-admin-bg"
+                          }`}
+                          key={stop.stopId}
+                        >
+                          <span className="grid h-8 w-8 place-items-center rounded-full bg-admin-surface text-sm font-black text-admin-softText">
+                            {index + 1}
+                          </span>
+                          <div>
+                            <p className="font-bold text-admin-text">
+                              {stop.stopName}
+                            </p>
+                            <p className="mt-1 text-xs text-admin-muted">
+                              {stop.isEnabled
+                                ? "此站開放預約"
+                                : "此站不開放預約"}
+                            </p>
+                          </div>
+                          <label className="text-xs font-medium text-admin-softText">
+                            站位名額
+                            <input
+                              className="mt-1 h-10 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled disabled:opacity-50"
+                              disabled={!stop.isEnabled}
+                              min={0}
+                              type="number"
+                              value={stop.quota}
+                              onChange={(event) =>
+                                setStopSettings((current) =>
+                                  current.map((item) =>
+                                    item.stopId === stop.stopId
+                                      ? {
+                                          ...item,
+                                          quota: Number(event.target.value),
+                                        }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                          {stopSettings.length > 1 && (
+                            <button
+                              className={`h-10 rounded-adminControl border px-4 text-sm font-bold ${
+                                stop.isEnabled
+                                  ? "border-adminStatus-enabled text-adminStatus-enabled"
+                                  : "border-admin-borderStrong text-admin-softText"
+                              }`}
+                              type="button"
+                              onClick={() =>
+                                setStopSettings((current) =>
+                                  current.map((item) =>
+                                    item.stopId === stop.stopId
+                                      ? { ...item, isEnabled: !item.isEnabled }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            >
+                              {stop.isEnabled ? "開放" : "關閉"}
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </fieldset>
+                </section>
+                <section className="admin-panel-body p-5">
+                  <h2 className="admin-section-title flex items-center gap-3">
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-adminStatus-enabled/15 text-xs text-adminStatus-enabled">
+                      3
+                    </span>
+                    建立前確認
+                  </h2>
+                  <p className="mt-1 text-sm text-admin-muted">
+                    確認目前設定後建立派班資料。
+                  </p>
+
+                  <p className="mt-5 text-xs font-bold text-admin-muted">
+                    目前設定摘要
+                  </p>
+                  <dl className="mt-2 space-y-3 rounded-adminControl border border-admin-border bg-admin-bg p-4">
+                    <div className="flex items-baseline justify-between gap-4 text-sm">
+                      <dt className="text-admin-softText">班次</dt>
+                      <dd className="text-right font-bold text-admin-text">
+                        {scheduleForm.scheduleName || generatedScheduleName}
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-4 text-sm">
+                      <dt className="text-admin-softText">營運日期</dt>
+                      <dd className="text-right font-bold text-admin-text">
+                        {scheduleForm.operationDate}
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-4 text-sm">
+                      <dt className="text-admin-softText">預約截止</dt>
+                      <dd className="text-right font-bold text-admin-text">
+                        {scheduleForm.bookingCloseAt.replace("T", " ")}
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-4 text-sm">
+                      <dt className="text-admin-softText">開放站位名額</dt>
+                      <dd className="text-right font-bold text-admin-text">
+                        {enabledStopQuota}
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-4 text-sm">
+                      <dt className="text-admin-softText">開放站位數</dt>
+                      <dd className="text-right font-bold text-admin-text">
+                        {stopSettings.filter((stop) => stop.isEnabled).length}
+                      </dd>
+                    </div>
+                  </dl>
+
                   <button
-                    className={`h-10 rounded-adminControl border px-4 text-sm font-bold ${
-                      stop.isEnabled
-                        ? "border-adminStatus-enabled text-adminStatus-enabled"
-                        : "border-admin-borderStrong text-admin-softText"
-                    }`}
-                    type="button"
-                    onClick={() =>
-                      setStopSettings((current) =>
-                        current.map((item) =>
-                          item.stopId === stop.stopId
-                            ? { ...item, isEnabled: !item.isEnabled }
-                            : item,
-                        ),
-                      )
-                    }
+                    className="mt-5 h-11 w-full rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg disabled:opacity-60"
+                    disabled={isSavingSchedule}
+                    type="submit"
                   >
-                    {stop.isEnabled ? "開放" : "關閉"}
+                    {isSavingSchedule ? "建立中…" : "建立派班資料"}
                   </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
+                </section>
+              </article>
+            </main>
+          </form>
+        </SheetContent>
+      </Sheet>
 
-        <aside className="space-y-4">
-          <section className="admin-panel-body">
-            <h2 className="admin-section-title">三、預約班次資訊</h2>
-            <p className="mt-1 text-sm text-admin-muted">
-              確認目前設定後建立派班資料。
-            </p>
-
-            <div className="mt-5 rounded-adminControl border border-admin-border bg-admin-bg p-4">
-              <p className="text-xs font-bold text-admin-muted">目前設定摘要</p>
-              <p className="mt-2 text-sm text-admin-softText">
-                班次：
-                <span className="font-bold text-admin-text">
-                  {scheduleForm.scheduleName || generatedScheduleName}
-                </span>
-              </p>
-              <p className="mt-1 text-sm text-admin-softText">
-                營運日期：
-                <span className="font-bold text-admin-text">
-                  {scheduleForm.operationDate}
-                </span>
-              </p>
-              <p className="mt-1 text-sm text-admin-softText">
-                預約截止：
-                <span className="font-bold text-admin-text">
-                  {scheduleForm.bookingCloseAt.replace("T", " ")}
-                </span>
-              </p>
-              <p className="mt-1 text-sm text-admin-softText">
-                開放站位名額合計：
-                <span className="font-bold text-admin-text">
-                  {enabledStopQuota}
-                </span>
-              </p>
-              <p className="mt-1 text-sm text-admin-softText">
-                開放站位數：
-                <span className="font-bold text-admin-text">
-                  {stopSettings.filter((stop) => stop.isEnabled).length}
-                </span>
-              </p>
-            </div>
-
+      <section className="admin-panel-body overflow-hidden p-0">
+        <div className="flex flex-wrap items-center justify-end gap-3 border-b border-admin-border px-4 py-3">
+          <div className="flex flex-wrap gap-2">
             <button
-              className="mt-5 h-11 w-full rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg disabled:opacity-60"
-              disabled={isSavingSchedule}
-              type="submit"
+              className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg"
+              type="button"
+              onClick={() => setIsSingleScheduleDrawerOpen(true)}
             >
-              {isSavingSchedule ? "建立中…" : "建立派班資料"}
+              單筆建立
             </button>
-          </section>
-        </aside>
-      </form>
-
-      <section className="admin-panel-body">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="admin-section-title">四、批次建立班次</h2>
-            <p className="mt-1 text-sm text-admin-muted">
-              下載 Excel 格式填寫班次資料，匯入後會顯示於下方批次清單。
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div className="rounded-adminControl border border-admin-border bg-admin-bg p-4">
-            <p className="text-sm font-bold text-admin-text">Excel 欄位格式</p>
-            <p className="mt-2 text-sm leading-6 text-admin-muted">
-              路線編號、營運日期、班次時間、預約座位、截止日期。 營運日期請使用
-              YYYY-MM-DD，班次時間請使用 HH:mm，截止日期可使用 2026-07-01
-              05:00。
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
             <button
-              className="h-11 rounded-adminControl border border-admin-borderStrong px-5 text-sm font-semibold text-admin-softText"
+              className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
               type="button"
               onClick={downloadBatchTemplate}
             >
-              下載 Excel 格式
+              下載範本
             </button>
             <button
-              className="h-11 rounded-adminControl bg-adminStatus-enabled px-5 text-sm font-bold text-admin-bg"
+              className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg"
               type="button"
               onClick={() => fileInputRef.current?.click()}
             >
               匯入 Excel
+            </button>
+            <button
+              className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
+              type="button"
+              onClick={() => setIsImportDateModalOpen(true)}
+            >
+              複製班表
             </button>
             <input
               accept=".xlsx,.xls"
               className="hidden"
               ref={fileInputRef}
               type="file"
-              onChange={importBatchExcel}
+              onChange={selectBatchExcel}
             />
           </div>
         </div>
-      </section>
-
-      <section className="admin-panel-body overflow-hidden p-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-admin-border px-4 py-3">
-          <div>
-            <h2 className="admin-section-title">五、匯入批次清單</h2>
-            <p className="mt-1 text-sm text-admin-muted">
-              確認匯入的營運日期、班次時間、預約座位與截止日期後再送出。
-            </p>
-          </div>
-          <button
-            className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
-            type="button"
-            onClick={() => setIsImportDateModalOpen(true)}
-          >
-            依日期匯入班次
-          </button>
-          <button
-            className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText disabled:opacity-50"
-            disabled={batchPreview.length === 0 || isSavingBatch}
-            type="button"
-            onClick={saveBatchSchedules}
-          >
-            {isSavingBatch ? "建立中…" : "確認建立批次班次"}
-          </button>
-        </div>
 
         {batchPreview.length === 0 ? (
-          <p className="px-5 py-8 text-center text-admin-muted">
-            尚未匯入批次清單。
-          </p>
+          <section className="px-5 py-8 text-center">
+            <p className="text-admin-muted">尚未匯入批次清單。</p>
+            <button
+              className="mt-3 h-10 rounded-adminControl border border-adminStatus-enabled px-4 text-sm font-bold text-adminStatus-enabled"
+              type="button"
+              onClick={addBatchPreviewItem}
+            >
+              新增一筆
+            </button>
+          </section>
         ) : (
           <div>
-            <div className="flex flex-wrap gap-2 border-b border-admin-border bg-admin-bg px-4 py-3">
-              <button
-                className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
-                type="button"
-                onClick={() =>
-                  setBatchBookingCloseAtByRule("departure-minus-30")
-                }
-              >
-                全部改為發車前 30 分
-              </button>
-              <button
-                className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
-                type="button"
-                onClick={() =>
-                  setBatchBookingCloseAtByRule("previous-day-2359")
-                }
-              >
-                全部改為前一天 23:59
-              </button>
-              <button
-                className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
-                type="button"
-                onClick={() =>
-                  setBatchBookingCloseAtByRule("previous-day-1800")
-                }
-              >
-                全部改為前一天 18:00
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-admin-border bg-admin-bg px-4 py-3">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                  type="button"
+                  onClick={() =>
+                    setBatchBookingCloseAtByRule("departure-minus-30")
+                  }
+                >
+                  全部改為發車前 30 分
+                </button>
+                <button
+                  className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                  type="button"
+                  onClick={() =>
+                    setBatchBookingCloseAtByRule("previous-day-2359")
+                  }
+                >
+                  全部改為前一天 22:00
+                </button>
+                <button
+                  className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                  type="button"
+                  onClick={() =>
+                    setBatchBookingCloseAtByRule("previous-day-1800")
+                  }
+                >
+                  全部改為前一天 18:00
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="h-9 rounded-adminControl border border-admin-borderStrong px-3 text-xs font-bold text-admin-softText"
+                  type="button"
+                  onClick={addBatchPreviewItem}
+                >
+                  新增一筆
+                </button>
+                <button
+                  className="h-9 rounded-adminControl bg-adminStatus-enabled px-4 text-xs font-bold text-admin-bg disabled:opacity-50"
+                  disabled={isSavingBatch}
+                  type="button"
+                  onClick={saveBatchSchedules}
+                >
+                  {isSavingBatch ? "建立中…" : "確認建立"}
+                </button>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
-                <colgroup>
-                  <col className="w-[190px]" />
-                  <col className="w-[150px]" />
-                  <col className="w-[150px]" />
-                  <col className="w-[130px]" />
-                  <col className="w-[300px]" />
-                  <col className="w-[120px]" />
-                </colgroup>
-                <thead className="bg-admin-bg text-admin-muted">
-                  <tr>
-                    <th className="px-3 py-2.5 font-semibold">營運日期</th>
-                    <th className="px-3 py-2.5 font-semibold">班次時間</th>
-                    <th className="px-3 py-2.5 font-semibold">路線編號</th>
-                    <th className="px-3 py-2.5 font-semibold">預約座位</th>
-                    <th className="px-3 py-2.5 font-semibold">截止日期</th>
-                    <th className="px-3 py-2.5 font-semibold">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-admin-border">
-                  {batchPreview.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-3 py-3 text-admin-softText">
-                        <input
-                          className="h-10 w-full min-w-[166px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-                          type="date"
-                          value={item.date}
-                          onClick={openInputPicker}
+            <Table className="min-w-[1080px] table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-[220px]" />
+                <col className="w-[150px]" />
+                <col className="w-[150px]" />
+                <col className="w-[130px]" />
+                <col className="w-[300px]" />
+                <col className="w-[120px]" />
+              </colgroup>
+              <TableHeader className="bg-admin-bg text-admin-muted">
+                <TableRow>
+                  <TableHead>營運日期</TableHead>
+                  <TableHead>班次時間</TableHead>
+                  <TableHead>路線編號</TableHead>
+                  <TableHead>預約座位</TableHead>
+                  <TableHead>截止日期</TableHead>
+                  <TableHead>操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-admin-border">
+                {batchPreview.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="text-admin-softText">
+                      <span className="flex min-w-[196px] items-center gap-1">
+                        <Input
+                          className="h-10 w-16 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-admin-text placeholder:text-admin-muted"
+                          inputMode="numeric"
+                          maxLength={4}
+                          placeholder="YYYY"
+                          ref={(element) => {
+                            batchInputRefs.current[`${item.id}-date-0`] =
+                              element;
+                          }}
+                          value={item.date.split("-")[0] ?? ""}
                           onChange={(event) =>
-                            updateBatchPreviewItem(
-                              item.id,
-                              "date",
-                              event.target.value,
-                            )
+                            updateBatchDateSegment(item, 0, event.target.value)
                           }
                         />
-                      </td>
-                      <td className="px-3 py-3 font-bold text-admin-text">
-                        <input
-                          className="h-10 w-full min-w-[126px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 font-bold text-admin-text outline-none focus:border-adminStatus-enabled"
-                          type="time"
-                          value={item.time}
-                          onClick={openInputPicker}
+                        <span>/</span>
+                        <Input
+                          className="h-10 w-11 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-admin-text placeholder:text-admin-muted"
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder="MM"
+                          ref={(element) => {
+                            batchInputRefs.current[`${item.id}-date-1`] =
+                              element;
+                          }}
+                          value={item.date.split("-")[1] ?? ""}
                           onChange={(event) =>
-                            updateBatchPreviewItem(
-                              item.id,
-                              "time",
-                              event.target.value,
-                            )
+                            updateBatchDateSegment(item, 1, event.target.value)
                           }
                         />
-                      </td>
-                      <td className="px-3 py-3 text-admin-softText">
-                        <p className="font-bold text-admin-text">
-                          {item.routeNumber}
-                        </p>
-                      </td>
-                      <td className="px-3 py-3 text-admin-softText">
-                        <input
-                          className="h-10 w-full min-w-[106px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-                          min={1}
-                          type="number"
-                          value={item.quota}
+                        <span>/</span>
+                        <Input
+                          className="h-10 w-11 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-admin-text placeholder:text-admin-muted"
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder="DD"
+                          ref={(element) => {
+                            batchInputRefs.current[`${item.id}-date-2`] =
+                              element;
+                          }}
+                          value={item.date.split("-")[2] ?? ""}
                           onChange={(event) =>
-                            updateBatchPreviewItem(
-                              item.id,
-                              "quota",
-                              Number(event.target.value),
-                            )
+                            updateBatchDateSegment(item, 2, event.target.value)
                           }
                         />
-                      </td>
-                      <td className="px-3 py-3 text-admin-softText">
-                        <input
-                          className="h-10 w-full min-w-[276px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
-                          type="datetime-local"
-                          value={item.bookingCloseRule}
-                          onClick={openInputPicker}
-                          onChange={(event) =>
-                            updateBatchPreviewItem(
-                              item.id,
-                              "bookingCloseRule",
-                              event.target.value,
-                            )
-                          }
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <button
-                          className="rounded-adminControl border border-red-400/40 px-3 py-2 text-xs font-semibold text-red-300"
-                          type="button"
-                          onClick={() =>
-                            setBatchPreview((current) =>
-                              current.filter(
-                                (preview) => preview.id !== item.id,
-                              ),
+                        <Popover
+                          open={batchOperationDateCalendarId === item.id}
+                          onOpenChange={(isOpen) =>
+                            setBatchOperationDateCalendarId(
+                              isOpen ? item.id : null,
                             )
                           }
                         >
-                          刪除
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          <PopoverTrigger asChild>
+                            <button
+                              aria-label="選擇營運日期"
+                              className="grid h-10 w-10 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong bg-admin-bg text-admin-muted transition hover:border-adminStatus-enabled hover:text-adminStatus-enabled"
+                              type="button"
+                            >
+                              <CalendarIcon
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            align="start"
+                            className="!z-[60] !w-auto !bg-admin-surface !p-2 !text-admin-text"
+                          >
+                            <Calendar
+                              mode="single"
+                              selected={
+                                getDateFromInputValue(item.date) ?? undefined
+                              }
+                              onSelect={(date) => {
+                                if (!date) return;
+                                updateBatchPreviewItem(
+                                  item.id,
+                                  "date",
+                                  formatDate(date),
+                                );
+                                setBatchOperationDateCalendarId(null);
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-bold text-admin-text">
+                      <span className="flex min-w-[126px] items-center gap-1">
+                        <Input
+                          className="h-10 w-12 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-admin-text placeholder:text-admin-muted"
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder="HH"
+                          ref={(element) => {
+                            batchInputRefs.current[`${item.id}-time-0`] =
+                              element;
+                          }}
+                          value={item.time.split(":")[0] ?? ""}
+                          onChange={(event) =>
+                            updateBatchTimeSegment(item, 0, event.target.value)
+                          }
+                        />
+                        <span>:</span>
+                        <Input
+                          className="h-10 w-12 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-admin-text placeholder:text-admin-muted"
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder="MM"
+                          ref={(element) => {
+                            batchInputRefs.current[`${item.id}-time-1`] =
+                              element;
+                          }}
+                          value={item.time.split(":")[1] ?? ""}
+                          onChange={(event) =>
+                            updateBatchTimeSegment(item, 1, event.target.value)
+                          }
+                        />
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-admin-softText">
+                      <select
+                        aria-label="選擇路線"
+                        className="h-10 w-full min-w-[126px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 font-bold text-admin-text outline-none focus:border-adminStatus-enabled"
+                        ref={(element) => {
+                          batchInputRefs.current[`${item.id}-route`] = element;
+                        }}
+                        value={item.routeId}
+                        onChange={(event) =>
+                          updateBatchPreviewRoute(item.id, event.target.value)
+                        }
+                      >
+                        <option value="">選擇路線</option>
+                        {activeRoutes.map((route) => (
+                          <option key={route.routeId} value={route.routeId}>
+                            {route.routeNumber}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
+                    <TableCell className="text-admin-softText">
+                      <Input
+                        className="h-10 w-full min-w-[106px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                        min={1}
+                        type="number"
+                        value={item.quota}
+                        onChange={(event) =>
+                          updateBatchPreviewItem(
+                            item.id,
+                            "quota",
+                            Number(event.target.value),
+                          )
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className="text-admin-softText">
+                      <span className="flex min-w-[276px] items-center gap-2">
+                        <Popover
+                          open={batchDeadlineCalendarId === item.id}
+                          onOpenChange={(open) =>
+                            setBatchDeadlineCalendarId(open ? item.id : null)
+                          }
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              className="flex h-10 min-w-[138px] items-center justify-between rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-left text-admin-text"
+                              type="button"
+                            >
+                              <span>
+                                {item.bookingCloseRule.split("T")[0] ||
+                                  "截止日期"}
+                              </span>
+                              <CalendarIcon
+                                aria-hidden="true"
+                                className="h-4 w-4 text-admin-muted"
+                              />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            align="start"
+                            className="!z-[60] !w-auto !bg-admin-surface !p-2 !text-admin-text"
+                          >
+                            <Calendar
+                              mode="single"
+                              selected={
+                                getDateFromInputValue(
+                                  item.bookingCloseRule.split("T")[0],
+                                ) ?? undefined
+                              }
+                              onSelect={(date) =>
+                                setBatchDeadlineDate(item.id, date)
+                              }
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <Input
+                          className="h-10 w-12 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-admin-text placeholder:text-admin-muted"
+                          disabled={!item.bookingCloseRule}
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder="HH"
+                          ref={(element) => {
+                            batchInputRefs.current[`${item.id}-deadline-0`] =
+                              element;
+                          }}
+                          value={
+                            item.bookingCloseRule
+                              .split("T")[1]
+                              ?.split(":")[0] ?? ""
+                          }
+                          onChange={(event) =>
+                            updateBatchDeadlineTimeSegment(
+                              item,
+                              0,
+                              event.target.value,
+                            )
+                          }
+                        />
+                        <span>:</span>
+                        <Input
+                          className="h-10 w-12 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-admin-text placeholder:text-admin-muted"
+                          disabled={!item.bookingCloseRule}
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder="MM"
+                          ref={(element) => {
+                            batchInputRefs.current[`${item.id}-deadline-1`] =
+                              element;
+                          }}
+                          value={
+                            item.bookingCloseRule
+                              .split("T")[1]
+                              ?.split(":")[1] ?? ""
+                          }
+                          onChange={(event) =>
+                            updateBatchDeadlineTimeSegment(
+                              item,
+                              1,
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        className="rounded-adminControl border border-red-400/40 px-3 py-2 text-xs font-semibold text-red-300"
+                        type="button"
+                        onClick={() =>
+                          setBatchPreview((current) =>
+                            current.filter((preview) => preview.id !== item.id),
+                          )
+                        }
+                      >
+                        刪除
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </section>
+
+      {pendingExcelImport && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-excel-import-title"
+        >
+          <section className="w-full max-w-md rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-5 shadow-adminPanel">
+            <h2 className="admin-section-title" id="confirm-excel-import-title">
+              Excel 匯入結果
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-admin-softText">
+              已匯入「{pendingExcelImport.fileName}」中的
+              <span className="mx-1 font-bold text-adminStatus-enabled">
+                {pendingExcelImport.preview.length}
+              </span>
+              筆批次班次。
+            </p>
+            {pendingExcelImport.errors.length > 0 && (
+              <p className="mt-2 rounded-adminControl border border-star-300/40 bg-star-100/10 px-3 py-2 text-sm leading-6 text-admin-muted">
+                略過 {pendingExcelImport.errors.length} 筆格式或資料錯誤的資料：
+                {pendingExcelImport.errors.slice(0, 2).join("；")}
+              </p>
+            )}
+            <p className="mt-2 rounded-adminControl border border-admin-border bg-admin-bg px-3 py-2 text-sm leading-6 text-admin-muted">
+              請確認下方批次預覽清單後再建立班次。
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
+                type="button"
+                onClick={() => {
+                  setPendingExcelImport(null);
+                }}
+              >
+                取消
+              </button>
+              <button
+                className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg"
+                type="button"
+                onClick={confirmBatchExcelImport}
+              >
+                確認
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {isImportDateModalOpen && (
         <div
@@ -1423,21 +2082,56 @@ export function ScheduleManagementPage() {
         >
           <section className="w-full max-w-md rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-5 shadow-adminPanel">
             <h2 className="admin-section-title" id="import-schedules-title">
-              依日期匯入班次
+              複製班次
             </h2>
-            <p className="mt-2 text-sm leading-6 text-admin-muted">
-              選擇要複製的日期。系統會帶入該日的班次編號與班次時間，並將營運日期設為明日、截止日期設為發車前 30 分鐘。
-            </p>
+
             <label className="mt-5 block text-sm font-medium text-admin-softText">
-              來源日期
-              <input
-                className={inputClass}
-                type="date"
-                value={importSourceDate}
-                onClick={openInputPicker}
-                onChange={(event) => setImportSourceDate(event.target.value)}
-              />
+              可直接輸入 YYYY-MM-DD，或點選日曆選擇日期。
+              <div className="mt-2 flex gap-2">
+                <Input
+                  className="h-11 border-admin-borderStrong bg-admin-bg text-admin-text placeholder:text-admin-muted"
+                  inputMode="numeric"
+                  placeholder="YYYY-MM-DD"
+                  type="text"
+                  value={importSourceDate}
+                  onChange={(event) => setImportSourceDate(event.target.value)}
+                />
+                <Popover
+                  open={isImportCalendarOpen}
+                  onOpenChange={setIsImportCalendarOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <button
+                      aria-label="開啟日曆"
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong bg-admin-bg text-admin-softText hover:border-adminStatus-enabled hover:text-adminStatus-enabled"
+                      type="button"
+                    >
+                      <CalendarIcon aria-hidden="true" className="h-5 w-5" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="end"
+                    className="!z-[60] !w-auto !bg-admin-surface !p-2 !text-admin-text"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={
+                        getDateFromInputValue(importSourceDate) ?? undefined
+                      }
+                      onSelect={(date) => {
+                        if (!date) return;
+                        setImportSourceDate(formatDate(date));
+                        setIsImportCalendarOpen(false);
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </label>
+            <p className="mt-2 rounded-adminControl border border-star-300/40 bg-star-100/10 px-3 py-2 text-sm leading-6 text-admin-muted">
+              確認後會複製所選日期的班次資料，並以明日作為營運日期、發車前 30
+              分鐘作為截止時間。
+            </p>
             <div className="mt-6 flex justify-end gap-3">
               <button
                 className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
@@ -1453,7 +2147,7 @@ export function ScheduleManagementPage() {
                 type="button"
                 onClick={() => void importSchedulesFromDate()}
               >
-                {isImportingSchedules ? "讀取中…" : "讀取並匯入"}
+                {isImportingSchedules ? "複製中…" : "確認複製班表"}
               </button>
             </div>
           </section>

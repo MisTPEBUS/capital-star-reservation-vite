@@ -10,6 +10,7 @@ import { UserPermissionsPage } from "./pages/UserPermissionsPage";
 import { DispatchManagementPage } from "./pages/DispatchManagementPage";
 import { RouteManagementPage } from "./pages/RouteManagementPage";
 import { StopManagementPage } from "./pages/StopManagementPage";
+import { TooltipProvider } from "../components/ui/tooltip";
 
 export default function AdminApp() {
   const [queryClient] = useState(
@@ -23,7 +24,8 @@ export default function AdminApp() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Routes>
+      <TooltipProvider>
+        <Routes>
       <Route path="login" element={<LoginPage />} />
       <Route element={<AdminLayout />}>
         <Route path="dashboard" element={<DashboardPage />} />
@@ -47,7 +49,8 @@ export default function AdminApp() {
         />
       </Route>
       <Route path="*" element={<Navigate replace to="login" />} />
-      </Routes>
+        </Routes>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

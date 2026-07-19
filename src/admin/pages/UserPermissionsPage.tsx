@@ -146,171 +146,152 @@ export function UserPermissionsPage() {
     <div>
       <section className="admin-panel-body overflow-hidden p-0">
         <div className="p-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] lg:items-center">
-          <div
-            aria-label="使用者角色篩選"
-            className="flex flex-wrap gap-2"
-            role="group"
-          >
-            {roleOptions.map((option) => {
-              const isActive = roleFilter === option.value;
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] lg:items-center">
+            <div
+              aria-label="使用者角色篩選"
+              className="flex flex-wrap gap-2"
+              role="group"
+            >
+              {roleOptions.map((option) => {
+                const isActive = roleFilter === option.value;
 
-              return (
+                return (
+                  <button
+                    key={option.value}
+                    className={`h-10 rounded-adminControl border px-4 text-sm font-semibold ${
+                      isActive
+                        ? "border-adminStatus-enabled bg-adminStatus-enabled text-admin-bg"
+                        : "border-admin-borderStrong text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
+                    }`}
+                    type="button"
+                    onClick={() => setRoleFilter(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex min-w-0 gap-2">
+              <input
+                id="user-keyword"
+                className="h-10 min-w-0 flex-1 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm text-admin-text outline-none placeholder:text-admin-muted focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15"
+                placeholder="搜尋姓名、LINE ID、識別碼、電話、Email"
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+              />
+              {keyword && (
                 <button
-                  key={option.value}
-                  className={`h-10 rounded-adminControl border px-4 text-sm font-semibold ${
-                    isActive
-                      ? "border-adminStatus-enabled bg-adminStatus-enabled text-admin-bg"
-                      : "border-admin-borderStrong text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
-                  }`}
+                  aria-label="清除搜尋文字"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
+                  title="清除搜尋文字"
                   type="button"
-                  onClick={() => setRoleFilter(option.value)}
+                  onClick={() => setKeyword("")}
                 >
-                  {option.label}
+                  <FaTimes aria-hidden="true" />
                 </button>
-              );
-            })}
+              )}
+            </div>
           </div>
-          <div className="flex min-w-0 gap-2">
-            <input
-              id="user-keyword"
-              className="h-10 min-w-0 flex-1 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm text-admin-text outline-none placeholder:text-admin-muted focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15"
-              placeholder="搜尋姓名、LINE ID、識別碼、電話、Email"
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-            />
-            {keyword && (
-              <button
-                aria-label="清除搜尋文字"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
-                title="清除搜尋文字"
-                type="button"
-                onClick={() => setKeyword("")}
-              >
-                <FaTimes aria-hidden="true" />
-              </button>
-            )}
-          </div>
-        </div>
 
-        {error && (
-          <p
-            className="mt-4 rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200"
-            role="alert"
-          >
-            {error}
-          </p>
-        )}
-        {success && (
-          <p
-            className="mt-4 rounded-adminControl border border-adminStatus-enabled/30 bg-adminStatus-enabled/10 px-4 py-3 text-sm text-adminStatus-enabledText"
-            role="status"
-          >
-            {success}
-          </p>
-        )}
+          {error && (
+            <p
+              className="mt-4 rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200"
+              role="alert"
+            >
+              {error}
+            </p>
+          )}
+          {success && (
+            <p
+              className="mt-4 rounded-adminControl border border-adminStatus-enabled/30 bg-adminStatus-enabled/10 px-4 py-3 text-sm text-adminStatus-enabledText"
+              role="status"
+            >
+              {success}
+            </p>
+          )}
         </div>
 
         <div className="border-t border-admin-border">
-        {isLoading ? (
-          <p className="px-4 py-8 text-center text-admin-muted">
-            讀取使用者清單中…
-          </p>
-        ) : users.length === 0 ? (
-          <p className="px-4 py-8 text-center text-admin-muted">
-            目前沒有符合條件的使用者。
-          </p>
-        ) : filteredUsers.length === 0 ? (
-          <p className="px-4 py-8 text-center text-admin-muted">
-            目前沒有符合關鍵字的使用者。
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] text-left text-sm">
-              <thead className="border-b border-admin-border bg-admin-bg text-xs text-admin-muted">
-                <tr>
-                  <th className="px-3 py-2.5 font-semibold">使用者</th>
-                  <th className="px-3 py-2.5 font-semibold">識別碼</th>
-                  <th className="px-3 py-2.5 font-semibold">聯絡資訊</th>
-                  <th className="px-3 py-2.5 font-semibold">狀態</th>
-                  <th className="px-3 py-2.5 font-semibold">建立時間</th>
-                  <th className="px-3 py-2.5 font-semibold">更新時間</th>
-                  <th className="px-3 py-2.5 font-semibold">權限</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-admin-border">
-                {filteredUsers.map((user) => {
-                  const isUpdating = updatingUserId === user.userId;
+          {isLoading ? (
+            <p className="px-4 py-8 text-center text-admin-muted">
+              讀取使用者清單中…
+            </p>
+          ) : users.length === 0 ? (
+            <p className="px-4 py-8 text-center text-admin-muted">
+              目前沒有符合條件的使用者。
+            </p>
+          ) : filteredUsers.length === 0 ? (
+            <p className="px-4 py-8 text-center text-admin-muted">
+              目前沒有符合關鍵字的使用者。
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-left text-sm">
+                <thead className="border-b border-admin-border bg-admin-bg text-xs text-admin-muted">
+                  <tr>
+                    <th className="px-3 py-2.5 font-semibold">使用者</th>
+                    <th className="px-3 py-2.5 font-semibold">識別碼</th>
 
-                  return (
-                    <tr key={user.userId} className="text-admin-softText">
-                      <td className="px-3 py-3">
-                        <p className="font-semibold text-admin-text">
-                          {user.displayName || "未設定名稱"}
-                        </p>
-                        <p className="mt-1 break-all text-xs text-admin-muted">
-                          {user.lineId || user.userId}
-                        </p>
-                      </td>
-                      <td className="px-3 py-3 font-mono">
-                        {user.activeCode || "-"}
-                      </td>
-                      <td className="px-3 py-3">
-                        <p>{user.phone || "-"}</p>
-                        <p className="mt-1 break-all text-xs text-admin-muted">
-                          {user.email || "-"}
-                        </p>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`font-semibold ${
-                            user.status === "ACTIVE" && user.isEnabled
-                              ? "text-adminStatus-enabled"
-                              : "text-admin-muted"
-                          }`}
-                        >
-                          {user.status === "ACTIVE" && user.isEnabled
-                            ? "啟用"
-                            : "停用"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        {formatDateTime(user.createdAt)}
-                      </td>
-                      <td className="px-3 py-3">
-                        {formatDateTime(user.updatedAt)}
-                      </td>
-                      <td className="px-3 py-3">
-                        <select
-                          className="h-10 w-full min-w-36 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm font-semibold text-admin-text outline-none focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15 disabled:cursor-not-allowed disabled:opacity-60"
-                          disabled={isUpdating}
-                          value={user.role}
-                          onChange={(event) =>
-                            handleRoleChange(
-                              user,
-                              event.target.value as UserRole,
-                            )
-                          }
-                        >
-                          {roleOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}（{option.value}）
-                            </option>
-                          ))}
-                        </select>
-                        {isUpdating && (
-                          <p className="mt-1 text-xs text-admin-muted">
-                            更新中…
+                    <th className="px-3 py-2.5 font-semibold">建立時間</th>
+                    <th className="px-3 py-2.5 font-semibold">更新時間</th>
+                    <th className="px-3 py-2.5 font-semibold">權限</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-admin-border">
+                  {filteredUsers.map((user) => {
+                    const isUpdating = updatingUserId === user.userId;
+
+                    return (
+                      <tr key={user.userId} className="text-admin-softText">
+                        <td className="px-3 py-3">
+                          <p className="font-semibold text-admin-text">
+                            {user.displayName || "未設定名稱"}
                           </p>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                          <p className="mt-1 break-all text-xs text-admin-muted">
+                            {user.lineId || user.userId}
+                          </p>
+                        </td>
+                        <td className="px-3 py-3 font-mono">
+                          {user.activeCode || "-"}
+                        </td>
+
+                        <td className="px-3 py-3">
+                          {formatDateTime(user.createdAt)}
+                        </td>
+                        <td className="px-3 py-3">
+                          {formatDateTime(user.updatedAt)}
+                        </td>
+                        <td className="px-3 py-3">
+                          <select
+                            className="h-10 w-full min-w-36 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm font-semibold text-admin-text outline-none focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={isUpdating}
+                            value={user.role}
+                            onChange={(event) =>
+                              handleRoleChange(
+                                user,
+                                event.target.value as UserRole,
+                              )
+                            }
+                          >
+                            {roleOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}（{option.value}）
+                              </option>
+                            ))}
+                          </select>
+                          {isUpdating && (
+                            <p className="mt-1 text-xs text-admin-muted">
+                              更新中…
+                            </p>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
     </div>

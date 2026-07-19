@@ -77,7 +77,7 @@ function getScheduleName(schedule: DashboardDailyOpenSchedule) {
 
 function getStatusText(status: string) {
   if (status === "ACTIVE") return "啟用";
-  if (status === "INACTIVE") return "停用";
+  if (status === "INACTIVE") return "停班";
   return status;
 }
 
@@ -102,6 +102,18 @@ export function DashboardPage() {
   const [schedulesError, setSchedulesError] = useState("");
   const [reservationsError, setReservationsError] = useState("");
   const todayValue = getTodayValue();
+
+  useEffect(() => {
+    const timers = [
+      schedulesError && window.setTimeout(() => setSchedulesError(""), 5000),
+      reservationsError &&
+        window.setTimeout(() => setReservationsError(""), 5000),
+      cancelScheduleError &&
+        window.setTimeout(() => setCancelScheduleError(""), 5000),
+    ].filter(Boolean) as number[];
+
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [schedulesError, reservationsError, cancelScheduleError]);
 
   const routeOptions = useMemo(
     () =>
@@ -269,72 +281,89 @@ export function DashboardPage() {
   }, [selectedScheduleId]);
 
   const downloadReservationExcel = async () => {
-    if (!selectedSchedule) return;
+    if (schedules.length === 0) return;
 
-    const { default: ExcelJS } = await import("exceljs");
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("預約清單");
+    try {
+      const scheduleReservations = await Promise.all(
+        schedules.map(async (schedule) =>
+          getDashboardScheduleReservations(schedule.dailyOpenScheduleId),
+        ),
+      );
+      const activeReservations = scheduleReservations
+        .sort((a, b) =>
+          a.schedule.departureTime.localeCompare(b.schedule.departureTime),
+        )
+        .flatMap(({ schedule, reservations: scheduleRows }) =>
+          scheduleRows
+            .filter((reservation) => reservation.status === "RESERVED")
+            .sort((a, b) => a.sequence - b.sequence)
+            .map((reservation) => ({ schedule, reservation })),
+        );
+      const { default: ExcelJS } = await import("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("當日乘客名單");
 
-    worksheet.columns = [
-      { header: "班次", key: "scheduleName", width: 28 },
-      { header: "發車時間", key: "departureTime", width: 12 },
-      { header: "乘車序號", key: "sequence", width: 12 },
-      { header: "稱謂", key: "name", width: 14 },
-      { header: "LINE 名稱", key: "lineDisplayName", width: 18 },
-      { header: "識別碼", key: "activeCode", width: 16 },
-      { header: "上車站", key: "pickupStopName", width: 14 },
-      { header: "預約時間", key: "bookedAt", width: 22 },
-      { header: "狀態", key: "status", width: 12 },
-    ];
+      worksheet.columns = [
+        { header: "班次", key: "scheduleName", width: 28 },
+        { header: "發車時間", key: "departureTime", width: 14 },
+        { header: "稱謂", key: "name", width: 18 },
+        { header: "識別碼", key: "activeCode", width: 16 },
+        { header: "上車站", key: "pickupStopName", width: 20 },
 
-    reservationRows.forEach((reservation) => {
-      worksheet.addRow({
-        scheduleName: getScheduleName(selectedSchedule),
-        departureTime: reservation.departureTime,
-        sequence: reservation.sequence,
-        name: reservation.name,
-        lineDisplayName: reservation.lineDisplayName,
-        activeCode: reservation.activeCode,
-        pickupStopName: reservation.pickupStopName,
-        bookedAt: reservation.bookedAt,
-        status: reservation.status === "RESERVED" ? "已預約" : "已取消",
+        { header: "乘車序號/電話", key: "sequence", width: 20 },
+      ];
+
+      activeReservations.forEach(({ schedule, reservation }) => {
+        worksheet.addRow({
+          scheduleName: getScheduleName(schedule),
+          departureTime: formatDepartureTime(schedule.departureTime),
+          name: reservation.name,
+          sequence: reservation.sequence,
+          activeCode: reservation.activeCode,
+          phone: reservation.phone,
+          pickupStopName: reservation.pickupStopName,
+        });
       });
-    });
 
-    worksheet.views = [{ state: "frozen", ySplit: 1 }];
-    worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-    worksheet.getRow(1).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF047857" },
-    };
+      worksheet.views = [{ state: "frozen", ySplit: 1 }];
+      worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF047857" },
+      };
 
-    worksheet.eachRow((row) => {
-      row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
-        cell.border = {
-          top: { style: "thin", color: { argb: "FF94A3B8" } },
-          left: { style: "thin", color: { argb: "FF94A3B8" } },
-          bottom: { style: "thin", color: { argb: "FF94A3B8" } },
-          right: { style: "thin", color: { argb: "FF94A3B8" } },
-        };
-        cell.alignment = {
-          horizontal: columnNumber === 3 ? "center" : "left",
-          vertical: "middle",
-        };
+      worksheet.eachRow((row) => {
+        row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
+          cell.border = {
+            top: { style: "thin", color: { argb: "FF94A3B8" } },
+            left: { style: "thin", color: { argb: "FF94A3B8" } },
+            bottom: { style: "thin", color: { argb: "FF94A3B8" } },
+            right: { style: "thin", color: { argb: "FF94A3B8" } },
+          };
+          cell.alignment = {
+            horizontal: columnNumber === 4 ? "center" : "left",
+            vertical: "middle",
+          };
+        });
       });
-    });
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
 
-    link.href = url;
-    link.download = `${selectedSchedule.routeNumber}-${selectedSchedule.openDate}-${formatDepartureTime(selectedSchedule.departureTime).replace(":", "")}.xlsx`;
-    link.click();
-    URL.revokeObjectURL(url);
+      link.href = url;
+      link.download = `${openDate}-班次預約乘客清單.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setReservationsError(
+        error instanceof Error ? error.message : "匯出當班乘客名單失敗。",
+      );
+    }
   };
 
   const openCancelScheduleModal = () => {
@@ -458,6 +487,14 @@ export function DashboardPage() {
                   班次
                 </h3>
               </div>
+              <button
+                className="h-9 rounded-adminControl border border-admin-borderStrong px-3 text-xs font-bold text-admin-softText disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={schedules.length === 0}
+                type="button"
+                onClick={downloadReservationExcel}
+              >
+                匯出 Excel
+              </button>
             </div>
 
             <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-1">
@@ -474,46 +511,46 @@ export function DashboardPage() {
                   const isSelected =
                     schedule.dailyOpenScheduleId === selectedScheduleId;
                   const isInactive = schedule.status === "INACTIVE";
+                  const reservationRate = Math.min(
+                    100,
+                    Math.round(
+                      (schedule.reservedCount / Math.max(schedule.quota, 1)) *
+                        100,
+                    ),
+                  );
 
                   return (
                     <button
                       key={schedule.dailyOpenScheduleId}
                       aria-pressed={isSelected}
-                      className={`w-full rounded-adminControl border px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
+                      className={`group relative w-full overflow-hidden rounded-adminControl border p-4 text-left transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
                         isSelected && isInactive
-                          ? "border-red-400/60 bg-red-400/10"
+                          ? "border-red-400/60 bg-red-400/10 shadow-[0_8px_24px_rgba(248,113,113,0.08)]"
                           : isSelected
-                            ? "border-adminStatus-enabled bg-adminStatus-enabled/10"
+                            ? "border-adminStatus-enabled bg-adminStatus-enabled/10 shadow-[0_8px_24px_rgba(34,197,94,0.08)]"
                             : isInactive
                               ? "border-admin-borderStrong bg-admin-bg/70 opacity-80 hover:border-red-400/40"
-                              : "border-admin-border bg-admin-elevated hover:border-admin-borderStrong"
+                              : "border-admin-border bg-admin-elevated hover:-translate-y-0.5 hover:border-adminStatus-enabled/60 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]"
                       }`}
                       type="button"
                       onClick={() =>
                         setSelectedScheduleId(schedule.dailyOpenScheduleId)
                       }
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p
-                            className={`text-2xl font-bold leading-none ${
-                              isInactive
-                                ? "text-admin-muted"
-                                : "text-admin-text"
-                            }`}
-                          >
-                            {formatDepartureTime(schedule.departureTime)}
-                          </p>
-                          <p
-                            className={`mt-2 truncate text-sm font-semibold ${
-                              isInactive
-                                ? "text-admin-muted"
-                                : "text-admin-softText"
-                            }`}
-                          >
-                            {schedule.routeNumber}｜{schedule.routeName}
-                          </p>
-                        </div>
+                      <span
+                        aria-hidden="true"
+                        className={`absolute inset-y-0 left-0 w-1 ${
+                          isInactive
+                            ? "bg-red-400"
+                            : isSelected
+                              ? "bg-adminStatus-enabled"
+                              : "bg-transparent transition group-hover:bg-adminStatus-enabled/60"
+                        }`}
+                      />
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-bold tracking-[0.12em] text-admin-muted">
+                          路線 {schedule.routeNumber}
+                        </p>
                         <span
                           className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
                             schedule.status === "ACTIVE"
@@ -524,22 +561,30 @@ export function DashboardPage() {
                           {getStatusText(schedule.status)}
                         </span>
                       </div>
-                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <div className="mt-4 flex items-end justify-between gap-4">
                         <div>
-                          <p className="text-admin-muted">已預約</p>
-                          <p className="mt-1 font-bold text-admin-text">
+                          <p
+                            className={`text-3xl font-bold leading-none tabular-nums ${
+                              isInactive
+                                ? "text-admin-muted"
+                                : "text-admin-text"
+                            }`}
+                          >
+                            {formatDepartureTime(schedule.departureTime)}
+                          </p>
+                          <p className="mt-2 truncate text-xs font-medium text-admin-softText">
+                            {schedule.routeName}
+                          </p>
+                        </div>
+                        <div className="min-w-[92px] text-right">
+                          <p className="text-xs font-medium text-admin-muted">
+                            預約 / 總人數
+                          </p>
+                          <p className="mt-1 text-xl font-bold leading-none tabular-nums text-admin-text">
                             {schedule.reservedCount}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-admin-muted">剩餘</p>
-                          <p className="mt-1 font-bold text-admin-text">
-                            {schedule.availableSeats}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-admin-muted">名額</p>
-                          <p className="mt-1 font-bold text-admin-text">
+                            <span className="mx-1 text-sm font-medium text-admin-muted">
+                              /
+                            </span>
                             {schedule.quota}
                           </p>
                         </div>
@@ -552,7 +597,7 @@ export function DashboardPage() {
           </div>
 
           <section className="admin-panel-body flex min-h-0 min-w-0 flex-col">
-            <section className="mb-4 max-w-full rounded-adminControl border border-admin-border bg-admin-surface p-3">
+            <section className="mb-4  max-w-full rounded-adminControl border border-admin-border bg-admin-surface p-3 ">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="grid h-11 w-[260px] max-w-full shrink-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center overflow-hidden rounded-adminControl border border-admin-borderStrong bg-admin-bg">
                   <button
@@ -611,27 +656,6 @@ export function DashboardPage() {
                     ))}
                   </select>
                 </label>
-              </div>
-            </section>
-
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="admin-section-title">
-                  {selectedSchedule
-                    ? `${formatDepartureTime(selectedSchedule.departureTime)} 預約乘客清單`
-                    : "預約乘客清單"}
-                </h2>
-                {selectedSchedule && (
-                  <p className="mt-1 text-sm text-admin-muted">
-                    {getScheduleName(selectedSchedule)}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-sm text-admin-muted">
-                  已預約 {selectedSchedule?.reservedCount ?? 0} 人
-                </span>
                 <label className="flex h-10 items-center gap-2 rounded-adminControl border border-admin-borderStrong px-3 text-sm font-semibold text-admin-softText">
                   <input
                     className="h-4 w-4 accent-adminStatus-enabled"
@@ -645,11 +669,11 @@ export function DashboardPage() {
                 </label>
                 <button
                   className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={!selectedSchedule || reservationRows.length === 0}
+                  disabled={schedules.length === 0}
                   type="button"
                   onClick={downloadReservationExcel}
                 >
-                  下載 Excel
+                  匯出當班
                 </button>
                 <button
                   className="h-10 rounded-adminControl border border-red-400/50 bg-red-500/10 px-4 text-sm font-bold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
@@ -665,7 +689,7 @@ export function DashboardPage() {
                   取消班次
                 </button>
               </div>
-            </div>
+            </section>
 
             {reservationsError && (
               <p className="mt-4 rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">

@@ -226,6 +226,12 @@ export function StopManagementPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeoutId = window.setTimeout(() => setNotice(null), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [notice]);
   const [qrSizes, setQrSizes] = useState<Record<string, number>>({});
   const [qrLabels, setQrLabels] = useState<Record<string, string>>({});
   const [expandedQrStopIds, setExpandedQrStopIds] = useState<
@@ -394,7 +400,7 @@ export function StopManagementPage() {
                           {stop.stopName}
                         </h3>
                         <span className="rounded-full bg-admin-elevated px-2 py-0.5 text-xs font-bold text-admin-softText">
-                          {stop.stopType === "STATION" ? "轉運站" : "路邊站"}
+                          {stop.stopType === "STATION" ? "轉運站" : "停靠站"}
                         </span>
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-bold ${stop.status === "ACTIVE" ? "bg-adminStatus-enabled/10 text-adminStatus-enabled" : "bg-admin-elevated text-admin-muted"}`}
@@ -555,7 +561,7 @@ export function StopManagementPage() {
                     }))
                   }
                 >
-                  <option value="ROADSIDE">路邊站</option>
+                  <option value="ROADSIDE">停靠站</option>
                   <option value="STATION">轉運站</option>
                 </select>
               </label>

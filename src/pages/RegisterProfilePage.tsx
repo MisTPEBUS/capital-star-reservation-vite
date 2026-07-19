@@ -143,7 +143,8 @@ export function RegisterProfilePage() {
               <span className="text-sm font-black text-ink-700">姓氏</span>
               <input
                 value={firstName}
-                onChange={(event) =>
+                onChange={(event) => setFirstName(event.target.value)}
+                onBlur={(event) =>
                   setFirstName(normalizeFirstName(event.target.value))
                 }
                 className="h-12 rounded-2xl border border-bus-100 bg-ink-50 px-4 text-base font-bold text-ink-900 outline-none transition focus:border-bus-500 focus:bg-white focus:ring-4 focus:ring-bus-100"

@@ -29,7 +29,7 @@ const timePeriods: { value: TimePeriod; label: string }[] = [
 
 const getStopTypeLabel = (stopType: PickupStop["stopType"]) => {
   if (stopType === "MAIN_STATION" || stopType === "TRANSIT") return "轉運站";
-  if (stopType === "ROADSIDE") return "路邊站";
+  if (stopType === "ROADSIDE") return "停靠站";
   return "上車站";
 };
 
@@ -125,11 +125,14 @@ export function BookingForm({
                     type="button"
                     aria-pressed={isActive}
                     onClick={() => {
-                      onChange({
-                        ...selection,
-                        pickupStopId: stop.stopId,
-                        timePeriod: "ALL",
-                      }, "pickup");
+                      onChange(
+                        {
+                          ...selection,
+                          pickupStopId: stop.stopId,
+                          timePeriod: "ALL",
+                        },
+                        "pickup",
+                      );
                     }}
                     className={`min-h-12 rounded-xl px-3 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
                       isActive
@@ -169,11 +172,14 @@ export function BookingForm({
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => {
-                    onChange({
-                      ...selection,
-                      openDate: date.value,
-                      timePeriod: "ALL",
-                    }, "date");
+                    onChange(
+                      {
+                        ...selection,
+                        openDate: date.value,
+                        timePeriod: "ALL",
+                      },
+                      "date",
+                    );
                   }}
                   className={`min-h-12 rounded-xl px-3 text-center outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
                     isActive

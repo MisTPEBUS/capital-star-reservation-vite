@@ -29,6 +29,7 @@ type SelectedStop = Pick<
   | "latitude"
   | "longitude"
   | "status"
+  | "arriveAt"
 >;
 
 export function RouteManagementPage() {
@@ -37,6 +38,12 @@ export function RouteManagementPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeoutId = window.setTimeout(() => setNotice(null), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [notice]);
   const [editingRoute, setEditingRoute] = useState<AdminRoute | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<RoutePayload>(emptyPayload);
@@ -177,6 +184,7 @@ export function RouteManagementPage() {
           latitude: stop.latitude,
           longitude: stop.longitude,
           status: stop.status,
+          arriveAt: stop.arriveAt,
         })),
     );
     setStationError(null);
@@ -202,6 +210,7 @@ export function RouteManagementPage() {
     const stopsPayload = selectedStops.map((stop, index) => ({
       stopId: stop.stopId,
       sequence: index + 1,
+      arriveAt: stop.arriveAt,
     }));
 
     try {
@@ -247,6 +256,19 @@ export function RouteManagementPage() {
   const removeSelectedStop = (stopId: string) => {
     setSelectedStops((current) =>
       current.filter((stop) => stop.stopId !== stopId),
+    );
+  };
+
+  const updateStopArrivalTime = (stopId: string, value: string) => {
+    const arriveAt = value === "" ? undefined : Number(value);
+    if (arriveAt !== undefined && (!Number.isInteger(arriveAt) || arriveAt < 0)) {
+      return;
+    }
+
+    setSelectedStops((current) =>
+      current.map((stop) =>
+        stop.stopId === stopId ? { ...stop, arriveAt } : stop,
+      ),
     );
   };
 
@@ -488,7 +510,7 @@ export function RouteManagementPage() {
               設定站位：{stationRoute.routeNumber} {stationRoute.routeName}
             </h2>
             <p className="mt-2 text-sm leading-6 text-admin-muted">
-              左側加入站位，右側用上移、下移調整順序。送出時會依右側排序寫入路線與站位關聯。
+              左側加入站位，右側用上移、下移調整順序，並設定各站預估抵達的行車時間（分鐘）。送出時會依右側排序寫入路線與站位關聯。
             </p>
             {stationError && (
               <p
@@ -542,7 +564,7 @@ export function RouteManagementPage() {
                             <span className="mt-1 block text-xs text-admin-muted">
                               {stop.stopType === "STATION"
                                 ? "轉運站"
-                                : "路邊站"}
+                                : "停靠站"}
                             </span>
                           </span>
                           <span
@@ -573,49 +595,70 @@ export function RouteManagementPage() {
                     </div>
                   ) : (
                     selectedStops.map((stop, index) => (
-                      <div
-                        className="grid gap-3 rounded-adminControl border border-admin-borderStrong bg-admin-surface px-4 py-3 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center"
+                      <article
+                        className="grid grid-cols-[2.25rem_minmax(7rem,1fr)_8.5rem_auto] items-center gap-2 rounded-adminControl border border-admin-borderStrong bg-admin-surface px-3 py-2"
                         key={stop.stopId}
                       >
-                        <span className="grid h-8 w-8 place-items-center rounded-full bg-adminStatus-enabled/15 text-sm font-black text-adminStatus-enabled">
-                          {index + 1}
+                        <span className="grid h-8 w-8 place-items-center rounded-full bg-adminStatus-enabled/15 text-xs font-black text-adminStatus-enabled">
+                          {String(index + 1).padStart(2, "0")}
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-admin-text">
+                          <p className="truncate text-sm font-semibold text-admin-text">
                             {stop.stopName}
                           </p>
-                          <p className="mt-1 text-xs text-admin-muted">
-                            {stop.stopType === "STATION" ? "轉運站" : "路邊站"}
+                          <p className="text-[11px] text-admin-muted">
+                            {stop.stopType === "STATION" ? "轉運站" : "停靠站"}
                           </p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <label className="relative block">
+                          <span className="sr-only">{stop.stopName} 的行車時間（分鐘）</span>
+                          <input
+                            aria-label={`${stop.stopName} 的行車時間（分鐘）`}
+                            className="h-8 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 pr-8 text-xs font-semibold text-admin-text outline-none transition focus:border-adminStatus-enabled"
+                            min="0"
+                            placeholder="行車時間"
+                            step="1"
+                            type="number"
+                            value={stop.arriveAt ?? ""}
+                            onChange={(event) =>
+                              updateStopArrivalTime(stop.stopId, event.target.value)
+                            }
+                          />
+                          <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[11px] text-admin-muted">
+                            分
+                          </span>
+                        </label>
+                        <div className="flex gap-1">
                           <button
-                            className="rounded-adminControl border border-admin-borderStrong px-3 py-2 text-xs font-semibold text-admin-softText disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label={`將 ${stop.stopName} 往前移`}
+                            className="grid h-8 w-8 place-items-center rounded-adminControl border border-admin-borderStrong text-xs font-semibold text-admin-softText transition hover:border-adminStatus-enabled hover:text-admin-text disabled:cursor-not-allowed disabled:opacity-40"
                             disabled={index === 0}
                             type="button"
                             onClick={() => moveSelectedStop(stop.stopId, "up")}
                           >
-                            上移
+                            ↑
                           </button>
                           <button
-                            className="rounded-adminControl border border-admin-borderStrong px-3 py-2 text-xs font-semibold text-admin-softText disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label={`將 ${stop.stopName} 往後移`}
+                            className="grid h-8 w-8 place-items-center rounded-adminControl border border-admin-borderStrong text-xs font-semibold text-admin-softText transition hover:border-adminStatus-enabled hover:text-admin-text disabled:cursor-not-allowed disabled:opacity-40"
                             disabled={index === selectedStops.length - 1}
                             type="button"
                             onClick={() =>
                               moveSelectedStop(stop.stopId, "down")
                             }
                           >
-                            下移
+                            ↓
                           </button>
                           <button
-                            className="rounded-adminControl border border-red-400/40 px-3 py-2 text-xs font-semibold text-red-300"
+                            aria-label={`移除 ${stop.stopName}`}
+                            className="grid h-8 w-8 place-items-center rounded-adminControl text-sm font-semibold text-red-300 transition hover:bg-red-400/10 hover:text-red-200"
                             type="button"
                             onClick={() => removeSelectedStop(stop.stopId)}
                           >
-                            移除
+                            ×
                           </button>
                         </div>
-                      </div>
+                      </article>
                     ))
                   )}
                 </div>

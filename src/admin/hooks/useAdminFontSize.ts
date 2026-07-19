@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 const ADMIN_FONT_SIZE_STORAGE_KEY = "admin-font-size";
-const DEFAULT_FONT_SIZE = 16;
+const DEFAULT_FONT_SIZE = 18;
 const FONT_SIZE_STEP = 2;
 const MIN_FONT_SIZE = 12;
 const MAX_FONT_SIZE = 24;
