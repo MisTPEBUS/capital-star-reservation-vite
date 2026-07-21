@@ -11,6 +11,7 @@ interface UpcomingReservationCardProps {
   identityCode: string | null;
   passengerName?: string | null;
   onCancelled: () => Promise<void>;
+  canCancel?: boolean;
 }
 
 const formatBookedAt = (bookedAt: string) => {
@@ -45,18 +46,13 @@ const getStatusText = (status: string) => {
   return status;
 };
 
-const scrollToBookingForm = () => {
-  document
-    .getElementById("booking-form")
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-};
-
 export function UpcomingReservationCard({
   reservation,
   userId,
   identityCode,
   passengerName,
   onCancelled,
+  canCancel = reservation?.status === "RESERVED",
 }: UpcomingReservationCardProps) {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -74,23 +70,7 @@ export function UpcomingReservationCard({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isTicketExpanded]);
 
-  if (!reservation) {
-    return (
-      <section
-        id="upcoming-reservation"
-        className="rounded-card bg-ink-50 p-4 text-center ring-1 ring-bus-100"
-      >
-        <p className="text-xl font-black text-ink-900">目前尚未預約班次</p>
-        <button
-          type="button"
-          onClick={scrollToBookingForm}
-          className="mt-4 h-11 rounded-xl bg-bus-900 px-5 text-base font-black text-white transition hover:bg-bus-700"
-        >
-          立即預約
-        </button>
-      </section>
-    );
-  }
+  if (!reservation) return null;
 
   const handleCancel = async () => {
     if (!userId) {
@@ -222,6 +202,9 @@ export function UpcomingReservationCard({
                   <p className="mt-1 break-words text-4xl font-black leading-none text-[#1F1A17]">
                     {passengerName || "-"}
                   </p>
+                  <p className="mt-3 text-lg font-black text-[#C9151E]">
+                    預約搭乘人數：{reservation.passengerCount ?? 1} 人
+                  </p>
                 </div>
                 <div className="shrink-0 rounded-xl bg-[#FFF8D6] px-3 py-2 text-right ring-1 ring-[#D7B94A]">
                   <p className="text-md font-black text-[#C9151E] text-left">
@@ -268,14 +251,16 @@ export function UpcomingReservationCard({
         </div>
       </article>
 
-      <button
-        className="mt-3 h-11 w-full rounded-xl border-2 border-[#C9151E] bg-white px-4 text-base font-black text-[#C9151E] transition hover:bg-[#C9151E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={isCancelling}
-        type="button"
-        onClick={() => setIsConfirmingCancel(true)}
-      >
-        取消預約
-      </button>
+      {canCancel && (
+        <button
+          className="mt-3 h-11 w-full rounded-xl border-2 border-[#C9151E] bg-white px-4 text-base font-black text-[#C9151E] transition hover:bg-[#C9151E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isCancelling}
+          type="button"
+          onClick={() => setIsConfirmingCancel(true)}
+        >
+          取消預約
+        </button>
+      )}
 
       {isConfirmingCancel && (
         <div

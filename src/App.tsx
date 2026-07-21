@@ -6,18 +6,22 @@ import {
   BookingForm,
   type BookingSelectionChangeSource,
 } from "./components/BookingForm";
+import { ReservationDialog } from "./components/ReservationDialog";
 import { MemberCard } from "./components/MemberCard";
 import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
 import { UpcomingReservationCard } from "./components/UpcomingReservationCard";
+import { AvailableTicketsMenu } from "./components/AvailableTicketsMenu";
 import {
   AuthProfile,
   getPreferredProfileName,
+  getSexTitle,
   getAuthProfile,
   isProfileRegistrationRequired,
 } from "./api/auth";
 import {
   createReservation,
+  getRecentReservations,
   getUpcomingReservations,
   UpcomingReservation,
 } from "./api/reservations";
@@ -88,7 +92,8 @@ function App() {
   const navigate = useNavigate();
   const availableDates = useMemo(() => getAvailableDates(), []);
   const requestedStopId = useMemo(
-    () => new URLSearchParams(window.location.search).get("stopId")?.trim() ?? "",
+    () =>
+      new URLSearchParams(window.location.search).get("stopId")?.trim() ?? "",
     [],
   );
   const hasAppliedInitialStop = useRef(false);
@@ -101,6 +106,13 @@ function App() {
   const [upcomingReservations, setUpcomingReservations] = useState<
     UpcomingReservation[]
   >([]);
+  const [upcomingReservationsLoading, setUpcomingReservationsLoading] =
+    useState(false);
+  const [recentReservations, setRecentReservations] = useState<
+    UpcomingReservation[]
+  >([]);
+  const [recentReservationsLoading, setRecentReservationsLoading] =
+    useState(false);
   const [pickupStops, setPickupStops] = useState<PickupStop[]>([]);
   const [pickupStopsLoading, setPickupStopsLoading] = useState(true);
   const [pickupStopsError, setPickupStopsError] = useState("");
@@ -123,10 +135,7 @@ function App() {
   const [pendingScrollTarget, setPendingScrollTarget] = useState<
     "date" | "time" | "schedules" | null
   >(null);
-  const [isScheduleControlsVisible, setIsScheduleControlsVisible] =
-    useState(false);
-  const [isStickyReservationVisible, setIsStickyReservationVisible] =
-    useState(false);
+  const [isReservationDialogOpen, setIsReservationDialogOpen] = useState(false);
   const [reservingScheduleId, setReservingScheduleId] = useState<string | null>(
     null,
   );
@@ -167,6 +176,16 @@ function App() {
       ) ?? null
     );
   }, [upcomingReservations]);
+
+  const hasReservationOnSelectedDate = useMemo(
+    () =>
+      upcomingReservations.some(
+        (reservation) =>
+          reservation.status === "RESERVED" &&
+          reservation.openDate.slice(0, 10) === selection.openDate,
+      ),
+    [selection.openDate, upcomingReservations],
+  );
 
   const selectedSchedule = useMemo(
     () =>
@@ -219,58 +238,6 @@ function App() {
     schedulesLoading,
   ]);
 
-  useEffect(() => {
-    const updateScheduleControlsVisibility = () => {
-      const bookingPickup = document.getElementById("booking-pickup");
-
-      if (!bookingPickup) {
-        setIsScheduleControlsVisible(false);
-        return;
-      }
-
-      setIsScheduleControlsVisible(
-        bookingPickup.getBoundingClientRect().bottom <= 0,
-      );
-    };
-
-    updateScheduleControlsVisibility();
-    window.addEventListener("scroll", updateScheduleControlsVisibility, {
-      passive: true,
-    });
-    window.addEventListener("resize", updateScheduleControlsVisibility);
-
-    return () => {
-      window.removeEventListener("scroll", updateScheduleControlsVisibility);
-      window.removeEventListener("resize", updateScheduleControlsVisibility);
-    };
-  }, []);
-
-  useEffect(() => {
-    const updateStickyReservationVisibility = () => {
-      const bookingPickup = document.getElementById("booking-pickup");
-
-      if (!bookingPickup || filteredSchedules.length === 0) {
-        setIsStickyReservationVisible(false);
-        return;
-      }
-
-      setIsStickyReservationVisible(
-        bookingPickup.getBoundingClientRect().bottom <= 0,
-      );
-    };
-
-    updateStickyReservationVisibility();
-    window.addEventListener("scroll", updateStickyReservationVisibility, {
-      passive: true,
-    });
-    window.addEventListener("resize", updateStickyReservationVisibility);
-
-    return () => {
-      window.removeEventListener("scroll", updateStickyReservationVisibility);
-      window.removeEventListener("resize", updateStickyReservationVisibility);
-    };
-  }, [filteredSchedules.length]);
-
   const displayPassengerProfile = {
     ...passengerProfile,
     userId: authProfile?.userId ?? passengerProfile.userId,
@@ -289,6 +256,11 @@ function App() {
     email: authProfile?.email ?? passengerProfile.email,
     status: authProfile?.status ?? passengerProfile.status,
   };
+
+  const reservationPassengerName =
+    authProfile?.firstName?.trim() && getSexTitle(authProfile.sex)
+      ? `${authProfile.firstName.trim()}${getSexTitle(authProfile.sex)}`
+      : "";
 
   useEffect(() => {
     async function bootLiff() {
@@ -429,16 +401,28 @@ function App() {
     }
   };
 
+  const loadRecentReservations = async (userId: string) => {
+    try {
+      const reservations = await getRecentReservations(userId);
+      setRecentReservations(reservations);
+    } catch (error) {
+      console.error("RECENT_RESERVATIONS_ERROR:", error);
+      setRecentReservations([]);
+    }
+  };
+
   useEffect(() => {
     let isCurrent = true;
 
     async function loadCurrentUpcomingReservations() {
       if (!authProfile?.userId) {
         setUpcomingReservations([]);
+        setUpcomingReservationsLoading(false);
         return;
       }
 
       try {
+        setUpcomingReservationsLoading(true);
         const reservations = await getUpcomingReservations(authProfile.userId);
 
         if (isCurrent) {
@@ -449,10 +433,50 @@ function App() {
 
         console.error("UPCOMING_RESERVATIONS_ERROR:", error);
         setUpcomingReservations([]);
+      } finally {
+        if (isCurrent) {
+          setUpcomingReservationsLoading(false);
+        }
       }
     }
 
     loadCurrentUpcomingReservations();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [authProfile?.userId]);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadCurrentRecentReservations() {
+      if (!authProfile?.userId) {
+        setRecentReservations([]);
+        setRecentReservationsLoading(false);
+        return;
+      }
+
+      try {
+        setRecentReservationsLoading(true);
+        const reservations = await getRecentReservations(authProfile.userId);
+
+        if (isCurrent) {
+          setRecentReservations(reservations);
+        }
+      } catch (error) {
+        if (!isCurrent) return;
+
+        console.error("RECENT_RESERVATIONS_ERROR:", error);
+        setRecentReservations([]);
+      } finally {
+        if (isCurrent) {
+          setRecentReservationsLoading(false);
+        }
+      }
+    }
+
+    loadCurrentRecentReservations();
 
     return () => {
       isCurrent = false;
@@ -546,7 +570,11 @@ function App() {
     selection.pickupStopId,
   ]);
 
-  const handleReserve = async (schedule: OpenSchedule) => {
+  const handleReserve = async (
+    schedule: OpenSchedule,
+    name: string,
+    passengerCount: number,
+  ) => {
     if (!liffProfile?.lineUserId) {
       setReservationError("無法取得 LINE 使用者資料，請重新開啟頁面。");
       return;
@@ -554,6 +582,16 @@ function App() {
 
     if (!authProfile?.userId) {
       setReservationError("會員資料尚未載入完成，請稍後再試。");
+      return;
+    }
+
+    if (!name.trim()) {
+      setReservationError("請填寫稱呼後再預約。");
+      return;
+    }
+
+    if (!Number.isInteger(passengerCount) || passengerCount < 1) {
+      setReservationError("乘車人數至少為 1 人。");
       return;
     }
 
@@ -567,6 +605,8 @@ function App() {
         departureTime: schedule.departureTime,
         openDate: schedule.openDate,
         pickupStopId: selection.pickupStopId,
+        name: name.trim(),
+        passengerCount,
         lineUserId: liffProfile.lineUserId,
       });
 
@@ -577,16 +617,19 @@ function App() {
         openDate: reservation.openDate,
         pickupStopName: reservation.pickupStop.stopName,
         activeCode: displayPassengerProfile.activeCode,
-        passengerName: displayPassengerProfile.displayName,
+        passengerName: name.trim(),
+        passengerCount,
         bookedAt: formatDateTime(reservation.bookedAt),
         qrCode: reservation.qrCode,
       });
 
       setSelectedScheduleId(null);
+      setIsReservationDialogOpen(false);
 
       await Promise.all([
         loadSchedules(),
         loadUpcomingReservations(authProfile.userId),
+        loadRecentReservations(authProfile.userId),
       ]);
     } catch (error) {
       console.error("CREATE_RESERVATION_ERROR:", error);
@@ -594,6 +637,7 @@ function App() {
       const message = error instanceof Error ? error.message : "預約建立失敗";
 
       setReservationError(message);
+      await loadSchedules();
     } finally {
       setReservingScheduleId(null);
     }
@@ -625,21 +669,19 @@ function App() {
   };
 
   const isReserveButtonDisabled =
-    Boolean(activeUpcomingReservation) ||
+    hasReservationOnSelectedDate ||
     !selectedSchedule ||
     !canReserve ||
     reservingScheduleId !== null;
 
-  const reserveButtonText = activeUpcomingReservation
+  const reserveButtonText = hasReservationOnSelectedDate
     ? "已預約"
     : reservingScheduleId
       ? "處理中"
       : "預約";
 
-  const scrollToPickup = () => {
-    document
-      .getElementById("booking-pickup")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (liffLoading) {
@@ -673,28 +715,25 @@ function App() {
   return (
     <div>
       <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
+        <AvailableTicketsMenu
+          reservations={recentReservations}
+          isLoading={recentReservationsLoading}
+          onSelect={(reservation) =>
+            navigate(
+              `/ticket?reservationId=${encodeURIComponent(reservation.reservationId)}`,
+            )
+          }
+        />
         <div className="mx-auto w-full max-w-[820px]">
-          <header className="hidden overflow-hidden rounded-panel bg-bus-900 text-white shadow-soft ring-1 ring-white/60">
+          <header className=" overflow-hidden rounded-panel bg-bus-900 text-white shadow-soft ring-1 ring-white/60">
             <div className="grid gap-0 md:grid-cols-[1.08fr_0.92fr] md:items-stretch">
               <div className="p-5 md:p-7">
-                <div className="inline-flex rounded-full bg-white/12 px-3 py-1 text-xs font-black uppercase tracking-[0.24em] text-star-300 ring-1 ring-white/15">
-                  Capital Star Reservation
-                </div>
                 <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight md:text-4xl">
-                  旅遊預約訂購平台
+                  首都之星預約平台
                 </h1>
-                <p className="mt-3 max-w-md text-sm leading-6 text-bus-100">
+                {/*   <p className="mt-3 max-w-md text-sm leading-6 text-bus-100">
                   手機與平板優先的預約介面。以藍色車身與黃色星形識別為主視覺，流程保持單頁完成。
-                </p>
-
-                <div className="mt-5 grid grid-cols-3 gap-2">
-                  <HeroMetric label="路線" value={displayRoute.routeNumber} />
-                  <HeroMetric
-                    label="站點"
-                    value={`${displayRoute.stops.length}`}
-                  />
-                  <HeroMetric label="截止" value="18:00" />
-                </div>
+                </p> */}
               </div>
 
               <div className="relative min-h-[210px] bg-gradient-to-br from-bus-600 to-bus-300 p-4 md:min-h-full">
@@ -709,6 +748,17 @@ function App() {
           </header>
 
           <div className="mt-4 grid gap-3 pb-32 md:gap-4">
+            <section className="rounded-panel border-2 border-star-300 bg-[#FFF8D6] p-4 shadow-card md:p-5">
+              <p className="text-xl font-black text-[#9A3412] md:text-lg">
+                預約須知
+              </p>
+              <p className="mt-2 text-base font-bold leading-6 text-ink-800 md:text-base">
+                本系統僅開放預約「隔日」班次（每日 00:00 至 23:59
+                開放線上預約）；如需預約「每日」班次，請於班次前 1
+                小時來電進行電話預約。每位會員同一時間（每日）限預約一筆（上限 3
+                人），需待該筆預約取消後，方可再次進行預約。
+              </p>
+            </section>
             <MemberCard
               passenger={displayPassengerProfile}
               route={displayRoute}
@@ -718,17 +768,21 @@ function App() {
                 })
               }
             />
-            <UpcomingReservationCard
+            {/*  <UpcomingReservationCard
               reservation={activeUpcomingReservation}
               userId={authProfile?.userId ?? null}
               identityCode={displayPassengerProfile.activeCode}
               passengerName={displayPassengerProfile.displayName}
               onCancelled={async () => {
                 if (authProfile?.userId) {
-                  await loadUpcomingReservations(authProfile.userId);
+                  await Promise.all([
+                    loadUpcomingReservations(authProfile.userId),
+                    loadRecentReservations(authProfile.userId),
+                    loadSchedules(),
+                  ]);
                 }
               }}
-            />
+            /> */}
 
             {authProfileError && (
               <div className="rounded-panel bg-white p-3 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20 md:p-4">
@@ -784,9 +838,9 @@ function App() {
               isLoading={schedulesLoading}
               errorMessage={schedulesError}
               reservationErrorMessage={reservationError}
-              canReserve={canReserve}
+              canReserve={canReserve && !hasReservationOnSelectedDate}
               unavailableReason={
-                activeUpcomingReservation ? "ACTIVE_RESERVATION" : "UNOPENED"
+                hasReservationOnSelectedDate ? "ACTIVE_RESERVATION" : "UNOPENED"
               }
               reservingScheduleId={reservingScheduleId}
               selectedScheduleId={selectedScheduleId}
@@ -800,25 +854,15 @@ function App() {
 
         <button
           type="button"
-          aria-label="回到選擇上車地點"
-          onClick={scrollToPickup}
-          className={`fixed bottom-24 right-4 z-40 grid h-12 w-12 place-items-center rounded-full border border-bus-100 bg-white text-2xl font-black leading-none text-bus-700 shadow-lift transition hover:bg-bus-50 ${
-            isScheduleControlsVisible
-              ? "translate-y-0 opacity-100"
-              : "pointer-events-none translate-y-4 opacity-0"
-          }`}
+          aria-label="回到頁面頂端"
+          onClick={scrollToTop}
+          className="fixed bottom-24 right-4 z-40 grid h-12 w-12 place-items-center rounded-full border border-bus-100 bg-white text-2xl font-black leading-none text-bus-700 shadow-lift transition hover:bg-bus-50"
         >
           ↑
         </button>
 
-        <div
-          className={`fixed inset-x-0 bottom-0 z-40 border-t border-bus-100 bg-white/95 px-4 py-3 shadow-[0_-12px_30px_rgba(7,43,80,0.12)] backdrop-blur transition ${
-            isStickyReservationVisible
-              ? "translate-y-0 opacity-100"
-              : "pointer-events-none translate-y-full opacity-0"
-          }`}
-        >
-          {activeUpcomingReservation ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-bus-100 bg-white/95 px-4 py-3 shadow-[0_-12px_30px_rgba(7,43,80,0.12)] backdrop-blur">
+          {hasReservationOnSelectedDate ? (
             <button
               type="button"
               disabled
@@ -841,7 +885,7 @@ function App() {
                 disabled={isReserveButtonDisabled}
                 onClick={() => {
                   if (selectedSchedule) {
-                    void handleReserve(selectedSchedule);
+                    setIsReservationDialogOpen(true);
                   }
                 }}
                 className={`h-12 rounded-2xl px-4 text-lg font-black outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
@@ -865,6 +909,22 @@ function App() {
                 .getElementById("upcoming-reservation")
                 ?.scrollIntoView({ behavior: "smooth", block: "start" });
             }, 0);
+          }}
+        />
+        <ReservationDialog
+          open={isReservationDialogOpen}
+          schedule={selectedSchedule}
+          pickupStopName={
+            pickupStops.find((stop) => stop.stopId === selection.pickupStopId)
+              ?.stopName ?? ""
+          }
+          passengerName={reservationPassengerName}
+          isSubmitting={reservingScheduleId !== null}
+          onOpenChange={setIsReservationDialogOpen}
+          onConfirm={(name, passengerCount) => {
+            if (selectedSchedule) {
+              void handleReserve(selectedSchedule, name, passengerCount);
+            }
           }}
         />
       </main>

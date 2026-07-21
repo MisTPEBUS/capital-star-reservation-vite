@@ -19,7 +19,9 @@ export interface DashboardDailyOpenSchedule {
   openDate: string;
   quota: number;
   reservedCount: number;
+  reservedPassengerCount?: number;
   cancelledCount: number;
+  cancelledPassengerCount?: number;
   availableSeats: number;
   status: DailyOpenScheduleStatus;
 }
@@ -30,13 +32,16 @@ interface RawDashboardReservation {
   userId?: string;
   sequence?: number;
   sequenceNo?: number;
+  passengerCount?: number | null;
   name?: string | null;
+  customerName?: string | null;
   lineDisplayName?: string | null;
   displayName?: string | null;
   passengerName?: string | null;
   activeCode?: string | null;
   phone?: string | null;
   phoneNumber?: string | null;
+  customerPhoneNumber?: string | null;
   pickupStopId?: string | null;
   pickupStopName?: string | null;
   pickupStop?: { stopName?: string | null } | null;
@@ -53,14 +58,47 @@ interface RawDashboardScheduleReservations extends DashboardDailyOpenSchedule {
 export interface DashboardReservation {
   reservationId: string;
   sequence: number;
+  passengerCount: number;
   name: string;
   lineDisplayName: string;
   activeCode: string;
   phone: string;
+  pickupStopId: string | null;
   pickupStopName: string;
+  isAdminCreated: boolean;
   bookedAt: string;
-  cancelledAt: string;
+  cancelledAt?: string;
   status: DashboardReservationStatus;
+}
+
+export interface CreateAdminReservationParams {
+  name: string;
+  phone: string;
+  passengerCount: number;
+  routeId: string;
+  departureTime: string;
+  openDate: string;
+  pickupStopId: string;
+}
+
+export interface CreateAdminReservationResult {
+  reservationId: string;
+  dailyOpenScheduleId: string;
+  routeId: string;
+  routeNumber: string;
+  departureTime: string;
+  openDate: string;
+  passengerCount: number;
+  sequenceNo: number;
+  status: DashboardReservationStatus;
+  bookedAt: string;
+}
+
+export interface UpdateAdminReservationParams {
+  name: string;
+  phone: string;
+  passengerCount: number;
+  pickupStopId: string;
 }
 
 function getErrorMessage(error: unknown) {
@@ -93,13 +131,20 @@ function toDashboardReservation(
   return {
     reservationId: reservationId ?? `${reservation.userId ?? "reservation"}-${index}`,
     sequence: reservation.sequenceNo ?? reservation.sequence ?? index + 1,
-    name: reservation.name ?? reservation.passengerName ?? "未提供",
+    passengerCount: Math.max(reservation.passengerCount ?? 1, 1),
+    name:
+      reservation.name ??
+      reservation.customerName ??
+      reservation.passengerName ??
+      "未提供",
     lineDisplayName:
       reservation.lineDisplayName ??
       reservation.displayName ??
       "未提供",
     activeCode: activeCode || "-",
-    phone: reservation.phoneNumber ?? reservation.phone ?? "-",
+    phone: reservation.customerPhoneNumber ?? reservation.activeCode ?? "-",
+    isAdminCreated: reservation.userId === null,
+    pickupStopId: reservation.pickupStopId ?? null,
     pickupStopName:
       reservation.pickupStopName ?? reservation.pickupStop?.stopName ?? "-",
     bookedAt: reservation.bookedAt ?? reservation.createdAt ?? "-",
@@ -116,6 +161,40 @@ export async function getDashboardDailyOpenSchedules(openDate: string) {
     );
 
     return unwrapResponse(response.data);
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+export async function createAdminReservation(
+  payload: CreateAdminReservationParams,
+) {
+  try {
+    const response = await apiClient.post<CreateAdminReservationResult>(
+      "/api/v1/admin/reservations",
+      payload,
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+export async function updateAdminReservation(
+  reservationId: string,
+  payload: UpdateAdminReservationParams,
+) {
+  try {
+    await apiClient.put(`/api/v1/admin/reservations/${reservationId}`, payload);
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+export async function deleteAdminReservation(reservationId: string) {
+  try {
+    await apiClient.delete(`/api/v1/admin/reservations/${reservationId}`);
   } catch (error) {
     throw new Error(getErrorMessage(error));
   }
@@ -140,9 +219,15 @@ export async function getDashboardScheduleReservations(
         openDate: data.openDate,
         quota: data.quota,
         reservedCount: data.reservedCount,
+        reservedPassengerCount: data.reservedPassengerCount ?? data.reservedCount,
         cancelledCount: data.cancelledCount,
-        availableSeats: Math.max(data.quota - data.reservedCount, 0),
-        status: data.status,
+        cancelledPassengerCount:
+          data.cancelledPassengerCount ?? data.cancelledCount,
+        availableSeats: Math.max(
+          data.quota - (data.reservedPassengerCount ?? data.reservedCount),
+          0,
+        ),
+        status: data.status ?? "ACTIVE",
       },
       reservations: data.reservations
         .map(toDashboardReservation)

@@ -27,6 +27,7 @@ export interface UpcomingReservation {
   departureTime: string;
   openDate: string;
   pickupStop: ReservationStop;
+  passengerCount?: number | null;
   status: "RESERVED" | "CANCELLED";
   bookedAt: string;
 }
@@ -41,6 +42,7 @@ export interface CreateReservationResult {
   departureTime: string;
   openDate: string;
   pickupStop: ReservationStop;
+  passengerCount?: number | null;
   status: "RESERVED" | "CANCELLED";
   bookedAt: string;
   qrCode: string;
@@ -52,6 +54,8 @@ interface CreateReservationParams {
   departureTime: string;
   openDate: string;
   pickupStopId: string;
+  name: string;
+  passengerCount: number;
   lineUserId: string;
 }
 
@@ -81,17 +85,21 @@ export async function createReservation({
   departureTime,
   openDate,
   pickupStopId,
+  name,
+  passengerCount,
   lineUserId,
 }: CreateReservationParams) {
   try {
     const response = await apiClient.post<ApiResponse<CreateReservationResult>>(
       "/api/v1/reservations",
       {
-        UserId: userId,
-        RouteId: routeId,
-        DepartureTime: departureTime,
-        OpenDate: openDate,
-        PickupStopId: pickupStopId,
+        userId,
+        routeId,
+        departureTime,
+        openDate,
+        pickupStopId,
+        name,
+        passengerCount,
       },
       {
         headers: {
@@ -114,6 +122,21 @@ export async function getUpcomingReservations(userId: string) {
         params: {
           userId,
         },
+      },
+    );
+
+    return response.data.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+}
+
+export async function getRecentReservations(userId: string) {
+  try {
+    const response = await apiClient.get<ApiResponse<UpcomingReservation[]>>(
+      "/api/v1/reservations/recent",
+      {
+        params: { userId },
       },
     );
 

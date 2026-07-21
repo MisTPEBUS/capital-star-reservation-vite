@@ -3,11 +3,23 @@ import { FaCaretLeft, FaCaretRight } from "react-icons/fa";
 import {
   type DashboardDailyOpenSchedule,
   type DashboardReservation,
+  createAdminReservation,
+  deleteAdminReservation,
   getDashboardDailyOpenSchedules,
   getDashboardScheduleReservations,
+  updateAdminReservation,
 } from "../../api/admin/dashboard";
+import { getRoutes } from "../../api/admin/routes";
 import { cancelDailyOpenSchedule } from "../../api/admin/schedules";
 import { DataTable } from "../components/DataTable";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 
 const defaultPassengerNotificationText =
   "您好，您預約的首都之星班次因故取消。造成不便，敬請見諒。";
@@ -89,6 +101,32 @@ export function DashboardPage() {
     null,
   );
   const [reservations, setReservations] = useState<DashboardReservation[]>([]);
+  const [newReservation, setNewReservation] = useState<{
+    name: string;
+    phone: string;
+    passengerCount: number;
+  } | null>(null);
+  const [isCreatingReservation, setIsCreatingReservation] = useState(false);
+  const [editingReservation, setEditingReservation] = useState<{
+    reservationId: string;
+    name: string;
+    phone: string;
+    passengerCount: number;
+    pickupStopId: string | null;
+  } | null>(null);
+  const [isUpdatingReservation, setIsUpdatingReservation] = useState(false);
+  const [deletingReservationId, setDeletingReservationId] = useState<
+    string | null
+  >(null);
+  const [reservationRefreshKey, setReservationRefreshKey] = useState(0);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<"SELECTED" | "DAY">(
+    "SELECTED",
+  );
+  const [exportRouteId, setExportRouteId] = useState("ALL");
+  const [includeCancelledForExport, setIncludeCancelledForExport] =
+    useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [isSchedulesLoading, setIsSchedulesLoading] = useState(false);
   const [isReservationsLoading, setIsReservationsLoading] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -173,7 +211,8 @@ export function DashboardPage() {
   );
 
   const totalReservedCount = schedules.reduce(
-    (sum, schedule) => sum + schedule.reservedCount,
+    (sum, schedule) =>
+      sum + (schedule.reservedPassengerCount ?? schedule.reservedCount),
     0,
   );
   const totalAvailableSeats = schedules.reduce(
@@ -278,24 +317,152 @@ export function DashboardPage() {
     return () => {
       isCurrent = false;
     };
-  }, [selectedScheduleId]);
+  }, [selectedScheduleId, reservationRefreshKey]);
 
-  const downloadReservationExcel = async () => {
-    if (schedules.length === 0) return;
+  const handleCreateReservation = async () => {
+    if (!selectedSchedule || !newReservation) return;
+
+    const name = newReservation.name.trim();
+    const phone = newReservation.phone.trim();
+
+    if (!name || !phone) {
+      setReservationsError("請填寫姓名與電話。");
+      return;
+    }
+
+    if (
+      !Number.isInteger(newReservation.passengerCount) ||
+      newReservation.passengerCount < 1
+    ) {
+      setReservationsError("搭乘人數至少為 1 人。");
+      return;
+    }
 
     try {
+      setIsCreatingReservation(true);
+      setReservationsError("");
+
+      const routes = await getRoutes();
+      const route = routes.find(
+        (item) => item.routeId === selectedSchedule.routeId,
+      );
+      const pickupStopId =
+        reservations.find((reservation) => reservation.pickupStopId)
+          ?.pickupStopId ??
+        [...(route?.stops ?? [])].sort(
+          (left, right) => left.sequence - right.sequence,
+        )[0]?.stopId;
+
+      if (!pickupStopId) {
+        throw new Error("此路線沒有可用上車站，無法建立預約。");
+      }
+
+      await createAdminReservation({
+        name,
+        phone,
+        passengerCount: newReservation.passengerCount,
+        routeId: selectedSchedule.routeId,
+        departureTime: formatDepartureTime(selectedSchedule.departureTime),
+        openDate: selectedSchedule.openDate,
+        pickupStopId,
+      });
+
+      setNewReservation(null);
+      setReservationRefreshKey((current) => current + 1);
+    } catch (error) {
+      setReservationsError(
+        error instanceof Error ? error.message : "建立預約失敗，請稍後再試。",
+      );
+    } finally {
+      setIsCreatingReservation(false);
+    }
+  };
+
+  const handleUpdateReservation = async () => {
+    if (!editingReservation) return;
+
+    const { reservationId, name, phone, passengerCount, pickupStopId } =
+      editingReservation;
+
+    if (!name.trim() || !phone.trim()) {
+      setReservationsError("請填寫姓名與電話。");
+      return;
+    }
+
+    if (!Number.isInteger(passengerCount) || passengerCount < 1) {
+      setReservationsError("搭乘人數至少為 1 人。");
+      return;
+    }
+
+    if (!pickupStopId) {
+      setReservationsError("缺少上車站資料，無法修改預約。");
+      return;
+    }
+
+    try {
+      setIsUpdatingReservation(true);
+      setReservationsError("");
+      await updateAdminReservation(reservationId, {
+        name: name.trim(),
+        phone: phone.trim(),
+        passengerCount,
+        pickupStopId,
+      });
+      setEditingReservation(null);
+      setReservationRefreshKey((current) => current + 1);
+    } catch (error) {
+      setReservationsError(
+        error instanceof Error ? error.message : "修改預約失敗，請稍後再試。",
+      );
+    } finally {
+      setIsUpdatingReservation(false);
+    }
+  };
+
+  const handleDeleteReservation = async (reservation: DashboardReservation) => {
+    if (!window.confirm(`確定刪除「${reservation.name}」的預約？`)) return;
+
+    try {
+      setDeletingReservationId(reservation.reservationId);
+      setReservationsError("");
+      await deleteAdminReservation(reservation.reservationId);
+      setEditingReservation(null);
+      setReservationRefreshKey((current) => current + 1);
+    } catch (error) {
+      setReservationsError(
+        error instanceof Error ? error.message : "刪除預約失敗，請稍後再試。",
+      );
+    } finally {
+      setDeletingReservationId(null);
+    }
+  };
+
+  const downloadReservationExcel = async (
+    schedulesToExport: DashboardDailyOpenSchedule[],
+    includeCancelled: boolean,
+  ) => {
+    if (schedulesToExport.length === 0) {
+      setReservationsError("沒有符合條件的班次可匯出。");
+      return;
+    }
+
+    try {
+      setIsExporting(true);
       const scheduleReservations = await Promise.all(
-        schedules.map(async (schedule) =>
+        schedulesToExport.map(async (schedule) =>
           getDashboardScheduleReservations(schedule.dailyOpenScheduleId),
         ),
       );
-      const activeReservations = scheduleReservations
+      const exportReservations = scheduleReservations
         .sort((a, b) =>
           a.schedule.departureTime.localeCompare(b.schedule.departureTime),
         )
         .flatMap(({ schedule, reservations: scheduleRows }) =>
           scheduleRows
-            .filter((reservation) => reservation.status === "RESERVED")
+            .filter(
+              (reservation) =>
+                includeCancelled || reservation.status === "RESERVED",
+            )
             .sort((a, b) => a.sequence - b.sequence)
             .map((reservation) => ({ schedule, reservation })),
         );
@@ -309,11 +476,12 @@ export function DashboardPage() {
         { header: "稱謂", key: "name", width: 18 },
         { header: "識別碼", key: "activeCode", width: 16 },
         { header: "上車站", key: "pickupStopName", width: 20 },
+        { header: "搭乘人數", key: "passengerCount", width: 12 },
 
         { header: "乘車序號/電話", key: "sequence", width: 20 },
       ];
 
-      activeReservations.forEach(({ schedule, reservation }) => {
+      exportReservations.forEach(({ schedule, reservation }) => {
         worksheet.addRow({
           scheduleName: getScheduleName(schedule),
           departureTime: formatDepartureTime(schedule.departureTime),
@@ -322,6 +490,7 @@ export function DashboardPage() {
           activeCode: reservation.activeCode,
           phone: reservation.phone,
           pickupStopName: reservation.pickupStopName,
+          passengerCount: reservation.passengerCount,
         });
       });
 
@@ -363,6 +532,29 @@ export function DashboardPage() {
       setReservationsError(
         error instanceof Error ? error.message : "匯出當班乘客名單失敗。",
       );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    const schedulesToExport =
+      exportScope === "SELECTED"
+        ? selectedSchedule
+          ? [selectedSchedule]
+          : []
+        : schedules.filter(
+            (schedule) =>
+              exportRouteId === "ALL" || schedule.routeId === exportRouteId,
+          );
+
+    await downloadReservationExcel(
+      schedulesToExport,
+      includeCancelledForExport,
+    );
+
+    if (schedulesToExport.length > 0) {
+      setIsExportDialogOpen(false);
     }
   };
 
@@ -458,52 +650,21 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-4.5rem)] flex-col space-y-4">
-      <section className=" gap-3 sm:grid-cols-3 hidden">
-        <div className="admin-stat-card">
-          <p className="admin-stat-label">當日開放班次</p>
-          <p className="admin-stat-value">{schedules.length}</p>
-        </div>
-        <div className="admin-stat-card">
-          <p className="admin-stat-label">已預約人數</p>
-          <p className="admin-stat-value">{totalReservedCount}</p>
-        </div>
-        <div className="admin-stat-card">
-          <p className="admin-stat-label">剩餘名額</p>
-          <p className="admin-stat-value">{totalAvailableSeats}</p>
-        </div>
-      </section>
-
+    <div className="admin-dashboard flex min-h-[calc(100vh-4.5rem)] flex-col space-y-4">
       {schedulesError ? (
         <p className="rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
           {schedulesError}
         </p>
       ) : (
         <section className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-          <div className="admin-panel-body flex min-h-0 flex-col">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-base font-semibold text-admin-text">
-                  班次
-                </h3>
-              </div>
-              <button
-                className="h-9 rounded-adminControl border border-admin-borderStrong px-3 text-xs font-bold text-admin-softText disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={schedules.length === 0}
-                type="button"
-                onClick={downloadReservationExcel}
-              >
-                匯出 Excel
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-1">
+          <div className="hidden min-h-0 flex-col xl:flex xl:max-h-[calc(100vh-6.5rem)]">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
               {isSchedulesLoading ? (
-                <p className="px-3 py-6 text-center text-sm text-admin-muted">
+                <p className="px-3 py-6 text-center text-base text-admin-muted">
                   讀取班次中…
                 </p>
               ) : filteredSchedules.length === 0 ? (
-                <div className="rounded-adminControl border border-dashed border-admin-borderStrong bg-admin-bg px-4 py-8 text-center text-sm text-admin-muted">
+                <div className="rounded-adminControl border border-dashed border-admin-borderStrong bg-admin-bg px-4 py-8 text-center text-base text-admin-muted">
                   此日期沒有符合路線的開放預約班次。
                 </div>
               ) : (
@@ -514,7 +675,9 @@ export function DashboardPage() {
                   const reservationRate = Math.min(
                     100,
                     Math.round(
-                      (schedule.reservedCount / Math.max(schedule.quota, 1)) *
+                      ((schedule.reservedPassengerCount ??
+                        schedule.reservedCount) /
+                        Math.max(schedule.quota, 1)) *
                         100,
                     ),
                   );
@@ -524,13 +687,17 @@ export function DashboardPage() {
                       key={schedule.dailyOpenScheduleId}
                       aria-pressed={isSelected}
                       className={`group relative w-full overflow-hidden rounded-adminControl border p-4 text-left transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
-                        isSelected && isInactive
-                          ? "border-red-400/60 bg-red-400/10 shadow-[0_8px_24px_rgba(248,113,113,0.08)]"
-                          : isSelected
-                            ? "border-adminStatus-enabled bg-adminStatus-enabled/10 shadow-[0_8px_24px_rgba(34,197,94,0.08)]"
-                            : isInactive
-                              ? "border-admin-borderStrong bg-admin-bg/70 opacity-80 hover:border-red-400/40"
-                              : "border-admin-border bg-admin-elevated hover:-translate-y-0.5 hover:border-adminStatus-enabled/60 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]"
+                        isInactive
+                          ? `bg-admin-bg/70 opacity-80 hover:border-red-400/40 ${
+                              isSelected
+                                ? "border-red-400/60"
+                                : "border-admin-borderStrong"
+                            }`
+                          : `bg-admin-elevated hover:-translate-y-0.5 hover:border-adminStatus-enabled/60 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)] ${
+                              isSelected
+                                ? "border-adminStatus-enabled"
+                                : "border-admin-border"
+                            }`
                       }`}
                       type="button"
                       onClick={() =>
@@ -542,17 +709,15 @@ export function DashboardPage() {
                         className={`absolute inset-y-0 left-0 w-1 ${
                           isInactive
                             ? "bg-red-400"
-                            : isSelected
-                              ? "bg-adminStatus-enabled"
-                              : "bg-transparent transition group-hover:bg-adminStatus-enabled/60"
+                            : "bg-transparent transition group-hover:bg-adminStatus-enabled/60"
                         }`}
                       />
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-bold tracking-[0.12em] text-admin-muted">
+                        <p className="text-sm font-bold tracking-[0.12em] text-admin-muted">
                           路線 {schedule.routeNumber}
                         </p>
                         <span
-                          className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
+                          className={`shrink-0 rounded-full px-2 py-1 text-sm font-bold ${
                             schedule.status === "ACTIVE"
                               ? "bg-adminStatus-enabled/10 text-adminStatus-enabled"
                               : "bg-red-400/10 text-red-300 ring-1 ring-red-400/25"
@@ -572,17 +737,18 @@ export function DashboardPage() {
                           >
                             {formatDepartureTime(schedule.departureTime)}
                           </p>
-                          <p className="mt-2 truncate text-xs font-medium text-admin-softText">
+                          <p className="mt-2 truncate text-sm font-medium text-admin-softText">
                             {schedule.routeName}
                           </p>
                         </div>
                         <div className="min-w-[92px] text-right">
-                          <p className="text-xs font-medium text-admin-muted">
+                          <p className="text-sm font-medium text-admin-muted">
                             預約 / 總人數
                           </p>
                           <p className="mt-1 text-xl font-bold leading-none tabular-nums text-admin-text">
-                            {schedule.reservedCount}
-                            <span className="mx-1 text-sm font-medium text-admin-muted">
+                            {schedule.reservedPassengerCount ??
+                              schedule.reservedCount}
+                            <span className="mx-1 text-base font-medium text-admin-muted">
                               /
                             </span>
                             {schedule.quota}
@@ -597,9 +763,9 @@ export function DashboardPage() {
           </div>
 
           <section className="admin-panel-body flex min-h-0 min-w-0 flex-col">
-            <section className="mb-4  max-w-full rounded-adminControl border border-admin-border bg-admin-surface p-3 ">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="grid h-11 w-[260px] max-w-full shrink-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center overflow-hidden rounded-adminControl border border-admin-borderStrong bg-admin-bg">
+            <section className="  max-w-full rounded-adminControl  bg-admin-surface  ">
+              <div className="flex  flex-wrap items-center gap-3">
+                <div className=" grid h-11 w-[260px] max-w-full shrink-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center overflow-hidden rounded-adminControl border border-admin-borderStrong bg-admin-bg">
                   <button
                     aria-label="前一天"
                     className="grid h-full place-items-center text-admin-softText hover:text-adminStatus-enabled"
@@ -612,7 +778,7 @@ export function DashboardPage() {
                   <label className="h-full border-x border-admin-borderStrong">
                     <input
                       aria-label="選擇日期"
-                      className="h-full w-full bg-admin-bg px-3 text-center text-sm font-bold text-admin-text outline-none focus:ring-2 focus:ring-inset focus:ring-adminStatus-enabled"
+                      className="h-full w-full bg-admin-bg px-3 text-center text-base font-bold text-admin-text outline-none focus:ring-2 focus:ring-inset focus:ring-adminStatus-enabled"
                       type="date"
                       value={openDate}
                       onClick={openInputPicker}
@@ -630,7 +796,7 @@ export function DashboardPage() {
                   </button>
                 </div>
                 <button
-                  className={`h-11 rounded-adminControl border px-4 text-sm font-semibold ${
+                  className={`h-11 rounded-adminControl border px-4 text-base font-semibold ${
                     openDate === todayValue
                       ? "border-adminStatus-enabled bg-adminStatus-enabled/10 text-adminStatus-enabled"
                       : "border-admin-borderStrong text-admin-softText"
@@ -640,11 +806,11 @@ export function DashboardPage() {
                 >
                   今日
                 </button>
-                <label className="min-w-[190px] text-sm font-medium text-admin-softText">
+                <label className="min-w-[190px] text-base font-medium text-admin-softText">
                   <span className="sr-only">路線篩選</span>
                   <select
                     aria-label="路線篩選"
-                    className="h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm font-semibold text-admin-text outline-none focus:border-adminStatus-enabled"
+                    className="h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base font-semibold text-admin-text outline-none focus:border-adminStatus-enabled"
                     value={selectedRouteId}
                     onChange={(event) => setSelectedRouteId(event.target.value)}
                   >
@@ -656,7 +822,7 @@ export function DashboardPage() {
                     ))}
                   </select>
                 </label>
-                <label className="flex h-10 items-center gap-2 rounded-adminControl border border-admin-borderStrong px-3 text-sm font-semibold text-admin-softText">
+                <label className="flex h-10 items-center gap-2 rounded-adminControl border border-admin-borderStrong px-3 text-base font-semibold text-admin-softText">
                   <input
                     className="h-4 w-4 accent-adminStatus-enabled"
                     type="checkbox"
@@ -668,15 +834,39 @@ export function DashboardPage() {
                   不含取消
                 </label>
                 <button
-                  className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-base font-bold text-admin-bg transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={schedules.length === 0}
                   type="button"
-                  onClick={downloadReservationExcel}
+                  onClick={() => {
+                    setExportScope(selectedSchedule ? "SELECTED" : "DAY");
+                    setExportRouteId("ALL");
+                    setIncludeCancelledForExport(false);
+                    setIsExportDialogOpen(true);
+                  }}
                 >
-                  匯出當班
+                  匯出
                 </button>
                 <button
-                  className="h-10 rounded-adminControl border border-red-400/50 bg-red-500/10 px-4 text-sm font-bold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-base font-bold text-admin-bg transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={
+                    !selectedSchedule ||
+                    selectedSchedule.status === "INACTIVE" ||
+                    isSelectedScheduleDeparted ||
+                    Boolean(newReservation)
+                  }
+                  type="button"
+                  onClick={() =>
+                    setNewReservation({
+                      name: "",
+                      phone: "",
+                      passengerCount: 1,
+                    })
+                  }
+                >
+                  新增
+                </button>
+                <button
+                  className="h-10 rounded-adminControl border border-red-400/50 bg-red-500/10 px-4 text-base font-bold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={
                     !selectedSchedule ||
                     selectedSchedule.status === "INACTIVE" ||
@@ -703,12 +893,142 @@ export function DashboardPage() {
                   讀取預約清單中…
                 </div>
               ) : (
-                <DataTable reservations={reservationRows} />
+                <DataTable
+                  reservations={reservationRows}
+                  newReservation={newReservation}
+                  isCreating={isCreatingReservation}
+                  onNewReservationChange={setNewReservation}
+                  onCreate={handleCreateReservation}
+                  onCancelCreate={() => setNewReservation(null)}
+                  editingReservation={editingReservation}
+                  isUpdating={isUpdatingReservation}
+                  deletingReservationId={deletingReservationId}
+                  onStartEdit={(reservation) =>
+                    setEditingReservation({
+                      reservationId: reservation.reservationId,
+                      name: reservation.name,
+                      phone: reservation.phone,
+                      passengerCount: reservation.passengerCount,
+                      pickupStopId: reservation.pickupStopId,
+                    })
+                  }
+                  onEditingReservationChange={setEditingReservation}
+                  onUpdate={handleUpdateReservation}
+                  onCancelEdit={() => setEditingReservation(null)}
+                  onDelete={handleDeleteReservation}
+                />
               )}
             </div>
           </section>
         </section>
       )}
+
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="export-reservations-dialog !max-w-xl !gap-6 !rounded-adminPanel !border !border-admin-borderStrong !bg-admin-surface !p-5 !text-admin-text shadow-adminPanel sm:!p-6">
+          <DialogHeader className="border-b border-admin-border pb-5 pr-8">
+            <DialogTitle className="text-3xl font-bold text-admin-text">
+              匯出預約名單
+            </DialogTitle>
+            <DialogDescription className="text-base text-admin-muted">
+              選擇要匯出的班次範圍與預約規則。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-5">
+            <fieldset className="grid gap-3">
+              <legend className="text-base font-bold text-admin-softText">
+                匯出範圍
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  disabled={!selectedSchedule}
+                  aria-pressed={exportScope === "SELECTED"}
+                  onClick={() => setExportScope("SELECTED")}
+                  className={`rounded-adminControl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    exportScope === "SELECTED"
+                      ? "border-adminStatus-enabled bg-adminStatus-enabled/10 ring-2 ring-adminStatus-enabled/20"
+                      : "border-admin-borderStrong bg-admin-bg/50 hover:border-adminStatus-enabled/70 hover:bg-admin-elevated/60"
+                  }`}
+                >
+                  <p className="font-bold text-admin-text">當班</p>
+                  <p className="mt-1 text-base leading-6 text-admin-muted">
+                    {selectedSchedule
+                      ? `${selectedSchedule.routeNumber}｜${formatDepartureTime(selectedSchedule.departureTime)}`
+                      : "請先選擇班次"}
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={exportScope === "DAY"}
+                  onClick={() => setExportScope("DAY")}
+                  className={`rounded-adminControl border p-4 text-left transition ${
+                    exportScope === "DAY"
+                      ? "border-adminStatus-enabled bg-adminStatus-enabled/10 ring-2 ring-adminStatus-enabled/20"
+                      : "border-admin-borderStrong bg-admin-bg/50 hover:border-adminStatus-enabled/70 hover:bg-admin-elevated/60"
+                  }`}
+                >
+                  <p className="font-bold text-admin-text">當日</p>
+                  <p className="mt-1 text-base leading-6 text-admin-muted">
+                    {openDate} 的所有符合班次
+                  </p>
+                </button>
+              </div>
+            </fieldset>
+
+            {exportScope === "DAY" && (
+              <label className="grid gap-2 text-base font-bold text-admin-softText">
+                選擇路線
+                <select
+                  value={exportRouteId}
+                  onChange={(event) => setExportRouteId(event.target.value)}
+                  className="h-11 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-lg font-semibold text-admin-text outline-none focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/20"
+                >
+                  <option value="ALL">全部路線</option>
+                  {routeOptions.map((route) => (
+                    <option key={route.routeId} value={route.routeId}>
+                      {route.routeNumber}｜{route.routeName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <label className="flex items-center gap-3 rounded-adminControl border border-admin-borderStrong bg-admin-bg/50 p-4 text-base font-bold text-admin-softText">
+              <input
+                type="checkbox"
+                checked={includeCancelledForExport}
+                onChange={(event) =>
+                  setIncludeCancelledForExport(event.target.checked)
+                }
+                className="h-4 w-4 accent-adminStatus-enabled"
+              />
+              預約規則：含取消
+            </label>
+          </div>
+
+          <DialogFooter className="border-t border-admin-border pt-5">
+            <button
+              type="button"
+              onClick={() => setIsExportDialogOpen(false)}
+              disabled={isExporting}
+              className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-base font-bold text-admin-softText transition hover:bg-admin-elevated disabled:opacity-50"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={
+                isExporting || (exportScope === "SELECTED" && !selectedSchedule)
+              }
+              className="h-10 rounded-adminControl bg-adminStatus-enabled px-5 text-base font-bold text-admin-bg transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isExporting ? "匯出中…" : "匯出"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isCancelModalOpen && selectedSchedule && (
         <div
