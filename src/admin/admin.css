@@ -198,6 +198,20 @@
   background-color: rgb(35 72 86 / 0.58);
 }
 
+/* Dialogs render in a portal, so this export dialog is styled outside .admin-shell. */
+.export-reservations-dialog button[aria-label="關閉"] {
+  color: #d5e3e7;
+}
+
+.export-reservations-dialog button[aria-label="關閉"]:hover {
+  color: #f8fbfc;
+}
+
+.export-reservations-dialog option {
+  background-color: #355766;
+  color: #f8fbfc;
+}
+
 @keyframes admin-drawer-slide-in-right {
   from {
     transform: translateX(100%);

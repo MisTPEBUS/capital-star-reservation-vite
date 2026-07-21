@@ -61,6 +61,7 @@ export interface ReservationResult {
   pickupStopName: string;
   activeCode: string;
   passengerName: string;
+  passengerCount: number;
   bookedAt: string;
   qrCode?: string;
 }

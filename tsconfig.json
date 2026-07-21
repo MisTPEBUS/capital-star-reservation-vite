@@ -8,6 +8,11 @@
       "DOM.Iterable"
     ],
     "allowJs": false,
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
     "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": false,

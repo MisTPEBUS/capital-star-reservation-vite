@@ -26,6 +26,7 @@ export function SuccessModal({ result, onClose }: SuccessModalProps) {
         <div className="p-4 md:p-5">
           <div className="rounded-card bg-cream p-3 ring-1 ring-star-100 md:p-4">
             <DetailRow label="乘客" value={result.passengerName} />
+            <DetailRow label="乘車人數" value={`${result.passengerCount} 人`} />
             <DetailRow label="識別碼" value={result.activeCode} mono />
             <DetailRow
               label="班次"

@@ -61,6 +61,7 @@ export default {
       },
       fontFamily: {
         sans: ["Inter", "Noto Sans TC", "system-ui", "sans-serif"],
+        editorial: ["Cormorant Garamond", "Noto Serif TC", "Noto Serif", "serif"],
       },
     },
   },
