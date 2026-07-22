@@ -1,9 +1,7 @@
-import { FaTicketAlt } from "react-icons/fa";
 import { FiChevronRight, FiClock } from "react-icons/fi";
 import type { UpcomingReservation } from "../api/reservations";
+import { SectionTitle } from "./SectionTitle";
 import { Button } from "./ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Separator } from "./ui/separator";
 
 interface AvailableTicketsMenuProps {
   reservations: UpcomingReservation[];
@@ -12,6 +10,7 @@ interface AvailableTicketsMenuProps {
 }
 
 const ONE_HOUR = 60 * 60 * 1000;
+const ONE_DAY = 24 * ONE_HOUR;
 
 export function getReservationDepartureTimestamp(
   reservation: UpcomingReservation,
@@ -50,6 +49,13 @@ export function AvailableTicketsMenu({
   onSelect,
 }: AvailableTicketsMenuProps) {
   const recentReservationItems = [...reservations]
+    .filter((reservation) => {
+      const departureAt = getReservationDepartureTimestamp(reservation);
+
+      return (
+        Number.isFinite(departureAt) && departureAt >= Date.now() - ONE_DAY
+      );
+    })
     .sort(
       (left, right) =>
         getReservationDepartureTimestamp(right) -
@@ -57,80 +63,68 @@ export function AvailableTicketsMenu({
     );
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`近期預約記錄 ${recentReservationItems.length} 筆`}
-          className="fixed right-4 top-4 z-40 grid h-12 w-12 place-items-center rounded-full border border-bus-100 bg-white text-bus-800 shadow-lift transition hover:bg-bus-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-bus-200"
-        >
-          <FaTicketAlt className="h-5 w-5" aria-hidden="true" />
-          {recentReservationItems.length > 0 && (
-            <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[11px] font-black leading-5 text-white ring-2 ring-white">
-              {recentReservationItems.length > 99 ? "99+" : recentReservationItems.length}
+    <section className="rounded-panel bg-white p-4 shadow-card ring-1 ring-bus-100/80 md:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <SectionTitle
+          eyebrow="預約紀錄"
+          title=""
+          description="顯示最近 24 小時內的出發班次。"
+        />
+      </div>
+
+      <div className="max-h-[22rem] overflow-y-auto border-t border-bus-100 pt-3 md:pt-4">
+        {isLoading ? (
+          <p className="py-8 text-center text-sm font-medium text-ink-500">
+            正在讀取預約紀錄…
+          </p>
+        ) : recentReservationItems.length === 0 ? (
+          <div className="rounded-card bg-ink-50 px-4 py-8 text-center">
+            <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-bus-50 text-xl text-bus-600">
+              <FiClock aria-hidden="true" />
             </span>
-          )}
-        </button>
-      </PopoverTrigger>
-
-      <PopoverContent
-        align="end"
-        side="bottom"
-        sideOffset={10}
-        className="w-[min(25rem,calc(100vw-2rem))] !bg-white p-0 opacity-100 shadow-[0_18px_48px_rgba(7,43,80,0.28)] ring-1 ring-bus-100"
-      >
-        <div className="rounded-t-lg bg-bus-900 px-4 py-4 text-white">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-3xl font-black">近期預約記錄</p>
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        <div className="max-h-[22rem] overflow-y-auto bg-white p-3">
-          {isLoading ? (
-            <p className="py-8 text-center text-sm font-medium text-ink-500">
-              正在讀取預約紀錄…
+            <p className="mt-3 text-sm font-black text-ink-700">
+              目前沒有近期預約紀錄
             </p>
-          ) : recentReservationItems.length === 0 ? (
-            <div className="py-8 text-center">
-              <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-ink-50 text-ink-400">
-                <FaTicketAlt aria-hidden="true" />
-              </span>
-              <p className="mt-3 text-sm font-black text-ink-700">
-                目前沒有近期預約紀錄
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {recentReservationItems.map((reservation) => (
-                <Button
-                  key={reservation.reservationId}
-                  type="button"
-                  variant="outline"
-                  onClick={() => onSelect(reservation)}
-                  className="h-auto w-full justify-start rounded-xl border-bus-100 bg-white p-3 text-left shadow-sm hover:border-bus-300 hover:bg-bus-50"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-bold text-ink-500">
-                      {reservation.openDate}　{reservation.routeNumber} · {reservation.pickupStop.stopName}
+            <p className="mt-1 text-sm font-bold text-ink-500">
+              最近 24 小時內沒有可查看的班次。
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recentReservationItems.map((reservation) => (
+              <Button
+                key={reservation.reservationId}
+                type="button"
+                variant="outline"
+                onClick={() => onSelect(reservation)}
+                className="group h-auto w-full justify-start rounded-2xl border-bus-100 bg-ink-50 p-3 text-left shadow-none transition hover:border-bus-300 hover:bg-bus-50 hover:shadow-sm"
+              >
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-bus-600 text-xl font-black text-white shadow-sm">
+                  <FiClock aria-hidden="true" />
+                </span>
+                <span className="ml-3 min-w-0 flex-1">
+                  <span className="block text-base font-bold text-ink-500">
+                    {reservation.openDate} ·{" "}
+                    {reservation.departureTime.slice(0, 5)}
+                  </span>
+                  <span className="mt-1 flex min-w-0 items-baseline gap-2">
+                    <span className="font-mono text-3xl font-black leading-none tracking-tight text-ink-900">
+                      {reservation.routeNumber}
                     </span>
-                    <span className="mt-1 block font-mono text-3xl font-black leading-none tracking-tight text-ink-900">
-                      {reservation.departureTime.slice(0, 5)}
+                    <span className="truncate text-xl font-bold text-bus-700">
+                      {reservation.pickupStop.stopName}
                     </span>
                   </span>
-                  <FiChevronRight
-                    className="shrink-0 text-ink-400"
-                    aria-hidden="true"
-                  />
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+                </span>
+                <FiChevronRight
+                  className="shrink-0 text-ink-400 transition group-hover:translate-x-0.5 group-hover:text-bus-600"
+                  aria-hidden="true"
+                />
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

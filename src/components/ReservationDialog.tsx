@@ -85,9 +85,10 @@ export function ReservationDialog({
             稱呼
             <input
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              readOnly
               required
-              className="h-12 rounded-xl border border-ink-200 bg-white px-3 text-lg font-bold text-ink-900 outline-none transition focus:border-bus-600 focus:ring-4 focus:ring-bus-100"
+              aria-readonly="true"
+              className="h-12 cursor-not-allowed rounded-xl border border-ink-200 bg-ink-50 px-3 text-lg font-bold text-ink-700 outline-none"
             />
           </label>
 

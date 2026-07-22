@@ -687,17 +687,11 @@ export function DashboardPage() {
                       key={schedule.dailyOpenScheduleId}
                       aria-pressed={isSelected}
                       className={`group relative w-full overflow-hidden rounded-adminControl border p-4 text-left transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
-                        isInactive
-                          ? `bg-admin-bg/70 opacity-80 hover:border-red-400/40 ${
-                              isSelected
-                                ? "border-red-400/60"
-                                : "border-admin-borderStrong"
-                            }`
-                          : `bg-admin-elevated hover:-translate-y-0.5 hover:border-adminStatus-enabled/60 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)] ${
-                              isSelected
-                                ? "border-adminStatus-enabled"
-                                : "border-admin-border"
-                            }`
+                        isSelected
+                          ? "border-[#0d3d2e] bg-[#145a43] shadow-[0_10px_26px_rgba(0,0,0,0.2)]"
+                          : isInactive
+                            ? "border-red-400/45 bg-red-400/10 hover:border-red-400/75 hover:bg-red-400/15"
+                            : "border-adminStatus-enabled/45 bg-adminStatus-enabled/10 hover:-translate-y-0.5 hover:border-adminStatus-enabled hover:bg-adminStatus-enabled/15 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]"
                       }`}
                       type="button"
                       onClick={() =>
@@ -707,19 +701,23 @@ export function DashboardPage() {
                       <span
                         aria-hidden="true"
                         className={`absolute inset-y-0 left-0 w-1 ${
-                          isInactive
-                            ? "bg-red-400"
-                            : "bg-transparent transition group-hover:bg-adminStatus-enabled/60"
+                          isSelected
+                            ? "bg-white/80"
+                            : isInactive
+                              ? "bg-red-400"
+                              : "bg-adminStatus-enabled"
                         }`}
                       />
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-bold tracking-[0.12em] text-admin-muted">
+                        <p className={`text-sm font-bold tracking-[0.12em] ${isSelected ? "text-white/80" : isInactive ? "text-red-200" : "text-adminStatus-enabled"}`}>
                           路線 {schedule.routeNumber}
                         </p>
                         <span
                           className={`shrink-0 rounded-full px-2 py-1 text-sm font-bold ${
                             schedule.status === "ACTIVE"
-                              ? "bg-adminStatus-enabled/10 text-adminStatus-enabled"
+                              ? isSelected
+                                ? "bg-white/15 text-white ring-1 ring-white/25"
+                                : "bg-adminStatus-enabled/15 text-adminStatus-enabled ring-1 ring-adminStatus-enabled/25"
                               : "bg-red-400/10 text-red-300 ring-1 ring-red-400/25"
                           }`}
                         >
@@ -730,25 +728,27 @@ export function DashboardPage() {
                         <div>
                           <p
                             className={`text-3xl font-bold leading-none tabular-nums ${
-                              isInactive
-                                ? "text-admin-muted"
-                                : "text-admin-text"
+                              isSelected
+                                ? "text-white"
+                                : isInactive
+                                  ? "text-red-100"
+                                  : "text-admin-text"
                             }`}
                           >
                             {formatDepartureTime(schedule.departureTime)}
                           </p>
-                          <p className="mt-2 truncate text-sm font-medium text-admin-softText">
+                          <p className={`mt-2 truncate text-sm font-medium ${isSelected ? "text-white/75" : isInactive ? "text-red-100/75" : "text-admin-softText"}`}>
                             {schedule.routeName}
                           </p>
                         </div>
                         <div className="min-w-[92px] text-right">
-                          <p className="text-sm font-medium text-admin-muted">
+                          <p className={`text-sm font-medium ${isSelected ? "text-white/70" : isInactive ? "text-red-100/75" : "text-admin-muted"}`}>
                             預約 / 總人數
                           </p>
-                          <p className="mt-1 text-xl font-bold leading-none tabular-nums text-admin-text">
+                          <p className={`mt-1 text-xl font-bold leading-none tabular-nums ${isSelected ? "text-white" : isInactive ? "text-red-100" : "text-admin-text"}`}>
                             {schedule.reservedPassengerCount ??
                               schedule.reservedCount}
-                            <span className="mx-1 text-base font-medium text-admin-muted">
+                            <span className={`mx-1 text-base font-medium ${isSelected ? "text-white/65" : isInactive ? "text-red-100/70" : "text-admin-muted"}`}>
                               /
                             </span>
                             {schedule.quota}

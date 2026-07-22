@@ -715,38 +715,7 @@ function App() {
   return (
     <div>
       <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
-        <AvailableTicketsMenu
-          reservations={recentReservations}
-          isLoading={recentReservationsLoading}
-          onSelect={(reservation) =>
-            navigate(
-              `/ticket?reservationId=${encodeURIComponent(reservation.reservationId)}`,
-            )
-          }
-        />
         <div className="mx-auto w-full max-w-[820px]">
-          <header className=" overflow-hidden rounded-panel bg-bus-900 text-white shadow-soft ring-1 ring-white/60">
-            <div className="grid gap-0 md:grid-cols-[1.08fr_0.92fr] md:items-stretch">
-              <div className="p-5 md:p-7">
-                <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight md:text-4xl">
-                  首都之星預約平台
-                </h1>
-                {/*   <p className="mt-3 max-w-md text-sm leading-6 text-bus-100">
-                  手機與平板優先的預約介面。以藍色車身與黃色星形識別為主視覺，流程保持單頁完成。
-                </p> */}
-              </div>
-
-              <div className="relative min-h-[210px] bg-gradient-to-br from-bus-600 to-bus-300 p-4 md:min-h-full">
-                <div className="absolute right-4 top-4 h-16 w-16 rounded-full bg-star-300/90 blur-xl" />
-                <img
-                  src={busHero}
-                  alt="Capital Star 藍色旅遊巴士"
-                  className="relative z-10 h-full min-h-[180px] w-full rounded-[24px] object-cover object-center shadow-lift ring-1 ring-white/30"
-                />
-              </div>
-            </div>
-          </header>
-
           <div className="mt-4 grid gap-3 pb-32 md:gap-4">
             <section className="rounded-panel border-2 border-star-300 bg-[#FFF8D6] p-4 shadow-card md:p-5">
               <p className="text-xl font-black text-[#9A3412] md:text-lg">
@@ -768,21 +737,15 @@ function App() {
                 })
               }
             />
-            {/*  <UpcomingReservationCard
-              reservation={activeUpcomingReservation}
-              userId={authProfile?.userId ?? null}
-              identityCode={displayPassengerProfile.activeCode}
-              passengerName={displayPassengerProfile.displayName}
-              onCancelled={async () => {
-                if (authProfile?.userId) {
-                  await Promise.all([
-                    loadUpcomingReservations(authProfile.userId),
-                    loadRecentReservations(authProfile.userId),
-                    loadSchedules(),
-                  ]);
-                }
-              }}
-            /> */}
+            <AvailableTicketsMenu
+              reservations={recentReservations}
+              isLoading={recentReservationsLoading}
+              onSelect={(reservation) =>
+                navigate(
+                  `/ticket?reservationId=${encodeURIComponent(reservation.reservationId)}`,
+                )
+              }
+            />
 
             {authProfileError && (
               <div className="rounded-panel bg-white p-3 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20 md:p-4">

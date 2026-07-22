@@ -202,8 +202,12 @@ export function UpcomingReservationCard({
                   <p className="mt-1 break-words text-4xl font-black leading-none text-[#1F1A17]">
                     {passengerName || "-"}
                   </p>
-                  <p className="mt-3 text-lg font-black text-[#C9151E]">
-                    預約搭乘人數：{reservation.passengerCount ?? 1} 人
+                  <p className="mt-3 text-base font-black text-[#C9151E]">
+                    預約人數：
+                    <span className="text-2xl">
+                      {reservation.passengerCount ?? 1}
+                    </span>
+                    人
                   </p>
                 </div>
                 <div className="shrink-0 rounded-xl bg-[#FFF8D6] px-3 py-2 text-right ring-1 ring-[#D7B94A]">
@@ -250,17 +254,18 @@ export function UpcomingReservationCard({
           )}
         </div>
       </article>
-
-      {canCancel && (
-        <button
-          className="mt-3 h-11 w-full rounded-xl border-2 border-[#C9151E] bg-white px-4 text-base font-black text-[#C9151E] transition hover:bg-[#C9151E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isCancelling}
-          type="button"
-          onClick={() => setIsConfirmingCancel(true)}
-        >
-          取消預約
-        </button>
-      )}
+      <div className="p-4">
+        {canCancel && (
+          <button
+            className="mt-3 h-11 w-full rounded-xl border-2 border-[#C9151E] bg-white px-4 text-base font-black text-[#C9151E] transition hover:bg-[#C9151E] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isCancelling}
+            type="button"
+            onClick={() => setIsConfirmingCancel(true)}
+          >
+            取消預約
+          </button>
+        )}
+      </div>
 
       {isConfirmingCancel && (
         <div
