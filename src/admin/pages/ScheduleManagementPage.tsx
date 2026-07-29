@@ -1163,12 +1163,12 @@ export function ScheduleManagementPage() {
         onOpenChange={setIsSingleScheduleDrawerOpen}
       >
         <SheetContent
-          className="admin-single-schedule-drawer !w-[min(35vw,1280px)] !max-w-none !bg-admin-surface !text-admin-text"
+          className="admin-single-schedule-drawer !w-full !max-w-none !gap-0 !bg-admin-surface !text-admin-text md:!w-1/3"
           overlayClassName="bg-black/55 supports-backdrop-filter:backdrop-blur-sm"
           side="right"
         >
-          <SheetHeader className="border-b border-admin-border bg-admin-elevated px-6 py-5 pr-14">
-            <SheetTitle className="text-xl font-bold tracking-tight !text-admin-text">
+          <SheetHeader className="border-b border-admin-border bg-admin-elevated px-4 py-4 pr-14 sm:px-6 sm:py-5">
+            <SheetTitle className="text-lg font-bold tracking-tight !text-admin-text sm:text-xl">
               建立單筆班次
             </SheetTitle>
             {/*  <SheetDescription className="mt-1 !text-admin-muted">
@@ -1181,15 +1181,15 @@ export function ScheduleManagementPage() {
           >
             {drawerNotice && (
               <p
-                className="mx-5 mt-5 rounded-adminControl border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm text-red-200"
+                className="mx-3 mt-3 rounded-adminControl border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm text-red-200 sm:mx-5 sm:mt-5"
                 role="alert"
               >
                 {drawerNotice}
               </p>
             )}
-            <main className="min-h-0 flex-1 overflow-y-auto p-5">
-              <article className="mx-auto max-w-4xl space-y-4">
-                <section className="admin-panel-body p-5">
+            <main className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5 lg:p-6">
+              <article className="mx-auto max-w-6xl space-y-4">
+                <section className="admin-panel-body p-4 sm:p-5">
                   <fieldset>
                     <legend className="admin-section-title flex items-center gap-3">
                       <span className="grid h-7 w-7 place-items-center rounded-full bg-adminStatus-enabled/15 text-xs text-adminStatus-enabled">
@@ -1197,7 +1197,7 @@ export function ScheduleManagementPage() {
                       </span>
                       班次基本資料
                     </legend>
-                    <div className="mt-5 grid gap-5 grid-cols-1">
+                    <div className="mt-5 grid grid-cols-1 gap-5">
                       <label className="text-sm font-medium text-admin-softText">
                         路線 <span className="text-red-300">*</span>
                         <select
@@ -1230,10 +1230,10 @@ export function ScheduleManagementPage() {
 
                       <label className="text-sm font-medium text-admin-softText">
                         營運日期 <span className="text-red-300">*</span>
-                        <div className="mt-2 flex items-center gap-2">
+                        <div className="mt-2 grid grid-cols-[minmax(0,1.5fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2">
                           <Input
                             aria-label="營運日期年份"
-                            className={`h-12 w-24 rounded-adminControl border-admin-borderStrong bg-admin-bg px-2 text-center font-mono text-lg font-bold tracking-[0.16em] text-admin-text ${scheduleFieldErrors.operationDate ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                            className={`h-12 min-w-0 w-full rounded-adminControl border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-base font-bold tracking-[0.08em] text-admin-text sm:px-2 sm:text-lg sm:tracking-[0.16em] ${scheduleFieldErrors.operationDate ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
                             inputMode="numeric"
                             maxLength={4}
                             placeholder="YYYY"
@@ -1253,7 +1253,7 @@ export function ScheduleManagementPage() {
                           </span>
                           <Input
                             aria-label="營運日期月份"
-                            className={`h-12 w-16 rounded-adminControl border-admin-borderStrong bg-admin-bg px-2 text-center font-mono text-lg font-bold tracking-[0.16em] text-admin-text ${scheduleFieldErrors.operationDate ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                            className={`h-12 min-w-0 w-full rounded-adminControl border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-base font-bold tracking-[0.08em] text-admin-text sm:px-2 sm:text-lg sm:tracking-[0.16em] ${scheduleFieldErrors.operationDate ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
                             inputMode="numeric"
                             maxLength={2}
                             placeholder="MM"
@@ -1273,7 +1273,7 @@ export function ScheduleManagementPage() {
                           </span>
                           <Input
                             aria-label="營運日期日期"
-                            className={`h-12 w-16 rounded-adminControl border-admin-borderStrong bg-admin-bg px-2 text-center font-mono text-lg font-bold tracking-[0.16em] text-admin-text ${scheduleFieldErrors.operationDate ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                            className={`h-12 min-w-0 w-full rounded-adminControl border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-base font-bold tracking-[0.08em] text-admin-text sm:px-2 sm:text-lg sm:tracking-[0.16em] ${scheduleFieldErrors.operationDate ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
                             inputMode="numeric"
                             maxLength={2}
                             placeholder="DD"
@@ -1295,7 +1295,7 @@ export function ScheduleManagementPage() {
                             <PopoverTrigger asChild>
                               <button
                                 aria-label="選擇營運日期"
-                                className="grid h-12 w-12 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong bg-admin-bg text-admin-muted transition hover:border-adminStatus-enabled hover:text-adminStatus-enabled"
+                                className="grid h-12 w-11 shrink-0 place-items-center rounded-adminControl border border-admin-borderStrong bg-admin-bg text-admin-muted transition hover:border-adminStatus-enabled hover:text-adminStatus-enabled sm:w-12"
                                 type="button"
                               >
                                 <CalendarIcon
@@ -1371,7 +1371,7 @@ export function ScheduleManagementPage() {
 
                       <label className="text-sm font-medium text-admin-softText">
                         預約截止 <span className="text-red-300">*</span>
-                        <span className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                        <span className="mt-2 grid grid-cols-1 gap-2">
                           <Popover
                             open={isBookingCloseCalendarOpen}
                             onOpenChange={setIsBookingCloseCalendarOpen}
@@ -1485,7 +1485,7 @@ export function ScheduleManagementPage() {
                   </fieldset>
                 </section>
 
-                <section className="admin-panel-body p-5">
+                <section className="admin-panel-body p-4 sm:p-5">
                   <fieldset>
                     <legend className="admin-section-title flex items-center gap-3">
                       <span className="grid h-7 w-7 place-items-center rounded-full bg-adminStatus-enabled/15 text-xs text-adminStatus-enabled">
@@ -1500,11 +1500,7 @@ export function ScheduleManagementPage() {
                     <ol className="mt-5 space-y-2">
                       {stopSettings.map((stop, index) => (
                         <li
-                          className={`grid gap-3 rounded-adminControl border px-4 py-3 md:items-center ${
-                            stopSettings.length === 1
-                              ? "md:grid-cols-[auto_minmax(0,1fr)_160px]"
-                              : "md:grid-cols-[auto_minmax(0,1fr)_160px_auto]"
-                          } ${
+                          className={`grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-adminControl border px-3 py-3 sm:px-4 ${
                             stop.isEnabled
                               ? "border-adminStatus-enabled/40 bg-adminStatus-enabled/10"
                               : "border-admin-borderStrong bg-admin-bg"
@@ -1524,7 +1520,7 @@ export function ScheduleManagementPage() {
                                 : "此站不開放預約"}
                             </p>
                           </div>
-                          <label className="text-xs font-medium text-admin-softText">
+                          <label className="col-span-2 text-xs font-medium text-admin-softText">
                             站位名額
                             <input
                               className="mt-1 h-10 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled disabled:opacity-50"
@@ -1548,7 +1544,7 @@ export function ScheduleManagementPage() {
                           </label>
                           {stopSettings.length > 1 && (
                             <button
-                              className={`h-10 rounded-adminControl border px-4 text-sm font-bold ${
+                              className={`col-span-2 h-10 rounded-adminControl border px-4 text-sm font-bold ${
                                 stop.isEnabled
                                   ? "border-adminStatus-enabled text-adminStatus-enabled"
                                   : "border-admin-borderStrong text-admin-softText"
@@ -1572,7 +1568,7 @@ export function ScheduleManagementPage() {
                     </ol>
                   </fieldset>
                 </section>
-                <section className="admin-panel-body p-5">
+                <section className="admin-panel-body p-4 sm:p-5">
                   <h2 className="admin-section-title flex items-center gap-3">
                     <span className="grid h-7 w-7 place-items-center rounded-full bg-adminStatus-enabled/15 text-xs text-adminStatus-enabled">
                       3

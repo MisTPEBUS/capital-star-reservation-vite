@@ -202,13 +202,13 @@ export function UpcomingReservationCard({
                   <p className="mt-1 break-words text-4xl font-black leading-none text-[#1F1A17]">
                     {passengerName || "-"}
                   </p>
-                  <p className="mt-3 text-base font-black text-[#C9151E]">
+                  {/*  <p className="mt-3 text-base font-black text-[#C9151E]">
                     預約人數：
                     <span className="text-2xl">
                       {reservation.passengerCount ?? 1}
                     </span>
                     人
-                  </p>
+                  </p> */}
                 </div>
                 <div className="shrink-0 rounded-xl bg-[#FFF8D6] px-3 py-2 text-right ring-1 ring-[#D7B94A]">
                   <p className="text-md font-black text-[#C9151E] text-left">

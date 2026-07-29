@@ -92,7 +92,7 @@ export function ReservationDialog({
             />
           </label>
 
-          <fieldset className="grid gap-2">
+          <fieldset className="hidden grid gap-2">
             <legend className="text-base font-black text-ink-800">
               乘車人數
             </legend>

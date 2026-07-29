@@ -42,20 +42,19 @@ const faqSections: Array<{ title: string; items: FaqItem[] }> = [
         answer:
           "不可以。每位使用者在同一天只能有一筆有效預約；若當天已有預約，系統會提示您已有同日預約。",
       },
-      {
+      /*  {
         question: "我已預約明天的班次，還可以預約後天嗎？",
         answer:
           "可以。系統只限制同一天的有效預約，不會因為明天的班次尚未搭乘，而影響您預約後天的班次。",
-      },
-      {
+      }, */
+      /*  {
         question: "我可以替其他人一起預約嗎？",
         answer:
           "可以。建立預約時，請填寫實際乘車姓名及乘車人數（最多 3 位），系統會依照填寫的人數顯示是否預約成功。",
-      },
+      }, */
       {
         question: "櫃台可以替沒有 LINE 帳號的乘客預約嗎？",
-        answer:
-          "可以。櫃台人員可輸入乘客姓名、電話、乘車人數、路線、日期、時間及上車站建立預約，系統也會記錄建立該筆預約的工作人員。",
+        answer: "可以。請撥打下方服務電話由櫃台人員建立預約。",
       },
       {
         question: "班次剩餘座位不足時可以預約嗎？",
@@ -67,11 +66,11 @@ const faqSections: Array<{ title: string; items: FaqItem[] }> = [
         answer:
           "可能是在您送出預約前，其他乘客已完成預約。系統會以送出當下的剩餘座位重新確認，請重新搜尋班次後再嘗試。",
       },
-      {
+      /*  {
         question: "預約後可以修改乘車人數嗎？",
         answer:
           "目前不支援直接修改乘車人數。請先取消原預約，再重新選擇班次、乘車姓名及人數建立新預約。",
-      },
+      }, */
       {
         question: "預約錯誤可以修改嗎？",
         answer:
@@ -186,7 +185,7 @@ export function FaqPage() {
         </div>
       </div>
       <Link
-        className="fixed left-1/2 z-40 w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-xl border-2 border-white/20 bg-bus-700 px-5 py-2.5 text-center text-base font-black text-white shadow-card transition hover:bg-bus-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-bus-300/40 lg:w-auto"
+        className="fixed inset-x-0 z-40 mx-auto w-[calc(100%-1.5rem)] rounded-xl border-2 border-white/20 bg-bus-700 px-5 py-2.5 text-center text-base font-black text-white shadow-card transition hover:bg-bus-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-bus-300/40 lg:w-fit"
         style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
         to="/"
       >

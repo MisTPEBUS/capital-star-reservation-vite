@@ -21,8 +21,13 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 
-const defaultPassengerNotificationText =
-  "您好，您預約的首都之星班次因故取消。造成不便，敬請見諒。";
+const defaultPassengerNotificationText = `📢 親愛的旅客您好：
+
+因故無法提供您預約的「首都之星」班次服務，造成您的行程受到影響，我們深感抱歉。🙏
+
+若您需要協助改班或有任何疑問，歡迎隨時與我們聯繫，我們將盡快為您服務。
+
+感謝您的理解與支持，祝您一路平安、順心愉快！💙`;
 
 function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
@@ -83,7 +88,9 @@ function hasScheduleDeparted(schedule: DashboardDailyOpenSchedule) {
   return departureDate.getTime() <= Date.now();
 }
 
-function getScheduleName(schedule: DashboardDailyOpenSchedule) {
+function getScheduleName(
+  schedule: Pick<DashboardDailyOpenSchedule, "routeNumber" | "routeName">,
+) {
   return `${schedule.routeNumber}｜${schedule.routeName}`;
 }
 
@@ -293,7 +300,11 @@ export function DashboardPage() {
         setSchedules((current) =>
           current.map((schedule) =>
             schedule.dailyOpenScheduleId === result.schedule.dailyOpenScheduleId
-              ? { ...schedule, ...result.schedule }
+              ? {
+                  ...schedule,
+                  ...result.schedule,
+                  status: result.schedule.status ?? schedule.status,
+                }
               : schedule,
           ),
         );
@@ -687,10 +698,12 @@ export function DashboardPage() {
                       key={schedule.dailyOpenScheduleId}
                       aria-pressed={isSelected}
                       className={`group relative w-full overflow-hidden rounded-adminControl border p-4 text-left transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
-                        isSelected
-                          ? "border-[#0d3d2e] bg-[#145a43] shadow-[0_10px_26px_rgba(0,0,0,0.2)]"
-                          : isInactive
-                            ? "border-red-400/45 bg-red-400/10 hover:border-red-400/75 hover:bg-red-400/15"
+                        isInactive
+                          ? isSelected
+                            ? "border-red-400 bg-red-950/70 shadow-[0_10px_26px_rgba(0,0,0,0.2)]"
+                            : "border-red-400/45 bg-red-400/10 hover:border-red-400/75 hover:bg-red-400/15"
+                          : isSelected
+                            ? "border-[#0d3d2e] bg-[#145a43] shadow-[0_10px_26px_rgba(0,0,0,0.2)]"
                             : "border-adminStatus-enabled/45 bg-adminStatus-enabled/10 hover:-translate-y-0.5 hover:border-adminStatus-enabled hover:bg-adminStatus-enabled/15 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]"
                       }`}
                       type="button"
@@ -701,15 +714,19 @@ export function DashboardPage() {
                       <span
                         aria-hidden="true"
                         className={`absolute inset-y-0 left-0 w-1 ${
-                          isSelected
-                            ? "bg-white/80"
-                            : isInactive
-                              ? "bg-red-400"
+                          isInactive
+                            ? isSelected
+                              ? "bg-red-200"
+                              : "bg-red-400"
+                            : isSelected
+                              ? "bg-white/80"
                               : "bg-adminStatus-enabled"
                         }`}
                       />
                       <div className="flex items-center justify-between gap-3">
-                        <p className={`text-sm font-bold tracking-[0.12em] ${isSelected ? "text-white/80" : isInactive ? "text-red-200" : "text-adminStatus-enabled"}`}>
+                        <p
+                          className={`text-sm font-bold tracking-[0.12em] ${isSelected ? "text-white/80" : isInactive ? "text-red-200" : "text-adminStatus-enabled"}`}
+                        >
                           路線 {schedule.routeNumber}
                         </p>
                         <span
@@ -737,18 +754,26 @@ export function DashboardPage() {
                           >
                             {formatDepartureTime(schedule.departureTime)}
                           </p>
-                          <p className={`mt-2 truncate text-sm font-medium ${isSelected ? "text-white/75" : isInactive ? "text-red-100/75" : "text-admin-softText"}`}>
+                          <p
+                            className={`mt-2 truncate text-sm font-medium ${isSelected ? "text-white/75" : isInactive ? "text-red-100/75" : "text-admin-softText"}`}
+                          >
                             {schedule.routeName}
                           </p>
                         </div>
                         <div className="min-w-[92px] text-right">
-                          <p className={`text-sm font-medium ${isSelected ? "text-white/70" : isInactive ? "text-red-100/75" : "text-admin-muted"}`}>
+                          <p
+                            className={`text-sm font-medium ${isSelected ? "text-white/70" : isInactive ? "text-red-100/75" : "text-admin-muted"}`}
+                          >
                             預約 / 總人數
                           </p>
-                          <p className={`mt-1 text-xl font-bold leading-none tabular-nums ${isSelected ? "text-white" : isInactive ? "text-red-100" : "text-admin-text"}`}>
+                          <p
+                            className={`mt-1 text-xl font-bold leading-none tabular-nums ${isSelected ? "text-white" : isInactive ? "text-red-100" : "text-admin-text"}`}
+                          >
                             {schedule.reservedPassengerCount ??
                               schedule.reservedCount}
-                            <span className={`mx-1 text-base font-medium ${isSelected ? "text-white/65" : isInactive ? "text-red-100/70" : "text-admin-muted"}`}>
+                            <span
+                              className={`mx-1 text-base font-medium ${isSelected ? "text-white/65" : isInactive ? "text-red-100/70" : "text-admin-muted"}`}
+                            >
                               /
                             </span>
                             {schedule.quota}

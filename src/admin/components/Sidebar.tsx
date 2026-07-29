@@ -18,13 +18,13 @@ interface SidebarProps {
   onCollapsedChange: (isCollapsed: boolean) => void;
 }
 
-const navigation = [
+export const navigation = [
   { to: "/admin/dashboard", label: "首頁總覽", icon: "dashboard" as const },
   { to: "/admin/employees", label: "使用者權限", icon: "users" as const },
   /*  { to: "/admin/settings", label: "系統設定" }, */
 ];
 
-const dispatchNavigation = [
+export const dispatchNavigation = [
   {
     to: "/admin/dispatch/schedules",
     label: "班次設定",
@@ -35,7 +35,7 @@ const dispatchNavigation = [
   { to: "/admin/dispatch/routes", label: "路線設定", icon: "route" as const },
 ];
 
-function SidebarIcon({ name }: { name: SidebarIconName }) {
+export function SidebarIcon({ name }: { name: SidebarIconName }) {
   const commonProps = {
     className: "h-[20px] w-[20px] shrink-0",
     fill: "none",
@@ -120,7 +120,7 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
 
   return (
     <aside
-      className={`border-b border-admin-border bg-admin-surface transition-[width] duration-200 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:border-b-0 lg:border-r ${
+      className={`hidden border-r border-admin-border bg-admin-surface transition-[width] duration-200 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto ${
         isCollapsed ? "lg:w-[76px]" : "lg:w-[280px]"
       }`}
     >

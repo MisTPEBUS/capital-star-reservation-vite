@@ -10,11 +10,17 @@ type ReservationRow = AdminReservationListItem & { departureTime: string };
 
 interface DataTableProps {
   reservations: ReservationRow[];
-  newReservation: { name: string; phone: string; passengerCount: number } | null;
+  newReservation: {
+    name: string;
+    phone: string;
+    passengerCount: number;
+  } | null;
   isCreating?: boolean;
-  onNewReservationChange: (
-    value: { name: string; phone: string; passengerCount: number },
-  ) => void;
+  onNewReservationChange: (value: {
+    name: string;
+    phone: string;
+    passengerCount: number;
+  }) => void;
   onCreate: () => void;
   onCancelCreate: () => void;
   editingReservation: {
@@ -63,39 +69,41 @@ function getColumns({
     editingReservation?.reservationId === reservationId;
 
   return [
-  {
-    accessorKey: "departureTime",
-    header: "班次",
-    cell: ({ getValue }) => (
-      <span className="font-semibold text-admin-text">{getValue<string>()}</span>
-    ),
-  },
-  {
-    accessorKey: "phone",
-    header: "電話",
-    cell: ({ row }) =>
-      editingReservation?.reservationId === row.original.reservationId ? (
-        <input
-          aria-label="電話"
-          className="h-9 w-32 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
-          value={editingReservation.phone}
-          onChange={(event) =>
-            onEditingReservationChange({
-              ...editingReservation!,
-              phone: event.target.value,
-            })
-          }
-        />
-      ) : (
-        row.original.phone
+    {
+      accessorKey: "departureTime",
+      header: "班次",
+      cell: ({ getValue }) => (
+        <span className="font-semibold text-admin-text">
+          {getValue<string>()}
+        </span>
       ),
-  },
-  {
-    accessorKey: "sequence",
-    header: "序號",
-    cell: ({ getValue }) => String(getValue<number>()).padStart(2, "0"),
-  },
-  {
+    },
+    {
+      accessorKey: "phone",
+      header: "電話",
+      cell: ({ row }) =>
+        editingReservation?.reservationId === row.original.reservationId ? (
+          <input
+            aria-label="電話"
+            className="h-9 w-32 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+            value={editingReservation.phone}
+            onChange={(event) =>
+              onEditingReservationChange({
+                ...editingReservation!,
+                phone: event.target.value,
+              })
+            }
+          />
+        ) : (
+          row.original.phone
+        ),
+    },
+    {
+      accessorKey: "sequence",
+      header: "序號",
+      cell: ({ getValue }) => String(getValue<number>()).padStart(2, "0"),
+    },
+    /*  {
     accessorKey: "passengerCount",
     header: "人數",
     cell: ({ row, getValue }) =>
@@ -116,111 +124,115 @@ function getColumns({
       ) : (
         `${getValue<number>()} 人`
       ),
-  },
-  {
-    accessorKey: "name",
-    header: "乘客",
-    cell: ({ row }) =>
-      editingReservation?.reservationId === row.original.reservationId ? (
-        <input
-          aria-label="姓名"
-          className="h-9 w-28 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
-          value={editingReservation.name}
-          onChange={(event) =>
-            onEditingReservationChange({
-              ...editingReservation!,
-              name: event.target.value,
-            })
-          }
-        />
-      ) : (
-        <>
-          <p className="font-semibold text-admin-text">{row.original.name}</p>
-          <p className="mt-1 text-sm text-admin-muted">
-            LINE：{row.original.lineDisplayName}
-          </p>
-        </>
-      ),
-  },
-  {
-    accessorKey: "activeCode",
-    header: "識別碼",
-    cell: ({ getValue }) => <span className="font-mono">{getValue<string>()}</span>,
-  },
-  { accessorKey: "pickupStopName", header: "上車站" },
-  { accessorKey: "bookedAt", header: "預約時間" },
-  {
-    accessorKey: "status",
-    header: "狀態",
-    cell: ({ getValue }) => {
-      const status = getValue<string>();
-
-      return (
-        <span
-          className={
-            status === "RESERVED"
-              ? "font-semibold text-adminStatus-enabled"
-              : "font-semibold text-admin-muted"
-          }
-        >
-          {status === "RESERVED" ? "已預約" : "已取消"}
-        </span>
-      );
+  }, */
+    {
+      accessorKey: "name",
+      header: "乘客",
+      cell: ({ row }) =>
+        editingReservation?.reservationId === row.original.reservationId ? (
+          <input
+            aria-label="姓名"
+            className="h-9 w-28 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+            value={editingReservation.name}
+            onChange={(event) =>
+              onEditingReservationChange({
+                ...editingReservation!,
+                name: event.target.value,
+              })
+            }
+          />
+        ) : (
+          <>
+            <p className="font-semibold text-admin-text">{row.original.name}</p>
+            <p className="mt-1 text-sm text-admin-muted">
+              LINE：{row.original.lineDisplayName}
+            </p>
+          </>
+        ),
     },
-  },
-  {
-    id: "actions",
-    header: "操作",
-    cell: ({ row }) => {
-      const reservation = row.original;
+    {
+      accessorKey: "activeCode",
+      header: "識別碼",
+      cell: ({ getValue }) => (
+        <span className="font-mono">{getValue<string>()}</span>
+      ),
+    },
+    { accessorKey: "pickupStopName", header: "上車站" },
+    { accessorKey: "bookedAt", header: "預約時間" },
+    {
+      accessorKey: "status",
+      header: "狀態",
+      cell: ({ getValue }) => {
+        const status = getValue<string>();
 
-      if (!reservation.isAdminCreated) return "-";
+        return (
+          <span
+            className={
+              status === "RESERVED"
+                ? "font-semibold text-adminStatus-enabled"
+                : "font-semibold text-admin-muted"
+            }
+          >
+            {status === "RESERVED" ? "已預約" : "已取消"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "操作",
+      cell: ({ row }) => {
+        const reservation = row.original;
 
-      if (isEditing(reservation.reservationId)) {
+        if (!reservation.isAdminCreated) return "-";
+
+        if (isEditing(reservation.reservationId)) {
+          return (
+            <div className="flex gap-2">
+              <button
+                className="text-sm font-bold text-adminStatus-enabled disabled:opacity-50"
+                disabled={isUpdating}
+                type="button"
+                onClick={onUpdate}
+              >
+                {isUpdating ? "儲存中…" : "儲存"}
+              </button>
+              <button
+                className="text-sm font-bold text-admin-muted"
+                disabled={isUpdating}
+                type="button"
+                onClick={onCancelEdit}
+              >
+                取消
+              </button>
+            </div>
+          );
+        }
+
         return (
           <div className="flex gap-2">
             <button
-              className="text-sm font-bold text-adminStatus-enabled disabled:opacity-50"
-              disabled={isUpdating}
+              className="text-sm font-bold text-adminStatus-enabled"
               type="button"
-              onClick={onUpdate}
+              onClick={() => onStartEdit(reservation)}
             >
-              {isUpdating ? "儲存中…" : "儲存"}
+              修改
             </button>
             <button
-              className="text-sm font-bold text-admin-muted"
-              disabled={isUpdating}
+              className="text-sm font-bold text-red-300 disabled:opacity-50"
+              disabled={deletingReservationId === reservation.reservationId}
               type="button"
-              onClick={onCancelEdit}
+              onClick={() => onDelete(reservation)}
             >
-              取消
+              {deletingReservationId === reservation.reservationId
+                ? "刪除中…"
+                : "刪除"}
             </button>
           </div>
         );
-      }
-
-      return (
-        <div className="flex gap-2">
-          <button
-            className="text-sm font-bold text-adminStatus-enabled"
-            type="button"
-            onClick={() => onStartEdit(reservation)}
-          >
-            修改
-          </button>
-          <button
-            className="text-sm font-bold text-red-300 disabled:opacity-50"
-            disabled={deletingReservationId === reservation.reservationId}
-            type="button"
-            onClick={() => onDelete(reservation)}
-          >
-            {deletingReservationId === reservation.reservationId ? "刪除中…" : "刪除"}
-          </button>
-        </div>
-      );
+      },
     },
-  },
-];
+  ];
 }
 
 export function DataTable({
@@ -293,11 +305,16 @@ export function DataTable({
                   placeholder="電話"
                   value={newReservation.phone}
                   onChange={(event) =>
-                    onNewReservationChange({ ...newReservation, phone: event.target.value })
+                    onNewReservationChange({
+                      ...newReservation,
+                      phone: event.target.value,
+                    })
                   }
                 />
               </td>
-              <td className="px-3 py-3 font-semibold text-adminStatus-enabled">新增</td>
+              <td className="px-3 py-3 font-semibold text-adminStatus-enabled">
+                新增
+              </td>
               <td className="px-3 py-3">
                 <input
                   aria-label="搭乘人數"
@@ -320,7 +337,10 @@ export function DataTable({
                   placeholder="姓名"
                   value={newReservation.name}
                   onChange={(event) =>
-                    onNewReservationChange({ ...newReservation, name: event.target.value })
+                    onNewReservationChange({
+                      ...newReservation,
+                      name: event.target.value,
+                    })
                   }
                 />
               </td>

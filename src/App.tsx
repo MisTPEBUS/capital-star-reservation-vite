@@ -717,7 +717,7 @@ function App() {
       <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
         <div className="mx-auto w-full max-w-[820px]">
           <div className="mt-4 grid gap-3 pb-32 md:gap-4">
-            <section className="rounded-panel border-2 border-star-300 bg-[#FFF8D6] p-4 shadow-card md:p-5">
+            <section className=" rounded-panel border-2 border-star-300 bg-[#FFF8D6] p-4 shadow-card md:p-5">
               <p className="text-xl font-black text-[#9A3412] md:text-lg">
                 預約須知
               </p>
@@ -737,7 +737,22 @@ function App() {
                 })
               }
             />
-            <AvailableTicketsMenu
+            <UpcomingReservationCard
+              reservation={activeUpcomingReservation}
+              userId={authProfile?.userId ?? null}
+              identityCode={displayPassengerProfile.activeCode}
+              passengerName={displayPassengerProfile.displayName}
+              onCancelled={async () => {
+                if (authProfile?.userId) {
+                  await Promise.all([
+                    loadUpcomingReservations(authProfile.userId),
+                    loadRecentReservations(authProfile.userId),
+                    loadSchedules(),
+                  ]);
+                }
+              }}
+            />
+            {/*  <AvailableTicketsMenu
               reservations={recentReservations}
               isLoading={recentReservationsLoading}
               onSelect={(reservation) =>
@@ -745,7 +760,7 @@ function App() {
                   `/ticket?reservationId=${encodeURIComponent(reservation.reservationId)}`,
                 )
               }
-            />
+            /> */}
 
             {authProfileError && (
               <div className="rounded-panel bg-white p-3 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20 md:p-4">

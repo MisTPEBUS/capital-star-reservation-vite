@@ -51,7 +51,7 @@ export function MemberCard({
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-bus-100">
               識別碼 {/* Active Code */}
             </p>
-            <p className="mt-2 font-mono text-3xl font-black tracking-[0.14em] text-star-300">
+            <p className="mt-2 font-mono text-3xl font-black tracking-[0.14em] text-star-300 text-center">
               {passenger.activeCode}
             </p>
           </div>

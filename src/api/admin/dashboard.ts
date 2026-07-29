@@ -51,7 +51,9 @@ interface RawDashboardReservation {
   status?: DashboardReservationStatus;
 }
 
-interface RawDashboardScheduleReservations extends DashboardDailyOpenSchedule {
+interface RawDashboardScheduleReservations
+  extends Omit<DashboardDailyOpenSchedule, "status"> {
+  status?: DailyOpenScheduleStatus;
   reservations: RawDashboardReservation[];
 }
 
@@ -227,7 +229,7 @@ export async function getDashboardScheduleReservations(
           data.quota - (data.reservedPassengerCount ?? data.reservedCount),
           0,
         ),
-        status: data.status ?? "ACTIVE",
+        status: data.status,
       },
       reservations: data.reservations
         .map(toDashboardReservation)

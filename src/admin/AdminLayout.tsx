@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { hasValidAdminSession } from "../api/admin/session";
 import { Header } from "./components/Header";
+import { MobileNavbar } from "./components/MobileNavbar";
 import { Sidebar } from "./components/Sidebar";
 import { useAdminFontSize } from "./hooks/useAdminFontSize";
 import { SidebarProvider } from "../components/ui/sidebar";
@@ -45,6 +46,13 @@ export function AdminLayout() {
           onCollapsedChange={setIsSidebarCollapsed}
         />
         <div className="min-w-0">
+          <MobileNavbar
+            fontSize={fontSize}
+            canDecreaseFontSize={canDecreaseFontSize}
+            canIncreaseFontSize={canIncreaseFontSize}
+            onDecreaseFontSize={decreaseFontSize}
+            onIncreaseFontSize={increaseFontSize}
+          />
           <Header
             fontSize={fontSize}
             canDecreaseFontSize={canDecreaseFontSize}
