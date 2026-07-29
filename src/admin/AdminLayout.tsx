@@ -5,9 +5,12 @@ import { Header } from "./components/Header";
 import { MobileNavbar } from "./components/MobileNavbar";
 import { Sidebar } from "./components/Sidebar";
 import { useAdminFontSize } from "./hooks/useAdminFontSize";
+import { useAdminIdleReload } from "./hooks/useAdminIdleReload";
 import { SidebarProvider } from "../components/ui/sidebar";
 
 export function AdminLayout() {
+  const isIdle = useAdminIdleReload();
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem("admin-sidebar-collapsed") === "true";
   });
@@ -55,6 +58,7 @@ export function AdminLayout() {
           />
           <Header
             fontSize={fontSize}
+            isIdle={isIdle}
             canDecreaseFontSize={canDecreaseFontSize}
             canIncreaseFontSize={canIncreaseFontSize}
             onDecreaseFontSize={decreaseFontSize}

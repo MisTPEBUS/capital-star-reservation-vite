@@ -103,28 +103,28 @@ function getColumns({
       header: "序號",
       cell: ({ getValue }) => String(getValue<number>()).padStart(2, "0"),
     },
-    /*  {
-    accessorKey: "passengerCount",
-    header: "人數",
-    cell: ({ row, getValue }) =>
-      editingReservation?.reservationId === row.original.reservationId ? (
-        <input
-          aria-label="搭乘人數"
-          className="h-9 w-20 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
-          min="1"
-          type="number"
-          value={editingReservation.passengerCount}
-          onChange={(event) =>
-            onEditingReservationChange({
-              ...editingReservation!,
-              passengerCount: Number(event.target.value),
-            })
-          }
-        />
-      ) : (
-        `${getValue<number>()} 人`
-      ),
-  }, */
+    {
+      accessorKey: "passengerCount",
+      header: "人數",
+      cell: ({ row, getValue }) =>
+        editingReservation?.reservationId === row.original.reservationId ? (
+          <input
+            aria-label="搭乘人數"
+            className="h-9 w-20 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+            min="1"
+            type="number"
+            value={editingReservation.passengerCount}
+            onChange={(event) =>
+              onEditingReservationChange({
+                ...editingReservation!,
+                passengerCount: Number(event.target.value),
+              })
+            }
+          />
+        ) : (
+          `${getValue<number>()} 人`
+        ),
+    },
     {
       accessorKey: "name",
       header: "乘客",

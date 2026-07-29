@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FaCaretLeft, FaCaretRight } from "react-icons/fa";
+import { useSearchParams } from "react-router-dom";
 import {
   type DashboardDailyOpenSchedule,
   type DashboardReservation,
@@ -100,10 +101,79 @@ function getStatusText(status: string) {
   return status;
 }
 
+type ScheduleCardTone = "blue" | "green" | "red" | "slate";
+
+interface ScheduleCardPalette {
+  selectedCard: string;
+  defaultCard: string;
+  accent: string;
+  routeLabel: string;
+  statusBadge: string;
+}
+
+const scheduleCardPalettes: Record<ScheduleCardTone, ScheduleCardPalette> = {
+  blue: {
+    selectedCard:
+      " bg-blue-700 border-4 border-white  shadow-[0_10px_26px_rgba(0,0,0,0.2)]",
+    defaultCard:
+      "border-blue-300 bg-blue-700 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]",
+    accent: "bg-blue-400",
+    routeLabel: "text-blue-200",
+    statusBadge: "bg-blue-400/15 text-blue-200 ring-1 ring-blue-400/30",
+  },
+  green: {
+    selectedCard:
+      "border-emerald-300 bg-emerald-700 border-4 border-white shadow-[0_10px_26px_rgba(0,0,0,0.2)]",
+    defaultCard:
+      "border-emerald-300 bg-emerald-700 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]",
+    accent: "bg-emerald-400",
+    routeLabel: "text-emerald-200",
+    statusBadge:
+      "bg-emerald-400/15 text-emerald-200 ring-1 ring-emerald-400/30",
+  },
+  red: {
+    selectedCard:
+      "border-red-300 bg-red-800 border-4 border-white shadow-[0_10px_26px_rgba(0,0,0,0.2)]",
+    defaultCard:
+      "border-red-300 bg-red-800 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]",
+    accent: "bg-red-400",
+    routeLabel: "text-red-200",
+    statusBadge: "bg-red-400/15 text-red-200 ring-1 ring-red-400/30",
+  },
+  slate: {
+    selectedCard:
+      "border-slate-300 bg-slate-700 border-4 border-white shadow-[0_10px_26px_rgba(0,0,0,0.2)]",
+    defaultCard:
+      "border-slate-300 bg-slate-700 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]",
+    accent: "bg-slate-400",
+    routeLabel: "text-slate-200",
+    statusBadge: "bg-slate-400/15 text-slate-200 ring-1 ring-slate-400/30",
+  },
+};
+
+function getScheduleCardPalette(
+  schedule: Pick<DashboardDailyOpenSchedule, "routeNumber" | "status">,
+) {
+  if (schedule.status === "INACTIVE") {
+    return scheduleCardPalettes.slate;
+  }
+
+  const toneByRouteNumber: Record<string, ScheduleCardTone> = {
+    "1570": "blue",
+    "1571": "green",
+    "1572": "red",
+  };
+
+  return scheduleCardPalettes[
+    toneByRouteNumber[schedule.routeNumber] ?? "slate"
+  ];
+}
+
 export function DashboardPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [openDate, setOpenDate] = useState(getTodayValue());
   const [schedules, setSchedules] = useState<DashboardDailyOpenSchedule[]>([]);
-  const [selectedRouteId, setSelectedRouteId] = useState("ALL");
+  const selectedRouteNumber = searchParams.get("route") ?? "ALL";
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
     null,
   );
@@ -178,11 +248,27 @@ export function DashboardPage() {
 
   const filteredSchedules = useMemo(
     () =>
-      selectedRouteId === "ALL"
+      selectedRouteNumber === "ALL"
         ? schedules
-        : schedules.filter((schedule) => schedule.routeId === selectedRouteId),
-    [schedules, selectedRouteId],
+        : schedules.filter(
+            (schedule) => schedule.routeNumber === selectedRouteNumber,
+          ),
+    [schedules, selectedRouteNumber],
   );
+
+  const selectRouteNumber = (routeNumber: string) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+
+      if (routeNumber === "ALL") {
+        next.delete("route");
+      } else {
+        next.set("route", routeNumber);
+      }
+
+      return next;
+    });
+  };
 
   const selectedSchedule = useMemo(
     () =>
@@ -682,7 +768,7 @@ export function DashboardPage() {
                 filteredSchedules.map((schedule) => {
                   const isSelected =
                     schedule.dailyOpenScheduleId === selectedScheduleId;
-                  const isInactive = schedule.status === "INACTIVE";
+                  const cardPalette = getScheduleCardPalette(schedule);
                   const reservationRate = Math.min(
                     100,
                     Math.round(
@@ -697,14 +783,10 @@ export function DashboardPage() {
                     <button
                       key={schedule.dailyOpenScheduleId}
                       aria-pressed={isSelected}
-                      className={`group relative w-full overflow-hidden rounded-adminControl border p-4 text-left transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-adminStatus-enabled ${
-                        isInactive
-                          ? isSelected
-                            ? "border-red-400 bg-red-950/70 shadow-[0_10px_26px_rgba(0,0,0,0.2)]"
-                            : "border-red-400/45 bg-red-400/10 hover:border-red-400/75 hover:bg-red-400/15"
-                          : isSelected
-                            ? "border-[#0d3d2e] bg-[#145a43] shadow-[0_10px_26px_rgba(0,0,0,0.2)]"
-                            : "border-adminStatus-enabled/45 bg-adminStatus-enabled/10 hover:-translate-y-0.5 hover:border-adminStatus-enabled hover:bg-adminStatus-enabled/15 hover:shadow-[0_8px_24px_rgba(0,0,0,0.14)]"
+                      className={`group relative w-full overflow-hidden rounded-adminControl border p-4 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-black ${
+                        isSelected
+                          ? cardPalette.selectedCard
+                          : cardPalette.defaultCard
                       }`}
                       type="button"
                       onClick={() =>
@@ -714,28 +796,24 @@ export function DashboardPage() {
                       <span
                         aria-hidden="true"
                         className={`absolute inset-y-0 left-0 w-1 ${
-                          isInactive
-                            ? isSelected
-                              ? "bg-red-200"
-                              : "bg-red-400"
-                            : isSelected
-                              ? "bg-white/80"
-                              : "bg-adminStatus-enabled"
+                          isSelected ? "bg-white/80" : cardPalette.accent
                         }`}
                       />
                       <div className="flex items-center justify-between gap-3">
                         <p
-                          className={`text-sm font-bold tracking-[0.12em] ${isSelected ? "text-white/80" : isInactive ? "text-red-200" : "text-adminStatus-enabled"}`}
+                          className={`text-sm font-bold tracking-[0.12em] ${
+                            isSelected
+                              ? "text-white/80"
+                              : cardPalette.routeLabel
+                          }`}
                         >
                           路線 {schedule.routeNumber}
                         </p>
                         <span
                           className={`shrink-0 rounded-full px-2 py-1 text-sm font-bold ${
-                            schedule.status === "ACTIVE"
-                              ? isSelected
-                                ? "bg-white/15 text-white ring-1 ring-white/25"
-                                : "bg-adminStatus-enabled/15 text-adminStatus-enabled ring-1 ring-adminStatus-enabled/25"
-                              : "bg-red-400/10 text-red-300 ring-1 ring-red-400/25"
+                            isSelected
+                              ? "bg-white/15 text-white ring-1 ring-white/25"
+                              : cardPalette.statusBadge
                           }`}
                         >
                           {getStatusText(schedule.status)}
@@ -745,34 +823,30 @@ export function DashboardPage() {
                         <div>
                           <p
                             className={`text-3xl font-bold leading-none tabular-nums ${
-                              isSelected
-                                ? "text-white"
-                                : isInactive
-                                  ? "text-red-100"
-                                  : "text-admin-text"
+                              isSelected ? "text-white" : "text-admin-text"
                             }`}
                           >
                             {formatDepartureTime(schedule.departureTime)}
                           </p>
                           <p
-                            className={`mt-2 truncate text-sm font-medium ${isSelected ? "text-white/75" : isInactive ? "text-red-100/75" : "text-admin-softText"}`}
+                            className={`mt-2 truncate text-sm font-medium ${isSelected ? "text-white/75" : "text-admin-softText"}`}
                           >
                             {schedule.routeName}
                           </p>
                         </div>
                         <div className="min-w-[92px] text-right">
                           <p
-                            className={`text-sm font-medium ${isSelected ? "text-white/70" : isInactive ? "text-red-100/75" : "text-admin-muted"}`}
+                            className={`text-sm font-medium ${isSelected ? "text-white/70" : "text-admin-muted"}`}
                           >
                             預約 / 總人數
                           </p>
                           <p
-                            className={`mt-1 text-xl font-bold leading-none tabular-nums ${isSelected ? "text-white" : isInactive ? "text-red-100" : "text-admin-text"}`}
+                            className={`mt-1 text-xl font-bold leading-none tabular-nums ${isSelected ? "text-white" : "text-admin-text"}`}
                           >
                             {schedule.reservedPassengerCount ??
                               schedule.reservedCount}
                             <span
-                              className={`mx-1 text-base font-medium ${isSelected ? "text-white/65" : isInactive ? "text-red-100/70" : "text-admin-muted"}`}
+                              className={`mx-1 text-base font-medium ${isSelected ? "text-white/65" : "text-admin-muted"}`}
                             >
                               /
                             </span>
@@ -836,12 +910,12 @@ export function DashboardPage() {
                   <select
                     aria-label="路線篩選"
                     className="h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base font-semibold text-admin-text outline-none focus:border-adminStatus-enabled"
-                    value={selectedRouteId}
-                    onChange={(event) => setSelectedRouteId(event.target.value)}
+                    value={selectedRouteNumber}
+                    onChange={(event) => selectRouteNumber(event.target.value)}
                   >
                     <option value="ALL">全部路線</option>
                     {routeOptions.map((route) => (
-                      <option key={route.routeId} value={route.routeId}>
+                      <option key={route.routeId} value={route.routeNumber}>
                         {route.routeNumber}｜{route.routeName}
                       </option>
                     ))}

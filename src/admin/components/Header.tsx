@@ -1,8 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
 import { clearAdminSession, getAdminSession } from "../../api/admin/session";
+import { DashboardRouteNav } from "./DashboardRouteNav";
 
 interface HeaderProps {
   fontSize: number;
+  isIdle: boolean;
   canDecreaseFontSize: boolean;
   canIncreaseFontSize: boolean;
   onDecreaseFontSize: () => void;
@@ -25,6 +27,7 @@ export function getAdminPageTitle(pathname: string) {
 
 export function Header({
   fontSize,
+  isIdle,
   canDecreaseFontSize,
   canIncreaseFontSize,
   onDecreaseFontSize,
@@ -44,11 +47,25 @@ export function Header({
         <h1 className="truncate text-lg font-bold text-admin-text">
           {pageTitle}
         </h1>
+
         <p className="hidden shrink-0 text-sm text-admin-muted md:block">
           {today}
         </p>
       </div>
+      {pathname === "/admin/dashboard" && <DashboardRouteNav />}
       <div className="flex items-center gap-2 md:gap-3">
+        {isIdle && (
+          <span
+            className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-sm font-bold text-amber-200"
+            role="status"
+          >
+            <span
+              aria-hidden="true"
+              className="h-2 w-2 rounded-full bg-amber-300"
+            />
+            閒置中
+          </span>
+        )}
         <div
           aria-label="文字大小"
           className="flex overflow-hidden rounded-adminControl border border-admin-borderStrong"
