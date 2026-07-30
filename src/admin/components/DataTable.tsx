@@ -15,6 +15,7 @@ interface DataTableProps {
     phone: string;
     passengerCount: number;
   } | null;
+  newReservationDepartureTime?: string;
   isCreating?: boolean;
   onNewReservationChange: (value: {
     name: string;
@@ -238,6 +239,7 @@ function getColumns({
 export function DataTable({
   reservations,
   newReservation,
+  newReservationDepartureTime = "",
   isCreating = false,
   onNewReservationChange,
   onCreate,
@@ -295,8 +297,10 @@ export function DataTable({
         </thead>
         <tbody className="divide-y divide-admin-border">
           {newReservation && (
-            <tr className="bg-adminStatus-enabled/5 text-admin-softText">
-              <td className="px-3 py-3 text-admin-muted">-</td>
+            <tr className="hidden bg-adminStatus-enabled/5 text-admin-softText md:table-row">
+              <td className="px-3 py-3 font-semibold text-adminStatus-enabled">
+                {newReservationDepartureTime || "-"}
+              </td>
               <td className="px-3 py-3">
                 <input
                   aria-label="電話"

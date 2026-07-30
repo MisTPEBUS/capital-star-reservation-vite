@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { useQuickReservation } from "../components/QuickReservationDrawer";
 
 const defaultPassengerNotificationText = `📢 親愛的旅客您好：
 
@@ -170,6 +171,8 @@ function getScheduleCardPalette(
 }
 
 export function DashboardPage() {
+  const { pendingReservation, clearPendingReservation } =
+    useQuickReservation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [openDate, setOpenDate] = useState(getTodayValue());
   const [schedules, setSchedules] = useState<DashboardDailyOpenSchedule[]>([]);
@@ -219,6 +222,51 @@ export function DashboardPage() {
   const todayValue = getTodayValue();
 
   useEffect(() => {
+    if (!pendingReservation || isSchedulesLoading) return;
+
+    const parsedTime = pendingReservation.time.slice(0, 5);
+    const currentSchedule = schedules.find(
+      (schedule) =>
+        schedule.dailyOpenScheduleId === selectedScheduleId &&
+        formatDepartureTime(schedule.departureTime) === parsedTime &&
+        schedule.status !== "INACTIVE" &&
+        !hasScheduleDeparted(schedule),
+    );
+    const matchingSchedule =
+      currentSchedule ??
+      schedules.find(
+        (schedule) =>
+          formatDepartureTime(schedule.departureTime) === parsedTime &&
+          schedule.status !== "INACTIVE" &&
+          !hasScheduleDeparted(schedule),
+      );
+
+    if (!matchingSchedule) {
+      setReservationsError(
+        `目前日期沒有 ${parsedTime} 的可預約班次，請切換日期後再試。`,
+      );
+      clearPendingReservation();
+      return;
+    }
+
+    setSelectedScheduleId(matchingSchedule.dailyOpenScheduleId);
+    selectRouteNumber(matchingSchedule.routeNumber);
+    setNewReservation({
+      name: pendingReservation.name,
+      phone: pendingReservation.phone,
+      passengerCount: pendingReservation.passengerCount,
+    });
+    setReservationsError("");
+    clearPendingReservation();
+  }, [
+    clearPendingReservation,
+    isSchedulesLoading,
+    pendingReservation,
+    schedules,
+    selectedScheduleId,
+  ]);
+
+  useEffect(() => {
     const timers = [
       schedulesError && window.setTimeout(() => setSchedulesError(""), 5000),
       reservationsError &&
@@ -256,7 +304,7 @@ export function DashboardPage() {
     [schedules, selectedRouteNumber],
   );
 
-  const selectRouteNumber = (routeNumber: string) => {
+  function selectRouteNumber(routeNumber: string) {
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
 
@@ -268,7 +316,7 @@ export function DashboardPage() {
 
       return next;
     });
-  };
+  }
 
   const selectedSchedule = useMemo(
     () =>
@@ -986,6 +1034,88 @@ export function DashboardPage() {
               </p>
             )}
 
+            {newReservation && (
+              <section className="mt-4 rounded-adminControl border border-adminStatus-enabled/30 bg-adminStatus-enabled/5 p-4 md:hidden">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold text-admin-text">
+                      新增預約
+                    </h2>
+                    <p className="mt-1 text-sm text-admin-muted">
+                      {selectedSchedule
+                        ? `${selectedSchedule.routeNumber}｜${selectedSchedule.routeName}・${formatDepartureTime(selectedSchedule.departureTime)}`
+                        : "請先選擇班次"}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-adminStatus-enabled/15 px-2.5 py-1 text-xs font-bold text-adminStatus-enabled">
+                    快速輸入
+                  </span>
+                </div>
+                <div className="space-y-4">
+                  <label className="block text-sm font-bold text-admin-softText">
+                    姓名
+                    <input
+                      className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+                      value={newReservation.name}
+                      onChange={(event) =>
+                        setNewReservation({
+                          ...newReservation,
+                          name: event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block text-sm font-bold text-admin-softText">
+                    電話
+                    <input
+                      className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+                      inputMode="tel"
+                      value={newReservation.phone}
+                      onChange={(event) =>
+                        setNewReservation({
+                          ...newReservation,
+                          phone: event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block text-sm font-bold text-admin-softText">
+                    搭乘人數
+                    <input
+                      className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+                      min="1"
+                      type="number"
+                      value={newReservation.passengerCount}
+                      onChange={(event) =>
+                        setNewReservation({
+                          ...newReservation,
+                          passengerCount: Number(event.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <button
+                      className="h-12 rounded-adminControl border border-admin-borderStrong text-base font-bold text-admin-softText"
+                      disabled={isCreatingReservation}
+                      type="button"
+                      onClick={() => setNewReservation(null)}
+                    >
+                      取消
+                    </button>
+                    <button
+                      className="h-12 rounded-adminControl bg-adminStatus-enabled text-base font-bold text-admin-bg disabled:opacity-50"
+                      disabled={isCreatingReservation || !selectedSchedule}
+                      type="button"
+                      onClick={handleCreateReservation}
+                    >
+                      {isCreatingReservation ? "送出中…" : "確認預約"}
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
             <div className="mt-4 min-h-0 flex-1 overflow-auto rounded-adminControl border border-admin-border">
               {isReservationsLoading ? (
                 <div className="px-4 py-10 text-center text-sm text-admin-muted">
@@ -995,6 +1125,11 @@ export function DashboardPage() {
                 <DataTable
                   reservations={reservationRows}
                   newReservation={newReservation}
+                  newReservationDepartureTime={
+                    selectedSchedule
+                      ? formatDepartureTime(selectedSchedule.departureTime)
+                      : ""
+                  }
                   isCreating={isCreatingReservation}
                   onNewReservationChange={setNewReservation}
                   onCreate={handleCreateReservation}

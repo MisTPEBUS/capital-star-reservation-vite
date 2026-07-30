@@ -7,6 +7,7 @@ const APP_VERSION = `v${packageInfo.version}`;
 
 type SidebarIconName =
   | "dashboard"
+  | "quickReservation"
   | "users"
   | "dispatch"
   | "schedule"
@@ -16,6 +17,7 @@ type SidebarIconName =
 interface SidebarProps {
   isCollapsed: boolean;
   onCollapsedChange: (isCollapsed: boolean) => void;
+  onOpenQuickReservation: () => void;
 }
 
 export const navigation = [
@@ -53,6 +55,16 @@ export function SidebarIcon({ name }: { name: SidebarIconName }) {
         <rect height="8" rx="2" width="8" x="13" y="3" />
         <rect height="8" rx="2" width="8" x="3" y="13" />
         <rect height="8" rx="2" width="8" x="13" y="13" />
+      </svg>
+    );
+  }
+
+  if (name === "quickReservation") {
+    return (
+      <svg {...commonProps} aria-hidden="true">
+        <path d="M12 3v18" />
+        <path d="M3 12h18" />
+        <path d="m16 5 1-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1Z" />
       </svg>
     );
   }
@@ -111,7 +123,11 @@ export function SidebarIcon({ name }: { name: SidebarIconName }) {
   );
 }
 
-export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
+export function Sidebar({
+  isCollapsed,
+  onCollapsedChange,
+  onOpenQuickReservation,
+}: SidebarProps) {
   const location = useLocation();
   const isDispatchActive = location.pathname.startsWith("/admin/dispatch/");
   const [isDispatchOpen, setIsDispatchOpen] = useState(isDispatchActive);
@@ -162,6 +178,18 @@ export function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps) {
             <span className={isCollapsed ? "lg:hidden" : ""}>{item.label}</span>
           </NavLink>
         ))}
+
+        <button
+          className={`flex w-full shrink-0 items-center gap-3 rounded-adminControl border border-adminStatus-enabled/25 bg-adminStatus-enabled/10 px-3 py-2.5 text-left text-sm font-semibold text-adminStatus-enabled transition hover:bg-adminStatus-enabled/20 ${
+            isCollapsed ? "lg:justify-center" : ""
+          }`}
+          title={isCollapsed ? "預約快速輸入" : undefined}
+          type="button"
+          onClick={onOpenQuickReservation}
+        >
+          <SidebarIcon name="quickReservation" />
+          <span className={isCollapsed ? "lg:hidden" : ""}>預約快速輸入</span>
+        </button>
 
         <div className="shrink-0 lg:py-1">
           <button

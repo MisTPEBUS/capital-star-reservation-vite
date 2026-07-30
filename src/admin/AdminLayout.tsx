@@ -7,9 +7,14 @@ import { Sidebar } from "./components/Sidebar";
 import { useAdminFontSize } from "./hooks/useAdminFontSize";
 import { useAdminIdleReload } from "./hooks/useAdminIdleReload";
 import { SidebarProvider } from "../components/ui/sidebar";
+import {
+  QuickReservationProvider,
+  useQuickReservation,
+} from "./components/QuickReservationDrawer";
 
-export function AdminLayout() {
+function AdminLayoutContent() {
   const isIdle = useAdminIdleReload();
+  const { openQuickReservation } = useQuickReservation();
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem("admin-sidebar-collapsed") === "true";
@@ -47,6 +52,7 @@ export function AdminLayout() {
         <Sidebar
           isCollapsed={isSidebarCollapsed}
           onCollapsedChange={setIsSidebarCollapsed}
+          onOpenQuickReservation={openQuickReservation}
         />
         <div className="min-w-0">
           <MobileNavbar
@@ -55,6 +61,7 @@ export function AdminLayout() {
             canIncreaseFontSize={canIncreaseFontSize}
             onDecreaseFontSize={decreaseFontSize}
             onIncreaseFontSize={increaseFontSize}
+            onOpenQuickReservation={openQuickReservation}
           />
           <Header
             fontSize={fontSize}
@@ -70,5 +77,13 @@ export function AdminLayout() {
         </div>
       </div>
     </SidebarProvider>
+  );
+}
+
+export function AdminLayout() {
+  return (
+    <QuickReservationProvider>
+      <AdminLayoutContent />
+    </QuickReservationProvider>
   );
 }

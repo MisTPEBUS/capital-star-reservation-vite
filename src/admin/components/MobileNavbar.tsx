@@ -41,6 +41,7 @@ interface MobileNavbarProps {
   canIncreaseFontSize: boolean;
   onDecreaseFontSize: () => void;
   onIncreaseFontSize: () => void;
+  onOpenQuickReservation: () => void;
 }
 
 const APP_VERSION = `v${packageInfo.version}`;
@@ -86,6 +87,7 @@ export function MobileNavbar({
   canIncreaseFontSize,
   onDecreaseFontSize,
   onIncreaseFontSize,
+  onOpenQuickReservation,
 }: MobileNavbarProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -167,6 +169,25 @@ export function MobileNavbar({
                       onNavigate={() => setIsOpen(false)}
                     />
                   ))}
+                  <button
+                    className="group flex min-h-14 w-full items-center gap-3 rounded-adminControl border border-adminStatus-enabled/30 bg-adminStatus-enabled/10 px-3.5 py-3 text-left text-lg font-semibold text-adminStatus-enabled transition hover:bg-adminStatus-enabled/20"
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onOpenQuickReservation();
+                    }}
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-adminStatus-enabled/10">
+                      <SidebarIcon name="quickReservation" />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      預約快速輸入
+                    </span>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="h-5 w-5 text-adminStatus-enabled"
+                    />
+                  </button>
                 </div>
 
                 <div className="space-y-1">
