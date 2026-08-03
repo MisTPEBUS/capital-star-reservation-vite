@@ -57,6 +57,18 @@ export interface CancelDailyOpenScheduleResult {
   updatedAt: string;
 }
 
+export interface BatchCancelDailyOpenScheduleItem {
+  dailyOpenScheduleId: string;
+  status: DailyOpenScheduleStatus | string;
+  cancelledReservationCount: number;
+  notificationBatchId: string;
+}
+
+export interface BatchCancelDailyOpenSchedulesResult {
+  totalCount: number;
+  cancelledSchedules: BatchCancelDailyOpenScheduleItem[];
+}
+
 function getErrorMessage(error: unknown) {
   if (axios.isAxiosError<ApiResponse<unknown>>(error)) {
     return error.response?.data?.message || "班次操作失敗，請稍後再試。";
@@ -111,6 +123,30 @@ export async function cancelDailyOpenSchedule(
     >(
       `/api/v1/admin/daily-open-schedules/${dailyOpenScheduleId}/cancel`,
       { passengerNotificationText },
+    );
+
+    return unwrapResponse(response.data);
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+export async function cancelDailyOpenSchedulesBatch(
+  dailyOpenScheduleIds: string[],
+  passengerNotificationText: string,
+) {
+  try {
+    const response = await apiClient.patch<
+      ApiResponse<BatchCancelDailyOpenSchedulesResult>
+    >(
+      "/api/v1/admin/daily-open-schedules/batch/cancel",
+      {
+        dailyOpenScheduleIds,
+        passengerNotificationText,
+      },
+      {
+        headers: { Accept: "application/json" },
+      },
     );
 
     return unwrapResponse(response.data);

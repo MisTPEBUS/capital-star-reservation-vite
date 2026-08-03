@@ -12,6 +12,7 @@ import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
 import { UpcomingReservationCard } from "./components/UpcomingReservationCard";
 import { AvailableTicketsMenu } from "./components/AvailableTicketsMenu";
+import { GpsCoordinatesCard } from "./components/GpsCoordinatesCard";
 import {
   AuthProfile,
   getPreferredProfileName,
@@ -717,6 +718,7 @@ function App() {
       <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
         <div className="mx-auto w-full max-w-[820px]">
           <div className="mt-4 grid gap-3 pb-32 md:gap-4">
+            <GpsCoordinatesCard />
             <section className=" rounded-panel border-2 border-star-300 bg-[#FFF8D6] p-4 shadow-card md:p-5">
               <p className="text-xl font-black text-[#9A3412] md:text-lg">
                 預約須知
