@@ -2,18 +2,21 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { Mic, MicOff, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  getDashboardDailyOpenSchedules,
+  type DashboardDailyOpenSchedule,
+} from "../../api/admin/dashboard";
 import {
   parseReservationText,
   type ParsedReservationText,
 } from "../../api/admin/reservationTextParser";
+import type { TaiwaneseTranslationResult } from "../../api/admin/taiwaneseTranslation";
 import { Button } from "../../components/ui/button";
 import {
   Sheet,
@@ -23,43 +26,32 @@ import {
   SheetHeader,
   SheetTitle,
 } from "../../components/ui/sheet";
+import { createQuickAdminReservation } from "../../services/quickAdminReservation";
+import {
+  getLocalDateValue,
+  matchesScheduleRouteHint,
+} from "../../utils/quickReservation";
+import { useSpeechRecognitionInput } from "../hooks/useSpeechRecognitionInput";
+import { useTaiwaneseReservationInput } from "../hooks/useTaiwaneseReservationInput";
+import {
+  isScheduleAvailable,
+  QuickReservationForm,
+} from "./QuickReservationForm";
+import { QuickReservationVoiceControls } from "./QuickReservationVoiceControls";
 
-interface SpeechRecognitionEventLike {
-  resultIndex: number;
-  results: ArrayLike<{
-    isFinal: boolean;
-    0: { transcript: string };
-  }>;
-}
-
-interface SpeechRecognitionErrorEventLike {
-  error: string;
-}
-
-interface SpeechRecognitionLike {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
-
-declare global {
-  interface Window {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  }
+export interface RecentlyCreatedQuickReservation {
+  dailyOpenScheduleId: string;
+  openDate: string;
+  routeNumber: string;
+  departureTime: string;
+  name: string;
+  passengerCount: number;
 }
 
 interface QuickReservationContextValue {
   openQuickReservation: () => void;
-  pendingReservation: ParsedReservationText | null;
-  clearPendingReservation: () => void;
+  recentlyCreatedReservation: RecentlyCreatedQuickReservation | null;
+  clearRecentlyCreatedReservation: () => void;
 }
 
 const QuickReservationContext =
@@ -83,32 +75,102 @@ export function QuickReservationProvider({
   children: ReactNode;
 }) {
   const navigate = useNavigate();
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState("");
   const [parsed, setParsed] = useState<ParsedReservationText | null>(null);
-  const [pendingReservation, setPendingReservation] =
-    useState<ParsedReservationText | null>(null);
+  const [schedules, setSchedules] = useState<DashboardDailyOpenSchedule[]>([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState("");
+  const [recentlyCreatedReservation, setRecentlyCreatedReservation] =
+    useState<RecentlyCreatedQuickReservation | null>(null);
   const [isParsing, setIsParsing] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+  const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
+  const [isCreatingReservation, setIsCreatingReservation] = useState(false);
   const [error, setError] = useState("");
-  const speechRecognitionConstructor =
-    typeof window === "undefined"
-      ? undefined
-      : window.SpeechRecognition ?? window.webkitSpeechRecognition;
-  const supportsSpeechRecognition = Boolean(speechRecognitionConstructor);
 
-  const stopListening = useCallback(() => {
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
-    setIsListening(false);
+  const handleTranscript = useCallback((transcript: string) => {
+    setText(transcript);
+    setParsed(null);
+    setSchedules([]);
+    setSelectedScheduleId("");
   }, []);
+  const {
+    isListening,
+    speechError,
+    supportsSpeechRecognition,
+    clearSpeechError,
+    stopListening,
+    toggleListening,
+  } = useSpeechRecognitionInput(handleTranscript);
 
-  useEffect(() => stopListening, [stopListening]);
+  const selectedSchedule = useMemo(
+    () =>
+      schedules.find(
+        (schedule) => schedule.dailyOpenScheduleId === selectedScheduleId,
+      ) ?? null,
+    [schedules, selectedScheduleId],
+  );
+
+  const loadTodaySchedules = useCallback(
+    async (reservation: ParsedReservationText, routeHint = "") => {
+      setIsLoadingSchedules(true);
+      try {
+        const dailySchedules = await getDashboardDailyOpenSchedules(
+          getLocalDateValue(),
+        );
+        const sortedSchedules = [...dailySchedules].sort((left, right) =>
+          left.departureTime.localeCompare(right.departureTime),
+        );
+        const matchingSchedule = sortedSchedules.find(
+          (schedule) =>
+            schedule.departureTime.slice(0, 5) ===
+              reservation.time.slice(0, 5) &&
+            matchesScheduleRouteHint(schedule, routeHint) &&
+            isScheduleAvailable(schedule, reservation.passengerCount),
+        );
+
+        setSchedules(sortedSchedules);
+        setSelectedScheduleId(matchingSchedule?.dailyOpenScheduleId ?? "");
+      } finally {
+        setIsLoadingSchedules(false);
+      }
+    },
+    [],
+  );
+
+  const handleTaiwaneseResult = useCallback(
+    async (result: TaiwaneseTranslationResult) => {
+      const reservation: ParsedReservationText = {
+        time: result.reservation.time,
+        phone: result.reservation.phone,
+        name: result.reservation.name,
+        passengerCount: result.reservation.passengerCount,
+      };
+      setText(result.transcript);
+      setParsed(reservation);
+      setSchedules([]);
+      setSelectedScheduleId("");
+      setError("");
+      clearSpeechError();
+      await loadTodaySchedules(reservation, result.reservation.schedule);
+    },
+    [clearSpeechError, loadTodaySchedules],
+  );
+  const {
+    isRecording: isTaiwaneseRecording,
+    isProcessing: isTaiwaneseProcessing,
+    error: taiwaneseError,
+    supportsRecording: supportsTaiwaneseRecording,
+    clearError: clearTaiwaneseError,
+    cancelRecording: cancelTaiwaneseRecording,
+    toggleRecording: toggleTaiwaneseRecording,
+  } = useTaiwaneseReservationInput(handleTaiwaneseResult);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (!open) stopListening();
+    if (!open) {
+      stopListening();
+      cancelTaiwaneseRecording();
+    }
   };
 
   const handleParse = async () => {
@@ -121,10 +183,14 @@ export function QuickReservationProvider({
     try {
       setIsParsing(true);
       setError("");
+      clearSpeechError();
+      setParsed(null);
+      setSchedules([]);
+      setSelectedScheduleId("");
       const result = await parseReservationText(normalizedText);
       setParsed(result);
+      await loadTodaySchedules(result);
     } catch (parseError) {
-      setParsed(null);
       setError(
         parseError instanceof Error
           ? parseError.message
@@ -135,73 +201,125 @@ export function QuickReservationProvider({
     }
   };
 
-  const handleToggleListening = () => {
-    if (isListening) {
-      stopListening();
-      return;
-    }
+  const handleParsedChange = (value: ParsedReservationText) => {
+    if (!parsed) return;
 
-    if (!speechRecognitionConstructor) {
-      setError("此瀏覽器不支援語音輸入，請改用文字輸入。");
-      return;
-    }
+    const timeChanged = value.time.slice(0, 5) !== parsed.time.slice(0, 5);
+    const selectedIsUnavailable =
+      selectedSchedule &&
+      !isScheduleAvailable(selectedSchedule, value.passengerCount);
 
-    setError("");
-    const recognition = new speechRecognitionConstructor();
-    recognition.lang = "zh-TW";
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.onresult = (event) => {
-      let transcript = "";
-      for (let index = 0; index < event.results.length; index += 1) {
-        transcript += event.results[index][0].transcript;
-      }
-      setText(transcript);
-      setParsed(null);
-    };
-    recognition.onerror = (event) => {
-      setError(
-        event.error === "not-allowed"
-          ? "麥克風權限未開啟，請允許瀏覽器使用麥克風。"
-          : "語音辨識失敗，請再試一次。",
-      );
-      setIsListening(false);
-    };
-    recognition.onend = () => {
-      recognitionRef.current = null;
-      setIsListening(false);
-    };
-    recognitionRef.current = recognition;
-    setIsListening(true);
-    recognition.start();
+    if (timeChanged || selectedIsUnavailable) {
+      setSelectedScheduleId("");
+    }
+    setParsed(value);
   };
 
-  const handleApply = () => {
-    if (!parsed) return;
-    setPendingReservation(parsed);
-    setIsOpen(false);
-    stopListening();
-    navigate("/admin/dashboard");
+  const handleScheduleSelect = (scheduleId: string) => {
+    const schedule = schedules.find(
+      (item) => item.dailyOpenScheduleId === scheduleId,
+    );
+    setSelectedScheduleId(scheduleId);
+    if (parsed && schedule) {
+      setParsed({
+        ...parsed,
+        time: schedule.departureTime.slice(0, 5),
+      });
+    }
+  };
+
+  const handleCreateReservation = async () => {
+    if (!parsed || !selectedSchedule) return;
+
+    try {
+      setIsCreatingReservation(true);
+      setError("");
+      const created = await createQuickAdminReservation(selectedSchedule, {
+        name: parsed.name,
+        phone: parsed.phone,
+        passengerCount: parsed.passengerCount,
+      });
+
+      setRecentlyCreatedReservation({
+        dailyOpenScheduleId: created.dailyOpenScheduleId,
+        openDate: created.openDate,
+        routeNumber: created.routeNumber,
+        departureTime: created.departureTime.slice(0, 5),
+        name: parsed.name.trim(),
+        passengerCount: parsed.passengerCount,
+      });
+      setText("");
+      setParsed(null);
+      setSchedules([]);
+      setSelectedScheduleId("");
+      setIsOpen(false);
+      stopListening();
+      cancelTaiwaneseRecording();
+      navigate("/admin/dashboard");
+    } catch (createError) {
+      setError(
+        createError instanceof Error
+          ? createError.message
+          : "建立班次預約失敗，請稍後再試。",
+      );
+    } finally {
+      setIsCreatingReservation(false);
+    }
   };
 
   const contextValue = useMemo(
     () => ({
       openQuickReservation: () => {
         setError("");
+        clearSpeechError();
+        clearTaiwaneseError();
         setIsOpen(true);
       },
-      pendingReservation,
-      clearPendingReservation: () => setPendingReservation(null),
+      recentlyCreatedReservation,
+      clearRecentlyCreatedReservation: () =>
+        setRecentlyCreatedReservation(null),
     }),
-    [pendingReservation],
+    [clearSpeechError, clearTaiwaneseError, recentlyCreatedReservation],
   );
+
+  const isFormValid = Boolean(
+    parsed?.name.trim() &&
+      parsed.phone.trim() &&
+      Number.isInteger(parsed.passengerCount) &&
+      parsed.passengerCount > 0 &&
+      selectedSchedule &&
+      isScheduleAvailable(selectedSchedule, parsed.passengerCount),
+  );
+
+  const handleTextChange = (value: string) => {
+    setText(value);
+    setParsed(null);
+    setSchedules([]);
+    setSelectedScheduleId("");
+    setError("");
+    clearSpeechError();
+    clearTaiwaneseError();
+  };
+
+  const handleMandarinToggle = () => {
+    if (!isListening) cancelTaiwaneseRecording();
+    clearTaiwaneseError();
+    toggleListening();
+  };
+
+  const handleTaiwaneseToggle = () => {
+    if (!isTaiwaneseRecording) stopListening();
+    setError("");
+    clearSpeechError();
+    toggleTaiwaneseRecording();
+  };
 
   return (
     <QuickReservationContext.Provider value={contextValue}>
       {children}
       <Sheet open={isOpen} onOpenChange={handleOpenChange}>
         <SheetContent
-          className="admin-quick-reservation-drawer !w-full !max-w-[34rem] !gap-0 !border-admin-border !bg-admin-surface !p-0 !text-admin-text"
+          className="admin-quick-reservation-drawer !w-full !max-w-[40rem] !gap-0 !border-admin-border !bg-admin-surface !p-0 !text-admin-text"
           side="right"
         >
           <SheetHeader className="border-b border-admin-border bg-admin-elevated/60 px-5 py-5 pr-14 text-left">
@@ -214,177 +332,45 @@ export function QuickReservationProvider({
                   預約快速輸入
                 </SheetTitle>
                 <SheetDescription className="mt-1 !text-admin-muted">
-                  使用語音或自然語句，自動整理乘客預約資料。
+                  確認語音解析資料與班次後，直接建立預約。
                 </SheetDescription>
               </div>
             </div>
           </SheetHeader>
 
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
-            <div>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <label
-                  className="text-sm font-bold text-admin-softText"
-                  htmlFor="quick-reservation-text"
-                >
-                  預約內容
-                </label>
-                <span className="text-xs text-admin-muted">
-                  支援姓名、電話、時間與人數
-                </span>
-              </div>
-              <textarea
-                className="min-h-36 w-full resize-y rounded-adminControl border border-admin-borderStrong bg-admin-bg p-3 text-base leading-7 text-admin-text outline-none placeholder:text-admin-muted focus:border-adminStatus-enabled focus:ring-2 focus:ring-adminStatus-enabled/20"
-                id="quick-reservation-text"
-                placeholder="例如：王小明預約明天南港線下午兩點，電話0912-345-678，共3人"
-                value={text}
-                onChange={(event) => {
-                  setText(event.target.value);
-                  setParsed(null);
-                  setError("");
-                }}
-              />
-              <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-                <Button
-                  aria-pressed={isListening}
-                  className={`h-12 px-4 font-bold ${
-                    isListening
-                      ? "bg-red-500 text-white hover:bg-red-600"
-                      : "border-admin-borderStrong bg-admin-bg text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
-                  }`}
-                  title={
-                    supportsSpeechRecognition
-                      ? "使用麥克風輸入"
-                      : "此瀏覽器不支援語音辨識"
-                  }
-                  type="button"
-                  variant={isListening ? "destructive" : "outline"}
-                  onClick={handleToggleListening}
-                >
-                  {isListening ? (
-                    <MicOff aria-hidden="true" className="!h-5 !w-5" />
-                  ) : (
-                    <Mic aria-hidden="true" className="!h-5 !w-5" />
-                  )}
-                  {isListening ? "停止收音" : "語音輸入"}
-                </Button>
-                <Button
-                  className="h-12 bg-adminStatus-enabled text-base font-bold text-admin-bg hover:bg-emerald-300"
-                  disabled={isParsing || !text.trim()}
-                  type="button"
-                  onClick={handleParse}
-                >
-                  <Sparkles aria-hidden="true" className="!h-5 !w-5" />
-                  {isParsing ? "解析中…" : "解析預約資料"}
-                </Button>
-              </div>
-              {isListening && (
-                <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-red-200" role="status">
-                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-400" />
-                  正在聆聽，請說出完整預約內容…
-                </p>
-              )}
-            </div>
+            <QuickReservationVoiceControls
+              isListening={isListening}
+              isParsing={isParsing}
+              isTaiwaneseProcessing={isTaiwaneseProcessing}
+              isTaiwaneseRecording={isTaiwaneseRecording}
+              supportsSpeechRecognition={supportsSpeechRecognition}
+              supportsTaiwaneseRecording={supportsTaiwaneseRecording}
+              text={text}
+              onMandarinToggle={handleMandarinToggle}
+              onParse={handleParse}
+              onTaiwaneseToggle={handleTaiwaneseToggle}
+              onTextChange={handleTextChange}
+            />
 
-            {error && (
+            {(error || speechError || taiwaneseError) && (
               <p
                 className="rounded-adminControl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200"
                 role="alert"
               >
-                {error}
+                {error || speechError || taiwaneseError}
               </p>
             )}
 
             {parsed && (
-              <section
-                aria-labelledby="parsed-reservation-title"
-                className="rounded-adminPanel border border-adminStatus-enabled/30 bg-adminStatus-enabled/5 p-4"
-              >
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <h3
-                    className="text-base font-bold text-admin-text"
-                    id="parsed-reservation-title"
-                  >
-                    解析完成
-                  </h3>
-                  <span className="rounded-full bg-adminStatus-enabled/15 px-2.5 py-1 text-xs font-bold text-adminStatus-enabled">
-                    請確認資料
-                  </span>
-                </div>
-
-                <dl className="hidden grid-cols-2 gap-3 md:grid">
-                  {[
-                    ["姓名", parsed.name],
-                    ["電話", parsed.phone],
-                    ["班次時間", parsed.time],
-                    ["搭乘人數", `${parsed.passengerCount} 人`],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="rounded-adminControl border border-admin-border bg-admin-bg/60 p-3"
-                    >
-                      <dt className="text-xs font-semibold text-admin-muted">
-                        {label}
-                      </dt>
-                      <dd className="mt-1 text-base font-bold text-admin-text">
-                        {value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-
-                <div className="space-y-4 md:hidden">
-                  <label className="block text-sm font-bold text-admin-softText">
-                    姓名
-                    <input
-                      className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
-                      value={parsed.name}
-                      onChange={(event) =>
-                        setParsed({ ...parsed, name: event.target.value })
-                      }
-                    />
-                  </label>
-                  <label className="block text-sm font-bold text-admin-softText">
-                    電話
-                    <input
-                      className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
-                      inputMode="tel"
-                      value={parsed.phone}
-                      onChange={(event) =>
-                        setParsed({ ...parsed, phone: event.target.value })
-                      }
-                    />
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="block text-sm font-bold text-admin-softText">
-                      班次時間
-                      <input
-                        className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
-                        type="time"
-                        value={parsed.time.slice(0, 5)}
-                        onChange={(event) =>
-                          setParsed({ ...parsed, time: event.target.value })
-                        }
-                      />
-                    </label>
-                    <label className="block text-sm font-bold text-admin-softText">
-                      搭乘人數
-                      <input
-                        className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
-                        min="1"
-                        type="number"
-                        value={parsed.passengerCount}
-                        onChange={(event) =>
-                          setParsed({
-                            ...parsed,
-                            passengerCount: Number(event.target.value),
-                          })
-                        }
-                      />
-                    </label>
-                  </div>
-                </div>
-              </section>
+              <QuickReservationForm
+                isLoadingSchedules={isLoadingSchedules}
+                parsed={parsed}
+                schedules={schedules}
+                selectedScheduleId={selectedScheduleId}
+                onParsedChange={handleParsedChange}
+                onScheduleSelect={handleScheduleSelect}
+              />
             )}
           </div>
 
@@ -392,16 +378,15 @@ export function QuickReservationProvider({
             <Button
               className="h-12 w-full bg-adminStatus-enabled text-base font-bold text-admin-bg hover:bg-emerald-300"
               disabled={
-                !parsed ||
-                !parsed.name.trim() ||
-                !parsed.phone.trim() ||
-                parsed.passengerCount < 1
+                !isFormValid ||
+                isCreatingReservation ||
+                isTaiwaneseRecording ||
+                isTaiwaneseProcessing
               }
               type="button"
-              onClick={handleApply}
+              onClick={handleCreateReservation}
             >
-              <span className="hidden md:inline">帶入 Dashboard 表格</span>
-              <span className="md:hidden">帶入預約表單</span>
+              {isCreatingReservation ? "新增中…" : "新增班次預約"}
             </Button>
           </SheetFooter>
         </SheetContent>

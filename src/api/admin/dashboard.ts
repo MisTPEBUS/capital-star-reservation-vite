@@ -172,12 +172,13 @@ export async function createAdminReservation(
   payload: CreateAdminReservationParams,
 ) {
   try {
-    const response = await apiClient.post<CreateAdminReservationResult>(
-      "/api/v1/admin/reservations",
-      payload,
-    );
+    const response = await apiClient.post<
+      ApiResponse<CreateAdminReservationResult> | CreateAdminReservationResult
+    >("/api/v1/admin/reservations", payload);
 
-    return response.data;
+    return "code" in response.data
+      ? unwrapResponse(response.data)
+      : response.data;
   } catch (error) {
     throw new Error(getErrorMessage(error));
   }

@@ -176,7 +176,10 @@ function getScheduleCardPalette(
 }
 
 export function DashboardPage() {
-  const { pendingReservation, clearPendingReservation } = useQuickReservation();
+  const {
+    recentlyCreatedReservation,
+    clearRecentlyCreatedReservation,
+  } = useQuickReservation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [openDate, setOpenDate] = useState(getTodayValue());
   const [schedules, setSchedules] = useState<DashboardDailyOpenSchedule[]>([]);
@@ -228,51 +231,44 @@ export function DashboardPage() {
     useState(false);
   const [schedulesError, setSchedulesError] = useState("");
   const [reservationsError, setReservationsError] = useState("");
+  const [reservationCreateSuccess, setReservationCreateSuccess] = useState("");
   const todayValue = getTodayValue();
 
   useEffect(() => {
-    if (!pendingReservation || isSchedulesLoading) return;
+    if (!recentlyCreatedReservation) return;
 
-    const parsedTime = pendingReservation.time.slice(0, 5);
-    const currentSchedule = schedules.find(
-      (schedule) =>
-        schedule.dailyOpenScheduleId === selectedScheduleId &&
-        formatDepartureTime(schedule.departureTime) === parsedTime &&
-        schedule.status !== "INACTIVE" &&
-        !hasScheduleDeparted(schedule),
-    );
-    const matchingSchedule =
-      currentSchedule ??
-      schedules.find(
-        (schedule) =>
-          formatDepartureTime(schedule.departureTime) === parsedTime &&
-          schedule.status !== "INACTIVE" &&
-          !hasScheduleDeparted(schedule),
-      );
-
-    if (!matchingSchedule) {
-      setReservationsError(
-        `目前日期沒有 ${parsedTime} 的可預約班次，請切換日期後再試。`,
-      );
-      clearPendingReservation();
+    if (openDate !== recentlyCreatedReservation.openDate) {
+      setOpenDate(recentlyCreatedReservation.openDate);
+      setSelectedScheduleId(null);
+      setReservations([]);
       return;
     }
 
+    if (isSchedulesLoading) return;
+
+    const matchingSchedule = schedules.find(
+      (schedule) =>
+        schedule.dailyOpenScheduleId ===
+        recentlyCreatedReservation.dailyOpenScheduleId,
+    );
+
+    if (!matchingSchedule) return;
+
     setSelectedScheduleId(matchingSchedule.dailyOpenScheduleId);
     selectRouteNumber(matchingSchedule.routeNumber);
-    setNewReservation({
-      name: pendingReservation.name,
-      phone: pendingReservation.phone,
-      passengerCount: pendingReservation.passengerCount,
-    });
+    setNewReservation(null);
     setReservationsError("");
-    clearPendingReservation();
+    setReservationRefreshKey((current) => current + 1);
+    setReservationCreateSuccess(
+      `已新增 ${recentlyCreatedReservation.name} ${recentlyCreatedReservation.departureTime}、${recentlyCreatedReservation.passengerCount} 人的班次預約。`,
+    );
+    clearRecentlyCreatedReservation();
   }, [
-    clearPendingReservation,
+    clearRecentlyCreatedReservation,
     isSchedulesLoading,
-    pendingReservation,
+    openDate,
+    recentlyCreatedReservation,
     schedules,
-    selectedScheduleId,
   ]);
 
   useEffect(() => {
@@ -284,6 +280,8 @@ export function DashboardPage() {
         window.setTimeout(() => setCancelScheduleError(""), 5000),
       cancelScheduleSuccess &&
         window.setTimeout(() => setCancelScheduleSuccess(""), 5000),
+      reservationCreateSuccess &&
+        window.setTimeout(() => setReservationCreateSuccess(""), 5000),
     ].filter(Boolean) as number[];
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
@@ -292,6 +290,7 @@ export function DashboardPage() {
     reservationsError,
     cancelScheduleError,
     cancelScheduleSuccess,
+    reservationCreateSuccess,
   ]);
 
   const routeOptions = useMemo(
@@ -1183,6 +1182,15 @@ export function DashboardPage() {
                 role="status"
               >
                 {cancelScheduleSuccess}
+              </p>
+            )}
+
+            {reservationCreateSuccess && (
+              <p
+                className="mt-4 rounded-adminControl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200"
+                role="status"
+              >
+                {reservationCreateSuccess}
               </p>
             )}
 
