@@ -162,7 +162,7 @@ export function MobileNavbar({
                   <p className="px-3 pb-1 text-sm font-bold tracking-[0.18em] text-admin-muted">
                     主要功能
                   </p>
-                  {navigation.slice(0, 1).map((item) => (
+                  {navigation.slice(0, 2).map((item) => (
                     <MobileNavLink
                       key={item.to}
                       {...item}
@@ -214,7 +214,7 @@ export function MobileNavbar({
                   <p className="px-3 pb-1 text-sm font-bold tracking-[0.18em] text-admin-muted">
                     系統管理
                   </p>
-                  {navigation.slice(1).map((item) => (
+                  {navigation.slice(2).map((item) => (
                     <MobileNavLink
                       key={item.to}
                       {...item}

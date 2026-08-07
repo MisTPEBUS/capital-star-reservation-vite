@@ -7,6 +7,7 @@ const APP_VERSION = `v${packageInfo.version}`;
 
 type SidebarIconName =
   | "dashboard"
+  | "analytics"
   | "quickReservation"
   | "users"
   | "dispatch"
@@ -22,6 +23,7 @@ interface SidebarProps {
 
 export const navigation = [
   { to: "/admin/dashboard", label: "首頁總覽", icon: "dashboard" as const },
+  { to: "/admin/analytics", label: "營運圖表", icon: "analytics" as const },
   { to: "/admin/employees", label: "使用者權限", icon: "users" as const },
   /*  { to: "/admin/settings", label: "系統設定" }, */
 ];
@@ -65,6 +67,18 @@ export function SidebarIcon({ name }: { name: SidebarIconName }) {
         <path d="M12 3v18" />
         <path d="M3 12h18" />
         <path d="m16 5 1-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1Z" />
+      </svg>
+    );
+  }
+
+  if (name === "analytics") {
+    return (
+      <svg {...commonProps} aria-hidden="true">
+        <path d="M4 19V9" />
+        <path d="M10 19V5" />
+        <path d="M16 19v-7" />
+        <path d="M22 19H2" />
+        <path d="m4 7 6-4 6 6 5-5" />
       </svg>
     );
   }
@@ -159,7 +173,7 @@ export function Sidebar({
         />
       </div>
       <nav className="flex gap-1 overflow-x-auto border-t border-admin-border px-2 py-2 lg:block lg:flex-1 lg:space-y-1 lg:border-t-0 lg:px-3 lg:py-3">
-        {navigation.slice(0, 1).map((item) => (
+        {navigation.slice(0, 2).map((item) => (
           <NavLink
             key={item.to}
             className={({ isActive }) =>
@@ -255,7 +269,7 @@ export function Sidebar({
           )}
         </div>
 
-        {navigation.slice(1).map((item) => (
+        {navigation.slice(2).map((item) => (
           <NavLink
             key={item.to}
             className={({ isActive }) =>

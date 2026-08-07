@@ -10,6 +10,7 @@ import { UserPermissionsPage } from "./pages/UserPermissionsPage";
 import { DispatchManagementPage } from "./pages/DispatchManagementPage";
 import { RouteManagementPage } from "./pages/RouteManagementPage";
 import { StopManagementPage } from "./pages/StopManagementPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { TooltipProvider } from "../components/ui/tooltip";
 
 export default function AdminApp() {
@@ -29,6 +30,7 @@ export default function AdminApp() {
       <Route path="login" element={<LoginPage />} />
       <Route element={<AdminLayout />}>
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="employees" element={<UserPermissionsPage />} />
         <Route path="schedules" element={<ScheduleManagementPage />} />
         <Route

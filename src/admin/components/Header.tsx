@@ -13,6 +13,7 @@ interface HeaderProps {
 
 export const adminPageTitles: Record<string, string> = {
   "/admin/dashboard": "今日預約概況",
+  "/admin/analytics": "營運決策圖表",
   "/admin/employees": "權限設定",
   "/admin/schedules": "班次設定",
   "/admin/dispatch/reservations": "班次設定",
