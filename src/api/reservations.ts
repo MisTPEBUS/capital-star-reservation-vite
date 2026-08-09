@@ -36,6 +36,21 @@ export interface RecentReservation extends UpcomingReservation {
   checkIn_at: string;
 }
 
+export type CheckInDevice = "MOBILE" | "PC";
+
+export interface CheckInReservationParams {
+  reservationId: string;
+  lat: number;
+  lon: number;
+  checkIn_DEVICE: CheckInDevice;
+}
+
+export interface CheckInReservationResult {
+  reservationId: string;
+  checkIn_at: string;
+  checkIn_DEVICE: CheckInDevice;
+}
+
 export interface CreateReservationResult {
   reservationId: string;
   sequenceNo?: number | null;
@@ -63,7 +78,7 @@ interface CreateReservationParams {
   lineUserId: string;
 }
 
-function getApiErrorMessage(error: unknown) {
+function getApiErrorMessage(error: unknown, fallback = "預約建立失敗") {
   if (axios.isAxiosError<ApiResponse<unknown>>(error)) {
     const responseData = error.response?.data;
     const validationMessages = responseData?.errors
@@ -74,13 +89,13 @@ function getApiErrorMessage(error: unknown) {
       validationMessages[0] ??
       responseData?.message ??
       error.message ??
-      "預約建立失敗"
+      fallback
     );
   }
 
   if (error instanceof Error) return error.message;
 
-  return "預約建立失敗";
+  return fallback;
 }
 
 export async function createReservation({
@@ -147,6 +162,23 @@ export async function getRecentReservations(userId: string) {
     return response.data.data;
   } catch (error) {
     throw new Error(getApiErrorMessage(error));
+  }
+}
+
+export async function checkInReservation(params: CheckInReservationParams) {
+  try {
+    const response = await apiClient.post<
+      ApiResponse<CheckInReservationResult>
+    >("/api/v1/reservations/check-in", params, {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response.data.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, "核銷失敗，請稍後再試。"));
   }
 }
 

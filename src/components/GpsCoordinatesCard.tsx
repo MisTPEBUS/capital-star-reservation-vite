@@ -1,11 +1,17 @@
 import { LocateFixed, MapPin } from "lucide-react";
-import { useGeolocation } from "../hooks/useGeolocation";
+import type { GeolocationState } from "../hooks/useGeolocation";
+
+interface GpsCoordinatesCardProps {
+  state: GeolocationState;
+  requestPosition: () => Promise<unknown>;
+}
 
 const formatCoordinate = (coordinate: number) => coordinate.toFixed(6);
 
-export function GpsCoordinatesCard() {
-  const { state, requestPosition } = useGeolocation();
-
+export function GpsCoordinatesCard({
+  state,
+  requestPosition,
+}: GpsCoordinatesCardProps) {
   return (
     <section
       aria-live="polite"
@@ -13,13 +19,13 @@ export function GpsCoordinatesCard() {
     >
       <div className="flex items-center gap-2">
         <MapPin aria-hidden="true" className="h-5 w-5 text-bus-600" />
-        <h2 className="text-base font-black text-ink-900">使用者 GPS 座標</h2>
+        <h2 className="text-base font-black text-ink-900">
+          使用者 GPS 座標__2
+        </h2>
       </div>
 
       {state.status === "loading" && (
-        <p className="mt-2 text-sm font-bold text-ink-500">
-          正在取得目前位置…
-        </p>
+        <p className="mt-2 text-sm font-bold text-ink-500">正在取得目前位置…</p>
       )}
 
       {state.status === "success" && (
@@ -55,7 +61,7 @@ export function GpsCoordinatesCard() {
           </p>
           <button
             type="button"
-            onClick={requestPosition}
+            onClick={() => void requestPosition().catch(() => undefined)}
             className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-bus-50 px-3 py-2 text-sm font-black text-bus-700 ring-1 ring-bus-100 transition hover:bg-bus-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bus-500"
           >
             <LocateFixed aria-hidden="true" className="h-4 w-4" />

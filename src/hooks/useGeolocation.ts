@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 
-type GeolocationState =
+export type GeolocationSuccess = {
+  status: "success";
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+};
+
+export type GeolocationState =
   | { status: "loading" }
   | { status: "unsupported" }
   | { status: "error"; message: string }
-  | {
-      status: "success";
-      latitude: number;
-      longitude: number;
-      accuracy: number;
-    };
+  | GeolocationSuccess;
 
 const getGeolocationErrorMessage = (error: GeolocationPositionError) => {
   switch (error.code) {
@@ -29,38 +31,41 @@ export function useGeolocation() {
     status: "loading",
   });
 
-  const requestPosition = useCallback(() => {
+  const requestPosition = useCallback((): Promise<GeolocationSuccess> => {
     if (!("geolocation" in navigator)) {
       setState({ status: "unsupported" });
-      return;
+      return Promise.reject(new Error("此瀏覽器不支援 GPS 定位。"));
     }
 
     setState({ status: "loading" });
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setState({
+    return new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          const position: GeolocationSuccess = {
           status: "success",
           latitude: coords.latitude,
           longitude: coords.longitude,
           accuracy: coords.accuracy,
-        });
-      },
-      (error) => {
-        setState({
-          status: "error",
-          message: getGeolocationErrorMessage(error),
-        });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10_000,
-        maximumAge: 60_000,
-      },
-    );
+          };
+          setState(position);
+          resolve(position);
+        },
+        (error) => {
+          const message = getGeolocationErrorMessage(error);
+          setState({ status: "error", message });
+          reject(new Error(message));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10_000,
+          maximumAge: 60_000,
+        },
+      );
+    });
   }, []);
 
   useEffect(() => {
-    requestPosition();
+    void requestPosition().catch(() => undefined);
   }, [requestPosition]);
 
   return { state, requestPosition };

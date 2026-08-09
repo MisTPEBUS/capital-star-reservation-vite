@@ -8,11 +8,15 @@ import {
 import {
   getRecentReservations,
   getUpcomingReservations,
+  type CheckInReservationResult,
   type RecentReservation,
   type UpcomingReservation,
 } from "../api/reservations";
 import { GpsCoordinatesCard } from "../components/GpsCoordinatesCard";
+import { ReservationCheckInStatus } from "../components/ReservationCheckInStatus";
 import { UpcomingReservationCard } from "../components/UpcomingReservationCard";
+import { useGeolocation } from "../hooks/useGeolocation";
+import { useReservationCheckIn } from "../hooks/useReservationCheckIn";
 import { initLiff } from "../liff/liffClient";
 
 function getDepartureTimestamp(reservation: UpcomingReservation) {
@@ -33,6 +37,7 @@ function getDepartureTimestamp(reservation: UpcomingReservation) {
 export function UpcomingReservationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const geolocation = useGeolocation();
   const [userId, setUserId] = useState<string | null>(null);
   const [identityCode, setIdentityCode] = useState<string | null>(null);
   const [passengerName, setPassengerName] = useState<string | null>(null);
@@ -115,11 +120,32 @@ export function UpcomingReservationPage() {
     };
   }, [loadReservation]);
 
+  const handleCheckedIn = useCallback((result: CheckInReservationResult) => {
+    setRecentReservations((current) =>
+      current.map((item) =>
+        item.reservationId === result.reservationId
+          ? { ...item, checkIn_at: result.checkIn_at }
+          : item,
+      ),
+    );
+  }, []);
+
+  const checkInState = useReservationCheckIn({
+    reservations: recentReservations,
+    isLoading: isRecentReservationsLoading,
+    requestPosition: geolocation.requestPosition,
+    onCheckedIn: handleCheckedIn,
+  });
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
       <div className="mx-auto w-full max-w-[820px]">
         <div className="mt-6">
-          <GpsCoordinatesCard />
+          <GpsCoordinatesCard
+            state={geolocation.state}
+            requestPosition={geolocation.requestPosition}
+          />
+          <ReservationCheckInStatus state={checkInState} />
         </div>
         <UpcomingReservationCard
           reservation={reservation}
