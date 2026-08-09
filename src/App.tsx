@@ -12,7 +12,6 @@ import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
 import { UpcomingReservationCard } from "./components/UpcomingReservationCard";
 import { AvailableTicketsMenu } from "./components/AvailableTicketsMenu";
-import { GpsCoordinatesCard } from "./components/GpsCoordinatesCard";
 import {
   AuthProfile,
   getPreferredProfileName,
@@ -24,6 +23,7 @@ import {
   createReservation,
   getRecentReservations,
   getUpcomingReservations,
+  RecentReservation,
   UpcomingReservation,
 } from "./api/reservations";
 import { getSchedules } from "./api/schedules";
@@ -110,7 +110,7 @@ function App() {
   const [upcomingReservationsLoading, setUpcomingReservationsLoading] =
     useState(false);
   const [recentReservations, setRecentReservations] = useState<
-    UpcomingReservation[]
+    RecentReservation[]
   >([]);
   const [recentReservationsLoading, setRecentReservationsLoading] =
     useState(false);
@@ -718,16 +718,14 @@ function App() {
       <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
         <div className="mx-auto w-full max-w-[820px]">
           <div className="mt-4 grid gap-3 pb-32 md:gap-4">
-            <GpsCoordinatesCard />
             <section className=" rounded-panel border-2 border-star-300 bg-[#FFF8D6] p-4 shadow-card md:p-5">
               <p className="text-xl font-black text-[#9A3412] md:text-lg">
                 預約須知
               </p>
               <p className="mt-2 text-base font-bold leading-6 text-ink-800 md:text-base">
                 本系統僅開放預約「隔日」班次（每日 00:00 至 23:59
-                開放線上預約）；如需預約「每日」班次，請於班次前 1
-                小時來電進行電話預約。每位會員同一時間（每日）限預約一筆（上限 3
-                人），需待該筆預約取消後，方可再次進行預約。
+                開放線上預約）；如需預約「當日」班次，請於班次前 1
+                小時來電進行電話預約。每位會員同一時間限預約一筆，需待該筆預約取消或搭乘後，方可再次進行預約。
               </p>
             </section>
             <MemberCard
@@ -754,7 +752,7 @@ function App() {
                 }
               }}
             />
-            {/*  <AvailableTicketsMenu
+            <AvailableTicketsMenu
               reservations={recentReservations}
               isLoading={recentReservationsLoading}
               onSelect={(reservation) =>
@@ -762,7 +760,7 @@ function App() {
                   `/ticket?reservationId=${encodeURIComponent(reservation.reservationId)}`,
                 )
               }
-            /> */}
+            />
 
             {authProfileError && (
               <div className="rounded-panel bg-white p-3 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20 md:p-4">

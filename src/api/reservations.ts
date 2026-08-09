@@ -32,6 +32,10 @@ export interface UpcomingReservation {
   bookedAt: string;
 }
 
+export interface RecentReservation extends UpcomingReservation {
+  checkIn_at: string;
+}
+
 export interface CreateReservationResult {
   reservationId: string;
   sequenceNo?: number | null;
@@ -133,7 +137,7 @@ export async function getUpcomingReservations(userId: string) {
 
 export async function getRecentReservations(userId: string) {
   try {
-    const response = await apiClient.get<ApiResponse<UpcomingReservation[]>>(
+    const response = await apiClient.get<ApiResponse<RecentReservation[]>>(
       "/api/v1/reservations/recent",
       {
         params: { userId },

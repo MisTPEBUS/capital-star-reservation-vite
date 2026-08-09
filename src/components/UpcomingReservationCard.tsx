@@ -1,4 +1,4 @@
-import { KeyboardEvent, useEffect, useState } from "react";
+import { useState } from "react";
 import {
   cancelReservation,
   type UpcomingReservation,
@@ -56,19 +56,7 @@ export function UpcomingReservationCard({
 }: UpcomingReservationCardProps) {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [isTicketExpanded, setIsTicketExpanded] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
-
-  useEffect(() => {
-    if (!isTicketExpanded) return;
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setIsTicketExpanded(false);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isTicketExpanded]);
 
   if (!reservation) return null;
 
@@ -105,13 +93,6 @@ export function UpcomingReservationCard({
   const identityCodePrefix = identityCode?.slice(0, -3) ?? "";
   const identityCodeSuffix = identityCode?.slice(-3) ?? "";
 
-  const handleTicketKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      setIsTicketExpanded(true);
-    }
-  };
-
   return (
     <section
       id="upcoming-reservation"
@@ -119,17 +100,8 @@ export function UpcomingReservationCard({
     >
       {/* <SectionTitle eyebrow="" title="預約乘車憑證" description="" /> */}
       <article
-        aria-label="預約乘車憑證，點擊可全螢幕檢視"
-        aria-modal={isTicketExpanded || undefined}
-        className={`overflow-hidden rounded-[22px] border-2 border-[#D7B94A] bg-[#FFF3B0] shadow-[0_20px_45px_rgba(107,90,37,0.22)] transition-transform duration-200 ${
-          isTicketExpanded
-            ? "fixed inset-3 z-50 m-0 overflow-y-auto shadow-[0_0_0_100vmax_rgba(15,23,42,0.72)] md:inset-8"
-            : "mt-4 cursor-zoom-in hover:scale-[1.01]"
-        }`}
-        role={isTicketExpanded ? "dialog" : "button"}
-        tabIndex={0}
-        onClick={() => setIsTicketExpanded((current) => !current)}
-        onKeyDown={handleTicketKeyDown}
+        aria-label="預約乘車憑證"
+        className="mt-4 overflow-hidden rounded-[22px] border-2 border-[#D7B94A] bg-[#FFF3B0] shadow-[0_20px_45px_rgba(107,90,37,0.22)]"
       >
         <div
           className="relative px-4 pt-4 md:px-5 md:pt-5"
@@ -139,20 +111,6 @@ export function UpcomingReservationCard({
             backgroundSize: "12px 12px",
           }}
         >
-          {isTicketExpanded && (
-            <button
-              aria-label="關閉全螢幕乘車憑證"
-              className="absolute right-2 top-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-2xl font-black text-[#C9151E] shadow-md transition hover:bg-white"
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setIsTicketExpanded(false);
-              }}
-            >
-              ×
-            </button>
-          )}
-
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-lg font-bold text-[#6B5A25]">首都客運</p>
@@ -247,11 +205,9 @@ export function UpcomingReservationCard({
           <p className="text-xl font-black text-[#C9151E]  text-center">
             乘車時請出示此畫面，並依預約日期與班次時刻到站候車。
           </p>
-          {!isTicketExpanded && (
-            <p className="mt-2 text-base font-black text-[#6B5A25] text-center">
-              點選隨意區塊可以放大乘車證
-            </p>
-          )}
+          <p className="mt-2 text-base font-black text-[#6B5A25] text-center">
+            此畫面截圖無效
+          </p>
         </div>
       </article>
       <div className="p-4">

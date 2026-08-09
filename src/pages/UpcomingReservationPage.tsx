@@ -8,8 +8,10 @@ import {
 import {
   getRecentReservations,
   getUpcomingReservations,
+  type RecentReservation,
   type UpcomingReservation,
 } from "../api/reservations";
+import { GpsCoordinatesCard } from "../components/GpsCoordinatesCard";
 import { UpcomingReservationCard } from "../components/UpcomingReservationCard";
 import { initLiff } from "../liff/liffClient";
 
@@ -38,7 +40,7 @@ export function UpcomingReservationPage() {
     null,
   );
   const [recentReservations, setRecentReservations] = useState<
-    UpcomingReservation[]
+    RecentReservation[]
   >([]);
   const [upcomingReservations, setUpcomingReservations] = useState<
     UpcomingReservation[]
@@ -116,6 +118,9 @@ export function UpcomingReservationPage() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
       <div className="mx-auto w-full max-w-[820px]">
+        <div className="mt-6">
+          <GpsCoordinatesCard />
+        </div>
         <UpcomingReservationCard
           reservation={reservation}
           userId={userId}

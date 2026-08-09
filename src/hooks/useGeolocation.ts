@@ -14,7 +14,7 @@ type GeolocationState =
 const getGeolocationErrorMessage = (error: GeolocationPositionError) => {
   switch (error.code) {
     case error.PERMISSION_DENIED:
-      return "無法取得位置權限，請在瀏覽器設定中允許存取位置。";
+      return "目前無法取得 GPS 位置，請確認裝置已開啟定位功能，並且關閉後重新開啟網頁。";
     case error.POSITION_UNAVAILABLE:
       return "目前無法取得 GPS 位置，請確認裝置已開啟定位功能。";
     case error.TIMEOUT:
