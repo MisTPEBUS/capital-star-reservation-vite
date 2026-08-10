@@ -265,6 +265,8 @@ export function UserPermissionsPage() {
                           <select
                             className="h-10 w-full min-w-36 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-sm font-semibold text-admin-text outline-none focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15 disabled:cursor-not-allowed disabled:opacity-60"
                             disabled={isUpdating}
+                            id={`user-${user.userId}-role`}
+                            name={`user-${user.userId}-role`}
                             value={user.role}
                             onChange={(event) =>
                               handleRoleChange(

@@ -114,9 +114,8 @@ export function QuickReservationProvider({
     async (reservation: ParsedReservationText, routeHint = "") => {
       setIsLoadingSchedules(true);
       try {
-        const dailySchedules = await getDashboardDailyOpenSchedules(
-          getLocalDateValue(),
-        );
+        const dailySchedules =
+          await getDashboardDailyOpenSchedules(getLocalDateValue());
         const sortedSchedules = [...dailySchedules].sort((left, right) =>
           left.departureTime.localeCompare(right.departureTime),
         );
@@ -284,11 +283,11 @@ export function QuickReservationProvider({
 
   const isFormValid = Boolean(
     parsed?.name.trim() &&
-      parsed.phone.trim() &&
-      Number.isInteger(parsed.passengerCount) &&
-      parsed.passengerCount > 0 &&
-      selectedSchedule &&
-      isScheduleAvailable(selectedSchedule, parsed.passengerCount),
+    parsed.phone.trim() &&
+    Number.isInteger(parsed.passengerCount) &&
+    parsed.passengerCount > 0 &&
+    selectedSchedule &&
+    isScheduleAvailable(selectedSchedule, parsed.passengerCount),
   );
 
   const handleTextChange = (value: string) => {
@@ -319,26 +318,26 @@ export function QuickReservationProvider({
       {children}
       <Sheet open={isOpen} onOpenChange={handleOpenChange}>
         <SheetContent
-          className="admin-quick-reservation-drawer !w-full !max-w-[40rem] !gap-0 !border-admin-border !bg-admin-surface !p-0 !text-admin-text"
+          className="admin-quick-reservation-drawer !w-full !max-w-[44rem] !gap-0 !border-admin-border !bg-admin-surface !p-0 !text-admin-text"
           side="right"
         >
-          <SheetHeader className="border-b border-admin-border bg-admin-elevated/60 px-5 py-5 pr-14 text-left">
+          <SheetHeader className="border-b border-admin-border bg-admin-bg px-5 py-5 pr-14 text-left sm:px-6">
             <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-adminStatus-enabled/15 text-adminStatus-enabled">
-                <Sparkles aria-hidden="true" className="h-5 w-5" />
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-adminStatus-enabled text-admin-bg shadow-sm">
+                <Sparkles aria-hidden="true" className="h-6 w-6" />
               </span>
-              <div>
-                <SheetTitle className="!text-xl !font-bold !text-admin-text">
-                  預約快速輸入
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-adminStatus-enabled">
+                  Quick Booking
+                </p>
+                <SheetTitle className="mt-1 !text-2xl !font-bold !text-admin-text">
+                  快速預約
                 </SheetTitle>
-                <SheetDescription className="mt-1 !text-admin-muted">
-                  確認語音解析資料與班次後，直接建立預約。
-                </SheetDescription>
               </div>
             </div>
           </SheetHeader>
 
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-admin-bg/25 p-4 sm:p-6">
             <QuickReservationVoiceControls
               isListening={isListening}
               isParsing={isParsing}
@@ -374,7 +373,7 @@ export function QuickReservationProvider({
             )}
           </div>
 
-          <SheetFooter className="border-t border-admin-border bg-admin-elevated/35 p-5">
+          <SheetFooter className="border-t border-admin-border bg-admin-surface p-4 sm:p-5">
             <Button
               className="h-12 w-full bg-adminStatus-enabled text-base font-bold text-admin-bg hover:bg-emerald-300"
               disabled={
@@ -386,7 +385,7 @@ export function QuickReservationProvider({
               type="button"
               onClick={handleCreateReservation}
             >
-              {isCreatingReservation ? "新增中…" : "新增班次預約"}
+              {isCreatingReservation ? "建立預約中…" : "確認建立預約"}
             </Button>
           </SheetFooter>
         </SheetContent>

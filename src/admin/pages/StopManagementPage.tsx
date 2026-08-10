@@ -455,6 +455,8 @@ export function StopManagementPage() {
                           QR Code 大小
                           <select
                             className="mt-1 h-10 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                            id={`stop-${stop.stopId}-qr-size`}
+                            name={`stop-${stop.stopId}-qr-size`}
                             value={qrSize}
                             onChange={(event) =>
                               setQrSizes((current) => ({
@@ -474,6 +476,8 @@ export function StopManagementPage() {
                           QR Code 中央文字
                           <input
                             className="mt-1 h-10 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                            id={`stop-${stop.stopId}-qr-label`}
+                            name={`stop-${stop.stopId}-qr-label`}
                             value={qrLabel}
                             onChange={(event) =>
                               setQrLabels((current) => ({
@@ -540,6 +544,8 @@ export function StopManagementPage() {
                 站位名稱
                 <input
                   className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="stop-name"
+                  name="stop-name"
                   value={form.stopName}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -553,6 +559,8 @@ export function StopManagementPage() {
                 站位類型
                 <select
                   className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="stop-type"
+                  name="stop-type"
                   value={form.stopType}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -569,6 +577,8 @@ export function StopManagementPage() {
                 地址
                 <input
                   className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="stop-address"
+                  name="stop-address"
                   value={form.address ?? ""}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -582,7 +592,9 @@ export function StopManagementPage() {
                 緯度
                 <input
                   className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="stop-latitude"
                   inputMode="decimal"
+                  name="stop-latitude"
                   value={form.latitude ?? ""}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -596,7 +608,9 @@ export function StopManagementPage() {
                 經度
                 <input
                   className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="stop-longitude"
                   inputMode="decimal"
+                  name="stop-longitude"
                   value={form.longitude ?? ""}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -610,6 +624,8 @@ export function StopManagementPage() {
                 狀態
                 <select
                   className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="stop-status"
+                  name="stop-status"
                   value={form.status}
                   onChange={(event) =>
                     setForm((current) => ({

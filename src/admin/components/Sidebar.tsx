@@ -159,6 +159,25 @@ export function Sidebar({
         />
       </div>
       <nav className="flex gap-1 overflow-x-auto border-t border-admin-border px-2 py-2 lg:block lg:flex-1 lg:space-y-1 lg:border-t-0 lg:px-3 lg:py-3">
+        <button
+          className={`group relative flex w-full shrink-0 items-center gap-3 overflow-hidden rounded-adminControl border border-white/20 bg-gradient-to-r from-white/10 to-slate-300/5 px-3 py-3 text-left text-sm font-bold text-admin-text shadow-sm transition hover:border-white/35 hover:from-white/15 hover:to-slate-300/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/15 ${
+            isCollapsed ? "lg:justify-center" : ""
+          }`}
+          title={isCollapsed ? "快速預約" : undefined}
+          type="button"
+          onClick={onOpenQuickReservation}
+        >
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-200 text-slate-800 shadow-sm transition group-hover:bg-white">
+            <SidebarIcon name="quickReservation" />
+          </span>
+          <span className={isCollapsed ? "lg:hidden" : ""}>
+            <span className="block">快速預約</span>
+            <span className="mt-0.5 block text-xs font-medium text-admin-muted">
+              文字或語音建立預約
+            </span>
+          </span>
+        </button>
+
         {navigation.slice(0, 1).map((item) => (
           <NavLink
             key={item.to}
@@ -178,18 +197,6 @@ export function Sidebar({
             <span className={isCollapsed ? "lg:hidden" : ""}>{item.label}</span>
           </NavLink>
         ))}
-
-        <button
-          className={`flex w-full shrink-0 items-center gap-3 rounded-adminControl border border-adminStatus-enabled/25 bg-adminStatus-enabled/10 px-3 py-2.5 text-left text-sm font-semibold text-adminStatus-enabled transition hover:bg-adminStatus-enabled/20 ${
-            isCollapsed ? "lg:justify-center" : ""
-          }`}
-          title={isCollapsed ? "預約快速輸入" : undefined}
-          type="button"
-          onClick={onOpenQuickReservation}
-        >
-          <SidebarIcon name="quickReservation" />
-          <span className={isCollapsed ? "lg:hidden" : ""}>預約快速輸入</span>
-        </button>
 
         <div className="shrink-0 lg:py-1">
           <button

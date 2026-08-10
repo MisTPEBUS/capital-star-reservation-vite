@@ -1051,6 +1051,8 @@ export function DashboardPage() {
                       aria-label="選擇日期"
                       className="h-full w-full bg-admin-bg px-3 text-center text-base font-bold text-admin-text outline-none focus:ring-2 focus:ring-inset focus:ring-adminStatus-enabled disabled:cursor-not-allowed disabled:opacity-40"
                       disabled={isBatchCancelMode}
+                      id="dashboard-open-date"
+                      name="dashboard-open-date"
                       type="date"
                       value={openDate}
                       onClick={openInputPicker}
@@ -1086,6 +1088,8 @@ export function DashboardPage() {
                     aria-label="路線篩選"
                     className="h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base font-semibold text-admin-text outline-none focus:border-adminStatus-enabled disabled:cursor-not-allowed disabled:opacity-40"
                     disabled={isBatchCancelMode}
+                    id="dashboard-route-filter"
+                    name="dashboard-route-filter"
                     value={selectedRouteNumber}
                     onChange={(event) => selectRouteNumber(event.target.value)}
                   >
@@ -1100,6 +1104,8 @@ export function DashboardPage() {
                 <label className="flex h-10 items-center gap-2 rounded-adminControl border border-admin-borderStrong px-3 text-base font-semibold text-admin-softText">
                   <input
                     className="h-4 w-4 accent-adminStatus-enabled"
+                    id="dashboard-hide-cancelled"
+                    name="dashboard-hide-cancelled"
                     type="checkbox"
                     checked={hideCancelledReservations}
                     onChange={(event) =>
@@ -1208,14 +1214,17 @@ export function DashboardPage() {
                     </p>
                   </div>
                   <span className="rounded-full bg-adminStatus-enabled/15 px-2.5 py-1 text-xs font-bold text-adminStatus-enabled">
-                    快速輸入
+                    快速預約
                   </span>
                 </div>
                 <div className="space-y-4">
                   <label className="block text-sm font-bold text-admin-softText">
                     姓名
                     <input
+                      autoComplete="name"
                       className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+                      id="mobile-new-reservation-name"
+                      name="mobile-new-reservation-name"
                       value={newReservation.name}
                       onChange={(event) =>
                         setNewReservation({
@@ -1228,8 +1237,11 @@ export function DashboardPage() {
                   <label className="block text-sm font-bold text-admin-softText">
                     電話
                     <input
+                      autoComplete="tel"
                       className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+                      id="mobile-new-reservation-phone"
                       inputMode="tel"
+                      name="mobile-new-reservation-phone"
                       value={newReservation.phone}
                       onChange={(event) =>
                         setNewReservation({
@@ -1243,7 +1255,9 @@ export function DashboardPage() {
                     搭乘人數
                     <input
                       className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+                      id="mobile-new-reservation-passenger-count"
                       min="1"
+                      name="mobile-new-reservation-passenger-count"
                       type="number"
                       value={newReservation.passengerCount}
                       onChange={(event) =>
@@ -1432,6 +1446,8 @@ export function DashboardPage() {
               <label className="grid gap-2 text-base font-bold text-admin-softText">
                 選擇路線
                 <select
+                  id="export-route"
+                  name="export-route"
                   value={exportRouteId}
                   onChange={(event) => setExportRouteId(event.target.value)}
                   className="h-11 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-lg font-semibold text-admin-text outline-none focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/20"
@@ -1448,6 +1464,8 @@ export function DashboardPage() {
 
             <label className="flex items-center gap-3 rounded-adminControl border border-admin-borderStrong bg-admin-bg/50 p-4 text-base font-bold text-admin-softText">
               <input
+                id="export-include-cancelled"
+                name="export-include-cancelled"
                 type="checkbox"
                 checked={includeCancelledForExport}
                 onChange={(event) =>
@@ -1556,6 +1574,8 @@ export function DashboardPage() {
                 </span>
                 <textarea
                   className="mt-2 min-h-64 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 py-3 text-lg leading-8 text-admin-text outline-none focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15"
+                  id="cancel-notification-text"
+                  name="cancel-notification-text"
                   rows={12}
                   value={cancelNotificationText}
                   onChange={(event) => {

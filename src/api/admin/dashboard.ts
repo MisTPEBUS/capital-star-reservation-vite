@@ -144,7 +144,7 @@ function toDashboardReservation(
       reservation.displayName ??
       "未提供",
     activeCode: activeCode || "-",
-    phone: reservation.customerPhoneNumber ?? reservation.activeCode ?? "-",
+    phone: reservation.phoneNumber ?? "-",
     isAdminCreated: reservation.userId === null,
     pickupStopId: reservation.pickupStopId ?? null,
     pickupStopName:

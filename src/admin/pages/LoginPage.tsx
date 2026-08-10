@@ -289,9 +289,12 @@ export function LoginPage() {
                     otpRefs.current[index] = element;
                   }}
                   aria-label={`驗證碼第 ${index + 1} 碼`}
+                  autoComplete={index === 0 ? "one-time-code" : "off"}
                   className="h-14 w-12 rounded-adminControl border border-admin-borderStrong bg-admin-bg text-center text-2xl font-bold text-admin-text outline-none transition focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15 sm:w-14"
+                  id={`admin-otp-${index + 1}`}
                   inputMode="numeric"
                   maxLength={1}
+                  name={`admin-otp-${index + 1}`}
                   value={digit}
                   onChange={(event) => updateOtp(index, event.target.value)}
                   onKeyDown={(event) => handleOtpKeyDown(index, event)}

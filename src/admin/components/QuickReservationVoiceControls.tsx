@@ -29,22 +29,33 @@ export function QuickReservationVoiceControls({
   onParse,
 }: QuickReservationVoiceControlsProps) {
   return (
-    <div>
-      <label
-        className="mb-2 block text-sm font-bold text-admin-softText"
-        htmlFor="quick-reservation-text"
-      >
-        預約內容
-      </label>
+    <section className="rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex items-start gap-3">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-adminStatus-enabled text-sm font-black text-admin-bg">
+          1
+        </span>
+        <div>
+          <h3 className="text-lg font-bold text-admin-text">輸入預約需求</h3>
+          <p className="mt-0.5 text-sm leading-6 text-admin-muted">
+            可直接輸入文字，或使用國語、台語語音輸入。
+          </p>
+        </div>
+      </div>
+
       <textarea
-        className="min-h-32 w-full resize-y rounded-adminControl border border-admin-borderStrong bg-admin-bg p-3 text-base leading-7 text-admin-text outline-none placeholder:text-admin-muted focus:border-adminStatus-enabled focus:ring-2 focus:ring-adminStatus-enabled/20"
+        className="min-h-36 w-full resize-y rounded-adminControl border border-admin-borderStrong bg-admin-bg p-4 text-lg leading-8 text-admin-text outline-none placeholder:text-admin-muted focus:border-adminStatus-enabled focus:ring-4 focus:ring-adminStatus-enabled/15"
         id="quick-reservation-text"
-        placeholder="例如：0700 張小姐 2人 0987654321"
+        name="quick-reservation-text"
+        placeholder="例如：早上 7 點，張小姐 2 人，電話 0987654321"
         value={text}
         onChange={(event) => onTextChange(event.target.value)}
       />
 
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-[auto_auto_minmax(0,1fr)]">
+      <p className="mt-2 rounded-adminControl bg-admin-elevated/50 px-3 py-2 text-xs leading-5 text-admin-muted">
+        建議附頌：[乘車時間]、[姓名]、[人數]與[電話]；系統會自動整理成預約資料。
+      </p>
+
+      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-[auto_auto_minmax(0,1fr)]">
         <Button
           aria-pressed={isListening}
           className={`h-12 px-4 font-bold ${
@@ -99,7 +110,7 @@ export function QuickReservationVoiceControls({
         </Button>
 
         <Button
-          className="col-span-2 h-12 bg-adminStatus-enabled text-base font-bold text-admin-bg hover:bg-emerald-300 sm:col-span-1"
+          className="col-span-2 h-12 bg-adminStatus-enabled text-base font-bold text-admin-bg shadow-sm hover:bg-emerald-300 sm:col-span-1"
           disabled={
             isParsing ||
             isListening ||
@@ -141,6 +152,6 @@ export function QuickReservationVoiceControls({
           正在上傳錄音並解析預約資料…
         </p>
       )}
-    </div>
+    </section>
   );
 }

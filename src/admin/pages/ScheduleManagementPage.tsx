@@ -1205,6 +1205,8 @@ export function ScheduleManagementPage() {
                           disabled={
                             isRoutesLoading || activeRoutes.length === 0
                           }
+                          id="schedule-route"
+                          name="schedule-route"
                           ref={routeSelectRef}
                           value={scheduleForm.routeId}
                           onChange={handleRouteChange}
@@ -1525,7 +1527,9 @@ export function ScheduleManagementPage() {
                             <input
                               className="mt-1 h-10 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled disabled:opacity-50"
                               disabled={!stop.isEnabled}
+                              id={`schedule-stop-${stop.stopId}-quota`}
                               min={0}
+                              name={`schedule-stop-${stop.stopId}-quota`}
                               type="number"
                               value={stop.quota}
                               onChange={(event) =>
@@ -1633,11 +1637,18 @@ export function ScheduleManagementPage() {
         <div className="flex flex-wrap items-center justify-end gap-3 border-b border-admin-border px-4 py-3">
           <div className="flex flex-wrap gap-2">
             <button
-              className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg"
+              className="h-10 rounded-adminControl bg-adminStatus-enabled px-4 text-sm font-bold text-admin-bg lg:hidden"
               type="button"
               onClick={() => setIsSingleScheduleDrawerOpen(true)}
             >
               單筆建立
+            </button>
+            <button
+              className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
+              type="button"
+              onClick={() => setIsImportDateModalOpen(true)}
+            >
+              複製班表
             </button>
             <button
               className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
@@ -1651,18 +1662,14 @@ export function ScheduleManagementPage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
             >
-              匯入 Excel
+              Excel 匯入
             </button>
-            <button
-              className="h-10 rounded-adminControl border border-admin-borderStrong px-4 text-sm font-semibold text-admin-softText"
-              type="button"
-              onClick={() => setIsImportDateModalOpen(true)}
-            >
-              複製班表
-            </button>
+
             <input
               accept=".xlsx,.xls"
               className="hidden"
+              id="batch-schedule-excel"
+              name="batch-schedule-excel"
               ref={fileInputRef}
               type="file"
               onChange={selectBatchExcel}
@@ -1879,6 +1886,8 @@ export function ScheduleManagementPage() {
                       <select
                         aria-label="選擇路線"
                         className="h-10 w-full min-w-[126px] rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 font-bold text-admin-text outline-none focus:border-adminStatus-enabled"
+                        id={`batch-schedule-${item.id}-route`}
+                        name={`batch-schedule-${item.id}-route`}
                         ref={(element) => {
                           batchInputRefs.current[`${item.id}-route`] = element;
                         }}

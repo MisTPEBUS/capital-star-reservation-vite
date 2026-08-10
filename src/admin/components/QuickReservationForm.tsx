@@ -38,24 +38,31 @@ export function QuickReservationForm({
   onScheduleSelect,
 }: QuickReservationFormProps) {
   const requestedTime = parsed.time.slice(0, 5);
-  const selectedSchedule = schedules.find(
-    (schedule) => schedule.dailyOpenScheduleId === selectedScheduleId,
-  );
 
   return (
     <section
       aria-labelledby="parsed-reservation-title"
-      className="rounded-adminPanel border border-adminStatus-enabled/30 bg-adminStatus-enabled/5 p-4"
+      className="rounded-adminPanel border border-admin-borderStrong bg-admin-surface p-4 shadow-sm sm:p-5"
     >
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h3
-          className="text-base font-bold text-admin-text"
-          id="parsed-reservation-title"
-        >
-          {selectedSchedule?.departureTime.slice(0, 5) || requestedTime} 預約資料表單
-        </h3>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-adminStatus-enabled text-sm font-black text-admin-bg">
+            2
+          </span>
+          <div>
+            <h3
+              className="text-lg font-bold text-admin-text"
+              id="parsed-reservation-title"
+            >
+              確認預約資料
+            </h3>
+            <p className="mt-0.5 text-sm text-admin-muted">
+              系統辨識時間：{requestedTime}
+            </p>
+          </div>
+        </div>
         <span className="rounded-full bg-adminStatus-enabled/15 px-2.5 py-1 text-xs font-bold text-adminStatus-enabled">
-          請確認資料
+          可修改
         </span>
       </div>
 
@@ -63,7 +70,10 @@ export function QuickReservationForm({
         <label className="block text-sm font-bold text-admin-softText">
           姓名
           <input
+            autoComplete="name"
             className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+            id="quick-reservation-name"
+            name="quick-reservation-name"
             value={parsed.name}
             onChange={(event) =>
               onParsedChange({ ...parsed, name: event.target.value })
@@ -74,8 +84,11 @@ export function QuickReservationForm({
         <label className="block text-sm font-bold text-admin-softText">
           電話
           <input
+            autoComplete="tel"
             className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+            id="quick-reservation-phone"
             inputMode="tel"
+            name="quick-reservation-phone"
             value={parsed.phone}
             onChange={(event) =>
               onParsedChange({ ...parsed, phone: event.target.value })
@@ -87,7 +100,9 @@ export function QuickReservationForm({
           人數
           <input
             className="mt-1.5 h-12 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+            id="quick-reservation-passenger-count"
             min="1"
+            name="quick-reservation-passenger-count"
             type="number"
             value={parsed.passengerCount}
             onChange={(event) =>
@@ -107,12 +122,12 @@ export function QuickReservationForm({
       )}
 
       {!isLoadingSchedules && schedules.length > 0 && (
-        <fieldset className="mt-5 border-t border-admin-border pt-4">
+        <fieldset className="mt-5 border-t border-admin-border pt-5">
           <legend className="text-sm font-bold text-admin-softText">
-            請從今日班次中選擇
+            選擇今日班次
           </legend>
           <p className="mt-1 text-xs text-admin-muted">
-            語音辨識時間為 {requestedTime}，可直接改選其他班次。
+            已優先配對 {requestedTime}，也可以直接改選其他可用班次。
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {schedules.map((schedule) => {
@@ -128,7 +143,7 @@ export function QuickReservationForm({
                   key={schedule.dailyOpenScheduleId}
                   className={`relative rounded-adminControl border p-3 transition ${
                     isAvailable
-                      ? "cursor-pointer border-admin-borderStrong bg-admin-bg hover:border-adminStatus-enabled/60"
+                      ? "cursor-pointer border-admin-borderStrong bg-admin-bg hover:border-adminStatus-enabled/70 hover:bg-admin-elevated/40"
                       : "cursor-not-allowed border-admin-border bg-admin-bg/40 opacity-45"
                   } ${
                     isSelected

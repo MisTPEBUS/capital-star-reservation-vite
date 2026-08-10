@@ -418,6 +418,8 @@ export function RouteManagementPage() {
                 路線編號
                 <input
                   className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="route-number"
+                  name="route-number"
                   value={form.routeNumber}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -431,6 +433,8 @@ export function RouteManagementPage() {
                 路線名稱
                 <input
                   className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="route-name"
+                  name="route-name"
                   value={form.routeName}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -444,6 +448,8 @@ export function RouteManagementPage() {
                 路線說明
                 <textarea
                   className="mt-2 min-h-24 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 py-2 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="route-description"
+                  name="route-description"
                   value={form.description ?? ""}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -457,6 +463,8 @@ export function RouteManagementPage() {
                 狀態
                 <select
                   className="mt-2 h-11 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="route-status"
+                  name="route-status"
                   value={form.status}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -615,7 +623,9 @@ export function RouteManagementPage() {
                           <input
                             aria-label={`${stop.stopName} 的行車時間（分鐘）`}
                             className="h-8 w-full rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 pr-8 text-xs font-semibold text-admin-text outline-none transition focus:border-adminStatus-enabled"
+                            id={`route-stop-${stop.stopId}-arrival-time`}
                             min="0"
+                            name={`route-stop-${stop.stopId}-arrival-time`}
                             placeholder="行車時間"
                             step="1"
                             type="number"

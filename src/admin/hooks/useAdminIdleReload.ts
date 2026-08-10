@@ -5,7 +5,7 @@ interface UseAdminIdleReloadOptions {
   enabled?: boolean;
 }
 
-const DEFAULT_IDLE_TIMEOUT_MS = 60_000;
+const DEFAULT_IDLE_TIMEOUT_MS = 600_000;
 
 export function useAdminIdleReload({
   timeoutMs = DEFAULT_IDLE_TIMEOUT_MS,

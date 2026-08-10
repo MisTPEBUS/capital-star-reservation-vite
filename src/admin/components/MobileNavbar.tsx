@@ -162,6 +162,28 @@ export function MobileNavbar({
                   <p className="px-3 pb-1 text-sm font-bold tracking-[0.18em] text-admin-muted">
                     主要功能
                   </p>
+                  <button
+                    className="group flex min-h-16 w-full items-center gap-3 rounded-adminControl border border-white/20 bg-gradient-to-r from-white/10 to-slate-300/5 px-3.5 py-3 text-left font-bold text-admin-text shadow-sm transition hover:border-white/35 hover:from-white/15 hover:to-slate-300/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/15"
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onOpenQuickReservation();
+                    }}
+                  >
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-200 text-slate-800 shadow-sm transition group-hover:bg-white">
+                      <SidebarIcon name="quickReservation" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-lg">快速預約</span>
+                      <span className="mt-0.5 block text-sm font-medium text-admin-muted">
+                        文字或語音建立預約
+                      </span>
+                    </span>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="h-5 w-5 text-slate-300"
+                    />
+                  </button>
                   {navigation.slice(0, 1).map((item) => (
                     <MobileNavLink
                       key={item.to}
@@ -169,25 +191,6 @@ export function MobileNavbar({
                       onNavigate={() => setIsOpen(false)}
                     />
                   ))}
-                  <button
-                    className="group flex min-h-14 w-full items-center gap-3 rounded-adminControl border border-adminStatus-enabled/30 bg-adminStatus-enabled/10 px-3.5 py-3 text-left text-lg font-semibold text-adminStatus-enabled transition hover:bg-adminStatus-enabled/20"
-                    type="button"
-                    onClick={() => {
-                      setIsOpen(false);
-                      onOpenQuickReservation();
-                    }}
-                  >
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-adminStatus-enabled/10">
-                      <SidebarIcon name="quickReservation" />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      預約快速輸入
-                    </span>
-                    <ChevronRight
-                      aria-hidden="true"
-                      className="h-5 w-5 text-adminStatus-enabled"
-                    />
-                  </button>
                 </div>
 
                 <div className="space-y-1">

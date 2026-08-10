@@ -4,6 +4,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from "@tanstack/react-table";
+import { useMemo, useRef } from "react";
 import type { AdminReservationListItem } from "../types/admin";
 
 type ReservationRow = AdminReservationListItem & { departureTime: string };
@@ -46,16 +47,7 @@ interface DataTableProps {
   onDelete: (reservation: ReservationRow) => void;
 }
 
-function getColumns({
-  editingReservation,
-  isUpdating,
-  deletingReservationId,
-  onStartEdit,
-  onEditingReservationChange,
-  onUpdate,
-  onCancelEdit,
-  onDelete,
-}: Pick<
+type ColumnInteractionProps = Pick<
   DataTableProps,
   | "editingReservation"
   | "isUpdating"
@@ -65,10 +57,11 @@ function getColumns({
   | "onUpdate"
   | "onCancelEdit"
   | "onDelete"
->): ColumnDef<ReservationRow>[] {
-  const isEditing = (reservationId: string) =>
-    editingReservation?.reservationId === reservationId;
+>;
 
+function getColumns(
+  getInteractionProps: () => ColumnInteractionProps,
+): ColumnDef<ReservationRow>[] {
   return [
     {
       accessorKey: "departureTime",
@@ -82,11 +75,18 @@ function getColumns({
     {
       accessorKey: "phone",
       header: "電話",
-      cell: ({ row }) =>
-        editingReservation?.reservationId === row.original.reservationId ? (
+      cell: ({ row }) => {
+        const { editingReservation, onEditingReservationChange } =
+          getInteractionProps();
+
+        return editingReservation?.reservationId ===
+          row.original.reservationId ? (
           <input
             aria-label="電話"
+            autoComplete="tel"
             className="h-9 w-32 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+            id={`reservation-${row.original.reservationId}-phone`}
+            name={`reservation-${row.original.reservationId}-phone`}
             value={editingReservation.phone}
             onChange={(event) =>
               onEditingReservationChange({
@@ -97,7 +97,8 @@ function getColumns({
           />
         ) : (
           row.original.phone
-        ),
+        );
+      },
     },
     {
       accessorKey: "sequence",
@@ -107,12 +108,18 @@ function getColumns({
     {
       accessorKey: "passengerCount",
       header: "人數",
-      cell: ({ row, getValue }) =>
-        editingReservation?.reservationId === row.original.reservationId ? (
+      cell: ({ row, getValue }) => {
+        const { editingReservation, onEditingReservationChange } =
+          getInteractionProps();
+
+        return editingReservation?.reservationId ===
+          row.original.reservationId ? (
           <input
             aria-label="搭乘人數"
             className="h-9 w-20 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+            id={`reservation-${row.original.reservationId}-passenger-count`}
             min="1"
+            name={`reservation-${row.original.reservationId}-passenger-count`}
             type="number"
             value={editingReservation.passengerCount}
             onChange={(event) =>
@@ -124,16 +131,24 @@ function getColumns({
           />
         ) : (
           `${getValue<number>()} 人`
-        ),
+        );
+      },
     },
     {
       accessorKey: "name",
       header: "乘客",
-      cell: ({ row }) =>
-        editingReservation?.reservationId === row.original.reservationId ? (
+      cell: ({ row }) => {
+        const { editingReservation, onEditingReservationChange } =
+          getInteractionProps();
+
+        return editingReservation?.reservationId ===
+          row.original.reservationId ? (
           <input
             aria-label="姓名"
+            autoComplete="name"
             className="h-9 w-28 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+            id={`reservation-${row.original.reservationId}-name`}
+            name={`reservation-${row.original.reservationId}-name`}
             value={editingReservation.name}
             onChange={(event) =>
               onEditingReservationChange({
@@ -149,7 +164,8 @@ function getColumns({
               LINE：{row.original.lineDisplayName}
             </p>
           </>
-        ),
+        );
+      },
     },
     {
       accessorKey: "activeCode",
@@ -184,10 +200,21 @@ function getColumns({
       header: "操作",
       cell: ({ row }) => {
         const reservation = row.original;
+        const {
+          editingReservation,
+          isUpdating,
+          deletingReservationId,
+          onStartEdit,
+          onUpdate,
+          onCancelEdit,
+          onDelete,
+        } = getInteractionProps();
+        const isEditing =
+          editingReservation?.reservationId === reservation.reservationId;
 
         if (!reservation.isAdminCreated) return "-";
 
-        if (isEditing(reservation.reservationId)) {
+        if (isEditing) {
           return (
             <div className="flex gap-2">
               <button
@@ -253,19 +280,35 @@ export function DataTable({
   onCancelEdit,
   onDelete,
 }: DataTableProps) {
+  const columnInteractionRef = useRef<ColumnInteractionProps>({
+    editingReservation,
+    isUpdating,
+    deletingReservationId,
+    onStartEdit,
+    onEditingReservationChange,
+    onUpdate,
+    onCancelEdit,
+    onDelete,
+  });
+  columnInteractionRef.current = {
+    editingReservation,
+    isUpdating,
+    deletingReservationId,
+    onStartEdit,
+    onEditingReservationChange,
+    onUpdate,
+    onCancelEdit,
+    onDelete,
+  };
+  const columns = useMemo(
+    () => getColumns(() => columnInteractionRef.current),
+    [],
+  );
   const table = useReactTable({
     data: reservations,
-    columns: getColumns({
-      editingReservation,
-      isUpdating,
-      deletingReservationId,
-      onStartEdit,
-      onEditingReservationChange,
-      onUpdate,
-      onCancelEdit,
-      onDelete,
-    }),
+    columns,
     getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.reservationId,
   });
 
   if (reservations.length === 0 && !newReservation) {
@@ -304,8 +347,11 @@ export function DataTable({
               <td className="px-3 py-3">
                 <input
                   aria-label="電話"
+                  autoComplete="tel"
                   className="h-9 w-32 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="table-new-reservation-phone"
                   inputMode="tel"
+                  name="table-new-reservation-phone"
                   placeholder="電話"
                   value={newReservation.phone}
                   onChange={(event) =>
@@ -323,7 +369,9 @@ export function DataTable({
                 <input
                   aria-label="搭乘人數"
                   className="h-9 w-20 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="table-new-reservation-passenger-count"
                   min="1"
+                  name="table-new-reservation-passenger-count"
                   type="number"
                   value={newReservation.passengerCount}
                   onChange={(event) =>
@@ -337,7 +385,10 @@ export function DataTable({
               <td className="px-3 py-3">
                 <input
                   aria-label="姓名"
+                  autoComplete="name"
                   className="h-9 w-28 rounded-adminControl border border-admin-borderStrong bg-admin-bg px-2 text-base text-admin-text outline-none focus:border-adminStatus-enabled"
+                  id="table-new-reservation-name"
+                  name="table-new-reservation-name"
                   placeholder="姓名"
                   value={newReservation.name}
                   onChange={(event) =>
