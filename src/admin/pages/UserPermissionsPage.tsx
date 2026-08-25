@@ -32,6 +32,27 @@ function getRoleLabel(role: UserRole) {
   return roleOptions.find((option) => option.value === role)?.label ?? role;
 }
 
+function maskNamePart(value: string) {
+  const characters = Array.from(value);
+
+  if (characters.length <= 1) return characters[0] ?? "";
+  if (characters.length === 2) return value;
+
+  const maskLength = Math.min(characters.length - 2, 5);
+  return `${characters[0]}${"*".repeat(maskLength)}${characters.at(-1)}`;
+}
+
+function maskDisplayName(displayName: string | null) {
+  const normalizedName = displayName?.trim();
+  if (!normalizedName) return "未設定名稱";
+
+  const nameParts = normalizedName.split(/\s+/);
+  const lastNamePart = nameParts.pop();
+  if (!lastNamePart) return "未設定名稱";
+
+  return [...nameParts, maskNamePart(lastNamePart)].join(" ");
+}
+
 function formatDateTime(value: string) {
   const date = new Date(value);
 
@@ -245,7 +266,7 @@ export function UserPermissionsPage() {
                       <tr key={user.userId} className="text-admin-softText">
                         <td className="px-3 py-3">
                           <p className="font-semibold text-admin-text">
-                            {user.displayName || "未設定名稱"}
+                            {maskDisplayName(user.displayName)}
                           </p>
                           <p className="mt-1 break-all text-xs text-admin-muted">
                             {user.lineId || user.userId}
