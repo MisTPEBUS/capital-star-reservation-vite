@@ -152,6 +152,23 @@ export function FaqPage() {
           </h1>
         </header>
         <div className="mt-6 space-y-6">
+          <section>
+            <div className="mb-3">
+              <h2 className="text-2xl font-black tracking-tight text-bus-600">
+                預約需知
+              </h2>
+            </div>
+            <div className="space-y-2">
+              <p className="group cursor-pointer rounded-xl border-2 border-blue-400 bg-white p-1.5 shadow-[0_1px_0_rgba(15,23,42,0.08),0_10px_26px_rgba(15,23,42,0.05)] transition hover:border-bus-300 open:border-bus-600 open:ring-2 open:ring-bus-600/25">
+                本系統僅開放預約「隔日」班次（每日 13:00 至 23:59
+                開放線上預約）；如需預約「當日」班次，請於班次前 1
+                小時來電進行電話預約。每位會員同一時間限預約一筆，需待該筆預約取消或搭乘後，方可再次進行預約；如累計三次未搭乘將暫停預約權限
+                14 天。
+              </p>
+            </div>
+          </section>
+        </div>
+        <div className="mt-6 space-y-6">
           {faqSections.map((section) => (
             <section key={section.title}>
               <div className="mb-3">
