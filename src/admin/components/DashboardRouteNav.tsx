@@ -9,14 +9,14 @@ export const dashboardRouteFilters = [
       "border-slate-300/40 bg-slate-300/10 text-slate-100 hover:border-slate-200 hover:bg-slate-300/20",
   },
   {
-    routeNumber: "1571",
+    routeNumber: "1570",
     label: "羅東",
     selectedClass: "border-emerald-300 bg-emerald-600 text-white shadow-sm",
     defaultClass:
       "border-emerald-400/40 bg-emerald-400/10 text-emerald-200 hover:border-emerald-300 hover:bg-emerald-400/20",
   },
   {
-    routeNumber: "1570",
+    routeNumber: "1571",
     label: "宜蘭",
     selectedClass: "border-blue-300 bg-blue-600 text-white shadow-sm",
     defaultClass:

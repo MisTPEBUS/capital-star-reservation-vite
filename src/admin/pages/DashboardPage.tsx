@@ -165,8 +165,8 @@ function getScheduleCardPalette(
   }
 
   const toneByRouteNumber: Record<string, ScheduleCardTone> = {
-    "1570": "blue",
-    "1571": "green",
+    "1570": "green",
+    "1571": "blue",
     "1572": "red",
   };
 
@@ -176,10 +176,8 @@ function getScheduleCardPalette(
 }
 
 export function DashboardPage() {
-  const {
-    recentlyCreatedReservation,
-    clearRecentlyCreatedReservation,
-  } = useQuickReservation();
+  const { recentlyCreatedReservation, clearRecentlyCreatedReservation } =
+    useQuickReservation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [openDate, setOpenDate] = useState(getTodayValue());
   const [schedules, setSchedules] = useState<DashboardDailyOpenSchedule[]>([]);
