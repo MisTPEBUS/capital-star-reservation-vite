@@ -715,6 +715,20 @@ function App() {
 
   return (
     <div>
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          zIndex: 99999,
+          background: "#000",
+          color: "#fff",
+          padding: "3px 6px",
+          fontSize: "10px",
+        }}
+      >
+        {import.meta.env.VITE_APP_VERSION}
+      </div>
       <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
         <div className="mx-auto w-full max-w-[820px]">
           <div className="mt-4 grid gap-3 pb-32 md:gap-4">

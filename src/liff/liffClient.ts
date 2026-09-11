@@ -9,29 +9,36 @@ export interface LiffProfile {
   isInClient: boolean;
 }
 
-let isInitialized = false;
+let initPromise: Promise<void> | null = null;
 
-export async function initLiff(): Promise<LiffProfile | null> {
+/**
+ * 初始化 LIFF SDK。
+ * 整個 SPA 生命週期只會真正執行一次 liff.init()。
+ */
+export async function initializeLiff(): Promise<void> {
   const liffId = import.meta.env.VITE_LIFF_ID;
 
   if (!liffId) {
     throw new Error("VITE_LIFF_ID 尚未設定");
   }
 
-  if (!isInitialized) {
-    await liff.init({
+  if (!initPromise) {
+    initPromise = liff.init({
       liffId,
       withLoginOnExternalBrowser: true,
     });
-
-    isInitialized = true;
   }
 
-  if (!liff.isLoggedIn()) {
-    liff.login({
-      redirectUri: window.location.href,
-    });
+  await initPromise;
+}
 
+/**
+ * 取得目前 LINE 使用者資料。
+ */
+export async function initLiff(): Promise<LiffProfile | null> {
+  await initializeLiff();
+
+  if (!liff.isLoggedIn()) {
     return null;
   }
 

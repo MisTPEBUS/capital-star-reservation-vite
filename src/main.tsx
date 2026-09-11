@@ -1,26 +1,39 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
-import App from './App';
-import AdminApp from './admin/AdminApp';
-import { UpcomingReservationPage } from './pages/UpcomingReservationPage';
-import { FaqPage } from './pages/FaqPage';
-import { FrontendUIKitPage } from './pages/FrontendUIKitPage';
-import { RegisterProfilePage } from './pages/RegisterProfilePage';
-import './index.css';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <HashRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/register" element={<RegisterProfilePage />} />
-        <Route path="/ticket" element={<UpcomingReservationPage />} />
-        <Route path="/faq" element={<FaqPage />} />
-        <Route path="/ui-kit" element={<FrontendUIKitPage />} />
-        <Route path="/admin/*" element={<AdminApp />} />
-        <Route path="*" element={<Navigate replace to="/" />} />
-      </Routes>
-    </HashRouter>
-  </React.StrictMode>,
-);
+import App from "./App";
+import AdminApp from "./admin/AdminApp";
+import { UpcomingReservationPage } from "./pages/UpcomingReservationPage";
+import { FaqPage } from "./pages/FaqPage";
+import { FrontendUIKitPage } from "./pages/FrontendUIKitPage";
+import { RegisterProfilePage } from "./pages/RegisterProfilePage";
+import { initializeLiff } from "./liff/liffClient";
+
+import "./index.css";
+
+async function bootstrap() {
+  try {
+    await initializeLiff();
+  } catch (error) {
+    console.error("LIFF_INIT_ERROR:", error);
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<App />} />
+          <Route path="/register" element={<RegisterProfilePage />} />
+          <Route path="/ticket" element={<UpcomingReservationPage />} />
+          <Route path="/faq" element={<FaqPage />} />
+          <Route path="/ui-kit" element={<FrontendUIKitPage />} />
+          <Route path="/admin/*" element={<AdminApp />} />
+          <Route path="*" element={<Navigate replace to="/" />} />
+        </Routes>
+      </HashRouter>
+    </React.StrictMode>,
+  );
+}
+
+bootstrap();
