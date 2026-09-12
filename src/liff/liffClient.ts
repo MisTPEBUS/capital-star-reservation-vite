@@ -23,10 +23,16 @@ export async function initializeLiff(): Promise<void> {
   }
 
   if (!initPromise) {
-    initPromise = liff.init({
-      liffId,
-      withLoginOnExternalBrowser: true,
-    });
+    initPromise = liff
+      .init({
+        liffId,
+        withLoginOnExternalBrowser: true,
+      })
+      .catch((error) => {
+        // 初始化失敗後允許重新初始化
+        initPromise = null;
+        throw error;
+      });
   }
 
   await initPromise;
@@ -52,4 +58,36 @@ export async function initLiff(): Promise<LiffProfile | null> {
     idToken: liff.getIDToken(),
     isInClient: liff.isInClient(),
   };
+}
+
+/**
+ * 判斷目前使用者是否已加入
+ * LINE Login Channel 綁定的官方帳號。
+ */
+export async function isOfficialAccountFriend(): Promise<boolean> {
+  await initializeLiff();
+
+  if (!liff.isLoggedIn()) {
+    return false;
+  }
+
+  const friendship = await liff.getFriendship();
+
+  return friendship.friendFlag;
+}
+
+/**
+ * 開啟首都之星官方 LINE 帳號。
+ *
+ * 未加入好友：
+ * → 顯示官方帳號頁與「加入好友」
+ *
+ * 已加入好友：
+ * → 開啟官方帳號聊天
+ */
+/**
+ * 顯示 LINE 官方的加入好友 / 解除封鎖視窗。
+ */
+export function openOfficialAccount(): void {
+  window.location.href = "https://line.me/R/ti/p/%40280suimv";
 }

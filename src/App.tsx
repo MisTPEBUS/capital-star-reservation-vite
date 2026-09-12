@@ -37,7 +37,12 @@ import type {
   RouteInfo,
   TimePeriod,
 } from "./types/reservation";
-import { initLiff, LiffProfile } from "./liff/liffClient";
+import {
+  initLiff,
+  isOfficialAccountFriend,
+  openOfficialAccount,
+  LiffProfile,
+} from "./liff/liffClient";
 
 const route: RouteInfo = {
   routeId: "route_yilan_wujie",
@@ -99,6 +104,8 @@ function App() {
   );
   const hasAppliedInitialStop = useRef(false);
   const hasScrolledToRequestedStop = useRef(false);
+  const hasOpenedOfficialAccount = useRef(false);
+
   const [liffProfile, setLiffProfile] = useState<LiffProfile | null>(null);
   const [liffLoading, setLiffLoading] = useState(true);
   const [liffError, setLiffError] = useState("");
@@ -252,7 +259,7 @@ function App() {
     sex: authProfile?.sex ?? null,
     pictureUrl: liffProfile?.pictureUrl ?? "",
     lineUserId: liffProfile?.lineUserId ?? passengerProfile.userId,
-    activeCode: authProfile?.activeCode ?? passengerProfile.activeCode,
+    activeCode: authProfile?.activeCode ?? "",
     phoneNumber: authProfile?.phone ?? passengerProfile.phoneNumber,
     email: authProfile?.email ?? passengerProfile.email,
     status: authProfile?.status ?? passengerProfile.status,
@@ -378,9 +385,39 @@ function App() {
           return;
         }
 
+        // 沒有識別碼
+        if (!profile.activeCode?.trim()) {
+          console.log("[AUTH] activeCode missing");
+
+          const isFriend = await isOfficialAccountFriend();
+
+          await openOfficialAccount();
+          console.log("[LIFF] friendFlag:", isFriend);
+
+          // 尚未加入官方 LINE
+          if (!isFriend) {
+            if (!hasOpenedOfficialAccount.current) {
+              hasOpenedOfficialAccount.current = true;
+
+              console.log("[LIFF] open official account");
+
+              await openOfficialAccount();
+            }
+
+            return;
+          }
+
+          // 已經是好友，卻沒有 activeCode
+          // 代表問題在後端資料，不要再跳官方 LINE
+          setAuthProfile(profile);
+          setAuthProfileError("會員識別碼尚未建立，請稍後再試。");
+          return;
+        }
+
+        // activeCode 正常
         setAuthProfile(profile);
       } catch (error) {
-        console.error("AUTH_PROFILE_ERROR:", error);
+        await openOfficialAccount();
 
         const message =
           error instanceof Error ? error.message : "會員資料讀取失敗";
@@ -737,9 +774,10 @@ function App() {
                 預約須知
               </p>
               <p className="mt-2 text-base font-bold leading-6 text-ink-800 md:text-base">
-                每日13:00
-                後開放預約隔日班次(不開放當日預約)，每人每日限一筆；累計未搭乘達
-                3 次停權 14 天。
+                本系統僅開放預約「隔日」班次（每日 13:00 至 23:59，
+                開放線上預約，目前僅07：00宜蘭轉運站發車之壯圍班次）；如需預約「當日」班次，請於班次前
+                1
+                小時來電進行電話預約。每位會員同一時間限預約一筆，需待該筆預約取消或搭乘後，方可再次進行預約；如累積三筆預約未搭乘，將暫停使用14天。
               </p>
             </section>
             <MemberCard
