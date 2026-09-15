@@ -25,6 +25,7 @@ export interface AdminScheduleSummary {
   openDate: string;
   departureTime: string;
   quota: number;
+  startedAt?: string;
   reservedCount: number;
   reservedPassengerCount?: number;
   cancelledCount: number;

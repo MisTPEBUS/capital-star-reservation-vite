@@ -40,6 +40,18 @@ const getDeadlineDate = (schedule: OpenSchedule) => {
   return parseLocalDateTime(schedule.openDate, schedule.bookingDeadline);
 };
 
+const hasDeparted = (schedule: OpenSchedule) => {
+  const departure = parseLocalDateTime(
+    schedule.openDate,
+    schedule.departureTime,
+  );
+  const deadline = getDeadlineDate(schedule);
+
+  return Boolean(
+    departure && deadline && departure.getTime() < deadline.getTime(),
+  );
+};
+
 const getDeadlineBadge = (schedule: OpenSchedule) => {
   const deadline = getDeadlineDate(schedule);
   const timeLabel = deadline
@@ -186,6 +198,7 @@ export function ScheduleList({
           {schedules.map((schedule) => {
             const isFull = schedule.availableSeats <= 0;
             const isReserved = schedule.userReservation === "RESERVED";
+            const isDeparted = hasDeparted(schedule);
             const deadlineBadge = getDeadlineBadge(schedule);
             const arrivalBadge = getArrivalBadge(schedule.arriveAt);
             const isPastDeadline = deadlineBadge.text === "已截止";
@@ -194,6 +207,7 @@ export function ScheduleList({
             const disabled =
               isFull ||
               isReserved ||
+              isDeparted ||
               isPastDeadline ||
               !canReserve ||
               reservingScheduleId !== null;
@@ -241,19 +255,27 @@ export function ScheduleList({
                   </div>
 
                   <div className="shrink-0 rounded-2xl bg-bus-50 px-3 py-2 text-right ring-1 ring-bus-100">
-                    <p className="text-xl font-bold leading-none text-ink-500">
-                      剩餘
-                    </p>
-                    <p
-                      className={`mt-1 text-3xl font-black leading-none ${
-                        isFull ? "text-coral" : "text-bus-700"
-                      }`}
-                    >
-                      {schedule.availableSeats}
-                      <span className="ml-0.5 text-sm font-bold text-ink-500">
-                        人
-                      </span>
-                    </p>
+                    {isDeparted ? (
+                      <p className="py-2 text-xl font-black leading-none text-ink-600">
+                        已發車
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-xl font-bold leading-none text-ink-500">
+                          剩餘
+                        </p>
+                        <p
+                          className={`mt-1 text-3xl font-black leading-none ${
+                            isFull ? "text-coral" : "text-bus-700"
+                          }`}
+                        >
+                          {schedule.availableSeats}
+                          <span className="ml-0.5 text-sm font-bold text-ink-500">
+                            人
+                          </span>
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               </button>

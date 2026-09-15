@@ -41,5 +41,10 @@ npm run build
 
 - 會員資訊：`GET /api/v1/users/me`
 - 路線與站點：`GET /api/v1/routes`
-- 班次查詢：`GET /api/v1/schedules?routeId=...&pickupStopId=...&date=...`
-- 建立預約：`POST /api/v1/reservations`
+- 班次查詢：`GET /api/v1/daily-open-schedules?pickupStopId=...&date=...`
+- 會員建立預約：`POST /api/v1/reservations`，傳入 `userId`、`dailyOpenScheduleId` 與 `pickupStopId`
+- 後台建立預約：`POST /api/v1/admin/reservations`，傳入乘客資料、`dailyOpenScheduleId` 與 `pickupStopId`
+
+前後台建立預約時都以查詢班次回傳的 `dailyOpenScheduleId` 識別班次，不再傳入 `routeId`、`departureTime` 或 `openDate`。
+
+後台 Dashboard 班次總覽使用 `GET /api/v1/admin/dashboard/daily-open-schedules?openDate=...&routeId=...`，回傳的班次與預約明細均包含 `startedAt`。同路線、日期與時間的班次仍以 `dailyOpenScheduleId` 分開處理。

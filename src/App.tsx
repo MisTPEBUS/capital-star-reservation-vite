@@ -43,6 +43,7 @@ import {
   openOfficialAccount,
   LiffProfile,
 } from "./liff/liffClient";
+import axios from "axios";
 
 const route: RouteInfo = {
   routeId: "route_yilan_wujie",
@@ -391,7 +392,6 @@ function App() {
 
           const isFriend = await isOfficialAccountFriend();
 
-          await openOfficialAccount();
           console.log("[LIFF] friendFlag:", isFriend);
 
           // 尚未加入官方 LINE
@@ -417,8 +417,22 @@ function App() {
         // activeCode 正常
         setAuthProfile(profile);
       } catch (error) {
-        await openOfficialAccount();
+        console.error("AUTH_PROFILE_ERROR:", error);
 
+        // 只有 404 才導向官方 LINE
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          if (!hasOpenedOfficialAccount.current) {
+            hasOpenedOfficialAccount.current = true;
+
+            console.log("[AUTH] profile not found, open official account");
+
+            openOfficialAccount();
+          }
+
+          return;
+        }
+
+        // 401 / 403 / 500 / timeout 等其他錯誤
         const message =
           error instanceof Error ? error.message : "會員資料讀取失敗";
 
@@ -639,12 +653,8 @@ function App() {
 
       const reservation = await createReservation({
         userId: authProfile.userId,
-        routeId: schedule.routeId,
-        departureTime: schedule.departureTime,
-        openDate: schedule.openDate,
+        dailyOpenScheduleId: schedule.dailyOpenScheduleId,
         pickupStopId: selection.pickupStopId,
-        name: name.trim(),
-        passengerCount,
         lineUserId: liffProfile.lineUserId,
       });
 
@@ -774,10 +784,9 @@ function App() {
                 預約須知
               </p>
               <p className="mt-2 text-base font-bold leading-6 text-ink-800 md:text-base">
-                本系統僅開放預約「隔日」班次（每日 13:00 至 23:59，
-                開放線上預約，目前僅07：00宜蘭轉運站發車之壯圍班次）；如需預約「當日」班次，請於班次前
-                1
-                小時來電進行電話預約。每位會員同一時間限預約一筆，需待該筆預約取消或搭乘後，方可再次進行預約；如累積三筆預約未搭乘，將暫停使用14天。
+                每日13:00
+                後開放預約隔日班次(不開放當日預約)，每人每日限一筆；累計未搭乘達
+                3 次停權 14 天。
               </p>
             </section>
             <MemberCard
@@ -789,7 +798,7 @@ function App() {
                 })
               }
             />
-            <UpcomingReservationCard
+            {/*    <UpcomingReservationCard
               reservation={activeUpcomingReservation}
               userId={authProfile?.userId ?? null}
               identityCode={displayPassengerProfile.activeCode}
@@ -803,7 +812,7 @@ function App() {
                   ]);
                 }
               }}
-            />
+            /> */}
             <AvailableTicketsMenu
               reservations={recentReservations}
               isLoading={recentReservationsLoading}

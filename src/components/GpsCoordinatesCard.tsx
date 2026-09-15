@@ -17,12 +17,12 @@ export function GpsCoordinatesCard({
       aria-live="polite"
       className="rounded-panel border border-bus-100 bg-white p-4 shadow-card"
     >
-      <div className="flex items-center gap-2">
+      {/* <div className="flex items-center gap-2">
         <MapPin aria-hidden="true" className="h-5 w-5 text-bus-600" />
         <h2 className="text-base font-black text-ink-900">
           使用者 GPS 座標__2
         </h2>
-      </div>
+      </div> */}
 
       {state.status === "loading" && (
         <p className="mt-2 text-sm font-bold text-ink-500">正在取得目前位置…</p>
@@ -59,14 +59,14 @@ export function GpsCoordinatesCard({
           <p className="text-sm font-bold leading-6 text-coral">
             {state.message}
           </p>
-          <button
+          {/*  <button
             type="button"
             onClick={() => void requestPosition().catch(() => undefined)}
             className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-bus-50 px-3 py-2 text-sm font-black text-bus-700 ring-1 ring-bus-100 transition hover:bg-bus-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bus-500"
           >
             <LocateFixed aria-hidden="true" className="h-4 w-4" />
             重試
-          </button>
+          </button> */}
         </div>
       )}
     </section>

@@ -41,6 +41,7 @@ export interface OpenSchedule {
   quota: number;
   reservedCount: number;
   availableSeats: number;
+  startedAt?: string;
   bookingDeadline: string;
   userReservation: ReservationStatus;
   note: string;

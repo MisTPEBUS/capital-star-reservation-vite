@@ -56,6 +56,7 @@ interface ScheduleForm {
   departureTime: string;
   scheduleName: string;
   totalQuota: number;
+  startedAt: string;
   bookingCloseAt: string;
 }
 
@@ -63,6 +64,7 @@ type ScheduleField =
   | "routeId"
   | "operationDate"
   | "departureTime"
+  | "startedAt"
   | "bookingCloseAt";
 
 interface PreviewSchedule {
@@ -72,6 +74,7 @@ interface PreviewSchedule {
   routeId: string;
   routeNumber: string;
   quota: number;
+  startedAt: string;
   bookingCloseRule: string;
 }
 
@@ -164,6 +167,15 @@ function getBookingCloseAt(operationDate: string, departureTime: string) {
   return formatDateTimeInput(departureDate);
 }
 
+function getDefaultBookingCloseAt(operationDate: string) {
+  const operationDateValue = getDateFromInputValue(operationDate);
+  if (!operationDateValue) return "";
+
+  const bookingCloseDate = addDays(operationDateValue, -1);
+  bookingCloseDate.setHours(23, 59, 0, 0);
+  return formatDateTimeInput(bookingCloseDate);
+}
+
 function normalizeBookingCloseAt(
   operationDate: string,
   departureTime: string,
@@ -175,7 +187,9 @@ function normalizeBookingCloseAt(
   const bookingCloseDate = getDateTimeFromInputValue(bookingCloseAt);
 
   if (!latestBookingCloseAt || !latestBookingCloseDate) return bookingCloseAt;
-  if (!bookingCloseDate) return latestBookingCloseAt;
+  if (!bookingCloseDate) {
+    return getDefaultBookingCloseAt(operationDate) || latestBookingCloseAt;
+  }
 
   return bookingCloseDate > latestBookingCloseDate
     ? latestBookingCloseAt
@@ -194,6 +208,24 @@ function formatDeadlinePayload(value: string) {
   if (!deadlineDate) return value.replace("T", " ");
 
   return `${formatDate(deadlineDate)} ${formatTime(deadlineDate)}:00`;
+}
+
+function isStartedAtAfterDeadline(startedAt: string, deadline: string) {
+  const startedAtDate = getDateTimeFromInputValue(startedAt);
+  const deadlineDate = getDateTimeFromInputValue(deadline);
+
+  if (!startedAtDate || !deadlineDate) return false;
+
+  return startedAtDate.getTime() >= deadlineDate.getTime();
+}
+
+function getDefaultStartedAt(bookingCloseAt: string) {
+  const deadlineDate = getDateTimeFromInputValue(bookingCloseAt);
+  if (!deadlineDate) return "";
+
+  const startedAtDate = addDays(deadlineDate, -1);
+  startedAtDate.setHours(13, 0, 0, 0);
+  return formatDateTimeInput(startedAtDate);
 }
 
 function applyWorksheetStyle(
@@ -227,7 +259,8 @@ function createEmptyScheduleForm(): ScheduleForm {
     operationDate: "",
     departureTime: "",
     scheduleName: "",
-    totalQuota: 20,
+    totalQuota: 30,
+    startedAt: "",
     bookingCloseAt: "",
   };
 }
@@ -258,19 +291,73 @@ function buildStopSettings(
     }));
 }
 
+function getFormulaResult(value: unknown) {
+  if (typeof value !== "object" || value === null) return value;
+
+  const formulaValue = value as {
+    formula?: string;
+    sharedFormula?: string;
+    result?: unknown;
+  };
+
+  if (formulaValue.formula || formulaValue.sharedFormula) {
+    return formulaValue.result;
+  }
+
+  return value;
+}
+
+function hasFormulaWithoutResult(value: unknown) {
+  if (typeof value !== "object" || value === null) return false;
+
+  const formulaValue = value as {
+    formula?: string;
+    sharedFormula?: string;
+    result?: unknown;
+  };
+
+  return Boolean(
+    (formulaValue.formula || formulaValue.sharedFormula) &&
+    formulaValue.result === undefined,
+  );
+}
+
+function formatExcelDate(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatExcelTime(date: Date) {
+  const hour = String(date.getUTCHours()).padStart(2, "0");
+  const minute = String(date.getUTCMinutes()).padStart(2, "0");
+  return `${hour}:${minute}`;
+}
+
+function isValidCalendarDate(year: number, month: number, day: number) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
 function getCellText(value: unknown) {
+  const resolvedValue = getFormulaResult(value);
+
+  if (!Object.is(resolvedValue, value)) return getCellText(resolvedValue);
   if (value === null || value === undefined) return "";
-  if (value instanceof Date) return formatDate(value);
+  if (value instanceof Date) return formatExcelDate(value);
   if (typeof value === "object") {
     const objectValue = value as {
       text?: string;
-      result?: unknown;
       richText?: { text: string }[];
     };
 
     if (objectValue.text) return objectValue.text;
-    if (objectValue.result !== undefined)
-      return getCellText(objectValue.result);
     if (objectValue.richText) {
       return objectValue.richText.map((item) => item.text).join("");
     }
@@ -280,29 +367,35 @@ function getCellText(value: unknown) {
 }
 
 function getCellDate(value: unknown) {
-  if (value instanceof Date) return formatDate(value);
+  const resolvedValue = getFormulaResult(value);
+  if (resolvedValue instanceof Date) return formatExcelDate(resolvedValue);
 
-  const text = getCellText(value).replace(/\//g, "-");
+  const text = getCellText(resolvedValue).replace(/\//g, "-");
   const match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
 
   if (!match) return "";
 
   const [, year, month, day] = match;
+  if (!isValidCalendarDate(Number(year), Number(month), Number(day))) return "";
+
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
 function getCellTime(value: unknown) {
-  if (value instanceof Date) return formatTime(value);
+  const resolvedValue = getFormulaResult(value);
+  if (resolvedValue instanceof Date) return formatExcelTime(resolvedValue);
 
-  if (typeof value === "number") {
-    const totalMinutes = Math.round(value * 24 * 60);
+  if (typeof resolvedValue === "number") {
+    if (resolvedValue < 0 || resolvedValue >= 1) return "";
+
+    const totalMinutes = Math.round(resolvedValue * 24 * 60) % (24 * 60);
     const hour = Math.floor(totalMinutes / 60);
     const minute = totalMinutes % 60;
 
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   }
 
-  const text = getCellText(value);
+  const text = getCellText(resolvedValue);
   const match = text.match(/^(\d{1,2}):(\d{2})$/);
   if (!match) return "";
 
@@ -316,20 +409,25 @@ function getCellTime(value: unknown) {
 }
 
 function getCellDateTime(value: unknown) {
-  if (value instanceof Date) {
-    return `${formatDate(value)} ${formatTime(value)}`;
+  const resolvedValue = getFormulaResult(value);
+  if (resolvedValue instanceof Date) {
+    return `${formatExcelDate(resolvedValue)} ${formatExcelTime(resolvedValue)}`;
   }
 
-  const text = getCellText(value).replace(/\s+/g, " ").trim();
+  const text = getCellText(resolvedValue).replace(/\s+/g, " ").trim();
   const match = text.match(
-    /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i,
+    /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i,
   );
 
   if (!match) return "";
 
-  const [, year, month, day, hourText, minuteText, , meridiem] = match;
+  const [, year, month, day, hourText, minuteText, secondText, meridiem] =
+    match;
   let hour = Number(hourText);
   const minute = Number(minuteText);
+
+  if (!isValidCalendarDate(Number(year), Number(month), Number(day))) return "";
+  if (secondText !== undefined && Number(secondText) > 59) return "";
 
   if (meridiem) {
     const normalizedMeridiem = meridiem.toUpperCase();
@@ -368,9 +466,13 @@ export function ScheduleManagementPage() {
     useState(false);
   const [isBookingCloseCalendarOpen, setIsBookingCloseCalendarOpen] =
     useState(false);
+  const [isStartedAtCalendarOpen, setIsStartedAtCalendarOpen] = useState(false);
   const [batchOperationDateCalendarId, setBatchOperationDateCalendarId] =
     useState<string | null>(null);
   const [batchDeadlineCalendarId, setBatchDeadlineCalendarId] = useState<
+    string | null
+  >(null);
+  const [batchStartedAtCalendarId, setBatchStartedAtCalendarId] = useState<
     string | null
   >(null);
   const [scheduleFieldErrors, setScheduleFieldErrors] = useState<
@@ -391,6 +493,7 @@ export function ScheduleManagementPage() {
   const departureTimeSegmentRefs = useRef<Array<HTMLInputElement | null>>([]);
   const routeSelectRef = useRef<HTMLSelectElement | null>(null);
   const bookingCloseDateRef = useRef<HTMLButtonElement | null>(null);
+  const startedAtDateRef = useRef<HTMLButtonElement | null>(null);
   const batchInputRefs = useRef<Record<string, HTMLElement | null>>({});
   const activeRoutes = useMemo(
     () => routes.filter((route) => route.status === "ACTIVE"),
@@ -465,7 +568,20 @@ export function ScheduleManagementPage() {
     key: K,
     value: ScheduleForm[K],
   ) => {
-    setScheduleForm((current) => ({ ...current, [key]: value }));
+    setScheduleForm((current) => {
+      const next = { ...current, [key]: value };
+
+      if (key === "bookingCloseAt") {
+        const defaultStartedAt = getDefaultStartedAt(value as string);
+        if (defaultStartedAt) next.startedAt = defaultStartedAt;
+      }
+
+      return next;
+    });
+
+    if (key === "bookingCloseAt") {
+      setScheduleFieldErrors((current) => ({ ...current, startedAt: false }));
+    }
   };
 
   const handleRouteChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -481,14 +597,23 @@ export function ScheduleManagementPage() {
   };
 
   const setOperationDate = (operationDate: string) => {
-    setScheduleFieldErrors((current) => ({ ...current, operationDate: false }));
-    setScheduleForm((current) => ({
+    setScheduleFieldErrors((current) => ({
       ...current,
-      operationDate,
-      bookingCloseAt:
-        getBookingCloseAt(operationDate, current.departureTime) ||
-        current.bookingCloseAt,
+      operationDate: false,
+      startedAt: false,
     }));
+    setScheduleForm((current) => {
+      const bookingCloseAt =
+        getDefaultBookingCloseAt(operationDate) ||
+        current.bookingCloseAt;
+
+      return {
+        ...current,
+        operationDate,
+        bookingCloseAt,
+        startedAt: getDefaultStartedAt(bookingCloseAt) || current.startedAt,
+      };
+    });
   };
 
   const shiftOperationDate = (days: number) => {
@@ -498,14 +623,23 @@ export function ScheduleManagementPage() {
   };
 
   const setDepartureTime = (departureTime: string) => {
-    setScheduleFieldErrors((current) => ({ ...current, departureTime: false }));
-    setScheduleForm((current) => ({
+    setScheduleFieldErrors((current) => ({
       ...current,
-      departureTime,
-      bookingCloseAt:
-        getBookingCloseAt(current.operationDate, departureTime) ||
-        current.bookingCloseAt,
+      departureTime: false,
+      startedAt: false,
     }));
+    setScheduleForm((current) => {
+      const bookingCloseAt =
+        getDefaultBookingCloseAt(current.operationDate) ||
+        current.bookingCloseAt;
+
+      return {
+        ...current,
+        departureTime,
+        bookingCloseAt,
+        startedAt: getDefaultStartedAt(bookingCloseAt) || current.startedAt,
+      };
+    });
   };
 
   const updateOperationDateSegment = (index: number, value: string) => {
@@ -545,15 +679,21 @@ export function ScheduleManagementPage() {
     setScheduleFieldErrors((current) => ({
       ...current,
       bookingCloseAt: false,
+      startedAt: false,
     }));
-    setScheduleForm((current) => ({
-      ...current,
-      bookingCloseAt: normalizeBookingCloseAt(
+    setScheduleForm((current) => {
+      const nextBookingCloseAt = normalizeBookingCloseAt(
         current.operationDate,
         current.departureTime,
         bookingCloseAt,
-      ),
-    }));
+      );
+
+      return {
+        ...current,
+        bookingCloseAt: nextBookingCloseAt,
+        startedAt: getDefaultStartedAt(nextBookingCloseAt) || current.startedAt,
+      };
+    });
   };
 
   const setBookingCloseDate = (date: Date | undefined) => {
@@ -580,8 +720,31 @@ export function ScheduleManagementPage() {
     updateScheduleForm("bookingCloseAt", `${date}T${parts.join(":")}`);
   };
 
+  const setStartedAt = (startedAt: string) => {
+    setScheduleFieldErrors((current) => ({ ...current, startedAt: false }));
+    updateScheduleForm("startedAt", startedAt);
+  };
+
+  const setStartedAtDate = (date: Date | undefined) => {
+    if (!date) return;
+
+    const time = scheduleForm.startedAt.split("T")[1] || "00:00";
+    setStartedAt(`${formatDate(date)}T${time}`);
+    setIsStartedAtCalendarOpen(false);
+  };
+
+  const updateStartedAtTimeSegment = (index: number, value: string) => {
+    const date = scheduleForm.startedAt.split("T")[0];
+    if (!date) return;
+
+    const parts = scheduleForm.startedAt.split("T")[1]?.split(":") ?? ["", ""];
+    parts[index] = value.replace(/\D/g, "").slice(0, 2);
+    setScheduleFieldErrors((current) => ({ ...current, startedAt: false }));
+    updateScheduleForm("startedAt", `${date}T${parts.join(":")}`);
+  };
+
   const setBookingCloseAtByRule = (
-    rule: "previous-day-2359" | "previous-day-1800" | "departure-minus-30",
+    rule: "previous-day-2359" | "departure-minus-30",
   ) => {
     setScheduleFieldErrors((current) => ({
       ...current,
@@ -593,15 +756,7 @@ export function ScheduleManagementPage() {
     if (rule === "previous-day-2359") {
       updateScheduleForm(
         "bookingCloseAt",
-        `${formatDate(addDays(operationDate, -1))}T22:00`,
-      );
-      return;
-    }
-
-    if (rule === "previous-day-1800") {
-      updateScheduleForm(
-        "bookingCloseAt",
-        `${formatDate(addDays(operationDate, -1))}T18:00`,
+        `${formatDate(addDays(operationDate, -1))}T23:59`,
       );
       return;
     }
@@ -624,6 +779,7 @@ export function ScheduleManagementPage() {
       departureTime: !/^([01]\d|2[0-3]):[0-5]\d$/.test(
         scheduleForm.departureTime,
       ),
+      startedAt: !getDateTimeFromInputValue(scheduleForm.startedAt),
       bookingCloseAt: !getDateTimeFromInputValue(scheduleForm.bookingCloseAt),
     };
     const firstInvalidField = (Object.keys(errors) as ScheduleField[]).find(
@@ -640,7 +796,9 @@ export function ScheduleManagementPage() {
             ? operationDateSegmentRefs.current[0]
             : firstInvalidField === "departureTime"
               ? departureTimeSegmentRefs.current[0]
-              : bookingCloseDateRef.current;
+              : firstInvalidField === "startedAt"
+                ? startedAtDateRef.current
+                : bookingCloseDateRef.current;
       requestAnimationFrame(() => {
         target?.scrollIntoView({ behavior: "smooth", block: "center" });
         target?.focus();
@@ -668,11 +826,25 @@ export function ScheduleManagementPage() {
       return;
     }
 
+    if (
+      isStartedAtAfterDeadline(
+        scheduleForm.startedAt,
+        scheduleForm.bookingCloseAt,
+      )
+    ) {
+      setNotice({
+        type: "error",
+        message: "預約開放時間必須早於預約截止時間，請重新設定。",
+      });
+      return;
+    }
+
     const payload: DailyOpenSchedulePayload = {
       routeId: scheduleForm.routeId,
       departureTime: scheduleForm.departureTime,
       openDate: scheduleForm.operationDate,
       quota: enabledStopQuota,
+      startedAt: formatDeadlinePayload(scheduleForm.startedAt),
       deadline: formatDeadlinePayload(scheduleForm.bookingCloseAt),
       status: "ACTIVE",
     };
@@ -705,13 +877,15 @@ export function ScheduleManagementPage() {
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(item.time) ||
         !Number.isFinite(item.quota) ||
         item.quota <= 0 ||
+        !getDateTimeFromInputValue(item.startedAt) ||
         !getDateTimeFromInputValue(item.bookingCloseRule),
     );
 
     if (invalidItem) {
       setNotice({
         type: "error",
-        message: "請完整填寫每一筆班次的路線、日期、時間、名額與截止日期。",
+        message:
+          "請完整填寫每一筆班次的路線、日期、時間、名額、開放時間與截止日期。",
       });
       return;
     }
@@ -728,11 +902,24 @@ export function ScheduleManagementPage() {
       return;
     }
 
+    const invalidStartedAtItem = batchPreview.find((item) =>
+      isStartedAtAfterDeadline(item.startedAt, item.bookingCloseRule),
+    );
+
+    if (invalidStartedAtItem) {
+      setNotice({
+        type: "error",
+        message: `${invalidStartedAtItem.date} ${invalidStartedAtItem.time} 的開放時間必須早於截止日期，請重新設定。`,
+      });
+      return;
+    }
+
     const schedules: DailyOpenSchedulePayload[] = batchPreview.map((item) => ({
       routeId: item.routeId,
       departureTime: item.time,
       openDate: item.date,
       quota: item.quota,
+      startedAt: formatDeadlinePayload(item.startedAt),
       deadline: formatDeadlinePayload(item.bookingCloseRule),
       status: "ACTIVE",
     }));
@@ -779,13 +966,17 @@ export function ScheduleManagementPage() {
         };
 
         if (key === "date" || key === "time" || key === "bookingCloseRule") {
+          const bookingCloseRule = normalizeBookingCloseAt(
+            nextItem.date,
+            nextItem.time,
+            nextItem.bookingCloseRule,
+          );
+
           return {
             ...nextItem,
-            bookingCloseRule: normalizeBookingCloseAt(
-              nextItem.date,
-              nextItem.time,
-              nextItem.bookingCloseRule,
-            ),
+            bookingCloseRule,
+            startedAt:
+              getDefaultStartedAt(bookingCloseRule) || nextItem.startedAt,
           };
         }
 
@@ -795,7 +986,7 @@ export function ScheduleManagementPage() {
   };
 
   const setBatchBookingCloseAtByRule = (
-    rule: "previous-day-2359" | "previous-day-1800" | "departure-minus-30",
+    rule: "previous-day-2359" | "departure-minus-30",
   ) => {
     setBatchPreview((current) =>
       current.map((item) => {
@@ -803,23 +994,15 @@ export function ScheduleManagementPage() {
 
         if (!operationDate) return item;
 
-        if (rule === "previous-day-2359") {
-          return {
-            ...item,
-            bookingCloseRule: `${formatDate(addDays(operationDate, -1))}T22:00`,
-          };
-        }
-
-        if (rule === "previous-day-1800") {
-          return {
-            ...item,
-            bookingCloseRule: `${formatDate(addDays(operationDate, -1))}T18:00`,
-          };
-        }
+        const bookingCloseRule =
+          rule === "previous-day-2359"
+            ? `${formatDate(addDays(operationDate, -1))}T23:59`
+            : getBookingCloseAt(item.date, item.time);
 
         return {
           ...item,
-          bookingCloseRule: getBookingCloseAt(item.date, item.time),
+          bookingCloseRule,
+          startedAt: getDefaultStartedAt(bookingCloseRule) || item.startedAt,
         };
       }),
     );
@@ -834,7 +1017,8 @@ export function ScheduleManagementPage() {
         time: "",
         routeId: route?.routeId ?? "",
         routeNumber: route?.routeNumber ?? "",
-        quota: 20,
+        quota: 30,
+        startedAt: "",
         bookingCloseRule: "",
       },
       ...current,
@@ -891,7 +1075,12 @@ export function ScheduleManagementPage() {
       current.map((item) => {
         if (item.id !== id) return item;
         const time = item.bookingCloseRule.split("T")[1] || "00:00";
-        return { ...item, bookingCloseRule: `${formatDate(value)}T${time}` };
+        const bookingCloseRule = `${formatDate(value)}T${time}`;
+        return {
+          ...item,
+          bookingCloseRule,
+          startedAt: getDefaultStartedAt(bookingCloseRule) || item.startedAt,
+        };
       }),
     );
     setBatchDeadlineCalendarId(null);
@@ -906,10 +1095,16 @@ export function ScheduleManagementPage() {
     if (!date) return;
     const parts = item.bookingCloseRule.split("T")[1]?.split(":") ?? ["", ""];
     parts[index] = value.replace(/\D/g, "").slice(0, 2);
+    const bookingCloseRule = `${date}T${parts.join(":")}`;
     setBatchPreview((current) =>
       current.map((currentItem) =>
         currentItem.id === item.id
-          ? { ...currentItem, bookingCloseRule: `${date}T${parts.join(":")}` }
+          ? {
+              ...currentItem,
+              bookingCloseRule,
+              startedAt:
+                getDefaultStartedAt(bookingCloseRule) || currentItem.startedAt,
+            }
           : currentItem,
       ),
     );
@@ -918,6 +1113,55 @@ export function ScheduleManagementPage() {
         batchInputRefs.current[`${item.id}-deadline-1`]?.focus(),
       );
     }
+  };
+
+  const setBatchStartedAtDate = (id: string, value: Date | undefined) => {
+    if (!value) return;
+    setBatchPreview((current) =>
+      current.map((item) => {
+        if (item.id !== id) return item;
+        const time = item.startedAt.split("T")[1] || "00:00";
+        return { ...item, startedAt: `${formatDate(value)}T${time}` };
+      }),
+    );
+    setBatchStartedAtCalendarId(null);
+  };
+
+  const updateBatchStartedAtTimeSegment = (
+    item: PreviewSchedule,
+    index: number,
+    value: string,
+  ) => {
+    const date = item.startedAt.split("T")[0];
+    if (!date) return;
+    const parts = item.startedAt.split("T")[1]?.split(":") ?? ["", ""];
+    parts[index] = value.replace(/\D/g, "").slice(0, 2);
+    setBatchPreview((current) =>
+      current.map((currentItem) =>
+        currentItem.id === item.id
+          ? { ...currentItem, startedAt: `${date}T${parts.join(":")}` }
+          : currentItem,
+      ),
+    );
+    if (parts[index].length === 2 && index === 0) {
+      requestAnimationFrame(() =>
+        batchInputRefs.current[`${item.id}-started-at-1`]?.focus(),
+      );
+    }
+  };
+
+  const resetBatchStartedAt = (id: string) => {
+    setBatchPreview((current) =>
+      current.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              startedAt:
+                getDefaultStartedAt(item.bookingCloseRule) || item.startedAt,
+            }
+          : item,
+      ),
+    );
   };
 
   const importSchedulesFromDate = async () => {
@@ -930,6 +1174,11 @@ export function ScheduleManagementPage() {
       const operationDate = formatDate(addDays(new Date(), 1));
       const importedSchedules = sourceSchedules.map((schedule, index) => {
         const time = schedule.departureTime.slice(0, 5);
+        const bookingCloseRule = normalizeBookingCloseAt(
+          operationDate,
+          time,
+          getDefaultBookingCloseAt(operationDate),
+        );
 
         return {
           id: `import-${operationDate}-${schedule.routeId}-${time}-${index}`,
@@ -938,11 +1187,8 @@ export function ScheduleManagementPage() {
           routeId: schedule.routeId,
           routeNumber: schedule.routeNumber,
           quota: schedule.quota,
-          bookingCloseRule: normalizeBookingCloseAt(
-            operationDate,
-            time,
-            getBookingCloseAt(operationDate, time),
-          ),
+          startedAt: getDefaultStartedAt(bookingCloseRule),
+          bookingCloseRule,
         };
       });
 
@@ -951,7 +1197,7 @@ export function ScheduleManagementPage() {
       setNotice({
         type: importedSchedules.length ? "success" : "error",
         message: importedSchedules.length
-          ? `已匯入 ${importSourceDate} 的 ${importedSchedules.length} 筆班次；營運日期已調整為 ${operationDate}，截止日期已依發車前 30 分鐘規則設定。`
+          ? `已匯入 ${importSourceDate} 的 ${importedSchedules.length} 筆班次；營運日期已調整為 ${operationDate}，截止日期已設為班次前一天 23:59。`
           : `${importSourceDate} 沒有可匯入的班次。`,
       });
     } catch (error) {
@@ -978,6 +1224,7 @@ export function ScheduleManagementPage() {
       { header: "營運日期", key: "date", width: 16 },
       { header: "班次時間", key: "time", width: 14 },
       { header: "預約座位", key: "quota", width: 12 },
+      { header: "開放時間（留空自動預設）", key: "startedAt", width: 26 },
       { header: "截止日期", key: "bookingCloseAt", width: 24 },
     ];
 
@@ -986,18 +1233,22 @@ export function ScheduleManagementPage() {
         routeNumber: templateRouteNumber,
         date: templateDate,
         time: "05:30",
-        quota: 20,
+        quota: 30,
+        startedAt: "",
         bookingCloseAt: formatDeadlinePayload(
-          getBookingCloseAt(templateDate, "05:30"),
+          getDefaultBookingCloseAt(templateDate),
         ),
       },
       {
         routeNumber: templateRouteNumber,
         date: templateDate,
         time: "06:00",
-        quota: 20,
+        quota: 30,
+        startedAt: formatDeadlinePayload(
+          getDefaultStartedAt(getDefaultBookingCloseAt(templateDate)),
+        ),
         bookingCloseAt: formatDeadlinePayload(
-          getBookingCloseAt(templateDate, "06:00"),
+          getDefaultBookingCloseAt(templateDate),
         ),
       },
     ]);
@@ -1050,11 +1301,27 @@ export function ScheduleManagementPage() {
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return;
 
-        const routeNumber = getCellText(row.getCell(1).value);
-        const date = getCellDate(row.getCell(2).value);
-        const time = getCellTime(row.getCell(3).value);
-        const quota = Number(getCellText(row.getCell(4).value));
-        const bookingCloseAt = getCellDateTime(row.getCell(5).value);
+        const cells = [1, 2, 3, 4, 5, 6].map(
+          (columnNumber) => row.getCell(columnNumber).value,
+        );
+        const formulaWithoutResultColumn = cells.findIndex(
+          hasFormulaWithoutResult,
+        );
+
+        if (formulaWithoutResultColumn >= 0) {
+          errors.push(
+            `第 ${rowNumber} 列第 ${formulaWithoutResultColumn + 1} 欄的公式沒有計算結果，請先在 Excel 重新計算並儲存檔案`,
+          );
+          return;
+        }
+
+        const routeNumber = getCellText(cells[0]);
+        const date = getCellDate(cells[1]);
+        const time = getCellTime(cells[2]);
+        const quota = Number(getCellText(cells[3]));
+        const startedAtCellText = getCellText(cells[4]);
+        const startedAt = getCellDateTime(cells[4]);
+        const bookingCloseAt = getCellDateTime(cells[5]);
         const isEmptyRow = [routeNumber, date, time].every((value) => !value);
 
         if (isEmptyRow) return;
@@ -1081,6 +1348,13 @@ export function ScheduleManagementPage() {
           return;
         }
 
+        if (startedAtCellText && !startedAt) {
+          errors.push(
+            `第 ${rowNumber} 列開放時間格式錯誤，請使用 YYYY-MM-DD HH:mm`,
+          );
+          return;
+        }
+
         if (!bookingCloseAt) {
           errors.push(
             `第 ${rowNumber} 列截止日期格式錯誤，請使用 YYYY-MM-DD HH:mm`,
@@ -1104,10 +1378,26 @@ export function ScheduleManagementPage() {
           return;
         }
 
+        const normalizedStartedAt = startedAt
+          ? startedAt.replace(" ", "T")
+          : getDefaultStartedAt(normalizedBookingCloseAt);
+
+        if (
+          normalizedStartedAt &&
+          isStartedAtAfterDeadline(
+            normalizedStartedAt,
+            normalizedBookingCloseAt,
+          )
+        ) {
+          errors.push(`第 ${rowNumber} 列開放時間必須早於截止日期，未匯入`);
+          return;
+        }
+
         preview.push({
           id: `${date}-${time}-${rowNumber}`,
           date,
           time,
+          startedAt: normalizedStartedAt,
           routeId: route.routeId,
           routeNumber: route.routeNumber,
           quota,
@@ -1372,6 +1662,114 @@ export function ScheduleManagementPage() {
                       </label>
 
                       <label className="text-sm font-medium text-admin-softText">
+                        預約開放時間 <span className="text-red-300">*</span>
+                        <span className="mt-2 grid grid-cols-1 gap-2">
+                          <Popover
+                            open={isStartedAtCalendarOpen}
+                            onOpenChange={setIsStartedAtCalendarOpen}
+                          >
+                            <PopoverTrigger asChild>
+                              <button
+                                className={`flex h-11 w-full items-center justify-between rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-left font-normal text-admin-text outline-none hover:border-adminStatus-enabled focus:border-adminStatus-enabled ${scheduleFieldErrors.startedAt ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                                ref={startedAtDateRef}
+                                type="button"
+                              >
+                                <span
+                                  className={
+                                    scheduleForm.startedAt
+                                      ? ""
+                                      : "text-admin-muted"
+                                  }
+                                >
+                                  {scheduleForm.startedAt.split("T")[0] ||
+                                    "選擇開放日期"}
+                                </span>
+                                <CalendarIcon
+                                  aria-hidden="true"
+                                  className="h-4 w-4 text-admin-muted"
+                                />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              align="start"
+                              className="!z-[60] !w-auto !bg-admin-surface !p-2 !text-admin-text"
+                            >
+                              <Calendar
+                                mode="single"
+                                selected={
+                                  getDateFromInputValue(
+                                    scheduleForm.startedAt.split("T")[0],
+                                  ) ?? undefined
+                                }
+                                onSelect={setStartedAtDate}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <span className="flex items-center gap-1">
+                            <Input
+                              aria-label="預約開放時間小時"
+                              className={`h-11 w-14 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono font-bold text-admin-text ${scheduleFieldErrors.startedAt ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                              disabled={!scheduleForm.startedAt}
+                              inputMode="numeric"
+                              maxLength={2}
+                              placeholder="HH"
+                              type="text"
+                              value={
+                                scheduleForm.startedAt
+                                  .split("T")[1]
+                                  ?.split(":")[0] ?? ""
+                              }
+                              onChange={(event) =>
+                                updateStartedAtTimeSegment(
+                                  0,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                            <span className="font-bold text-admin-muted">
+                              :
+                            </span>
+                            <Input
+                              aria-label="預約開放時間分鐘"
+                              className={`h-11 w-14 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono font-bold text-admin-text ${scheduleFieldErrors.startedAt ? "border-red-400 ring-1 ring-red-400/50" : ""}`}
+                              disabled={!scheduleForm.startedAt}
+                              inputMode="numeric"
+                              maxLength={2}
+                              placeholder="MM"
+                              type="text"
+                              value={
+                                scheduleForm.startedAt
+                                  .split("T")[1]
+                                  ?.split(":")[1] ?? ""
+                              }
+                              onChange={(event) =>
+                                updateStartedAtTimeSegment(
+                                  1,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </span>
+                        </span>
+                        <p className="mt-2 text-xs text-admin-muted">
+                          預設為截止日期前一天 13:00，可自行調整。
+                        </p>
+                        <button
+                          className="mt-2 rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
+                          type="button"
+                          onClick={() =>
+                            setStartedAt(
+                              getDefaultStartedAt(
+                                scheduleForm.bookingCloseAt,
+                              ) || scheduleForm.startedAt,
+                            )
+                          }
+                        >
+                          重設為預設值
+                        </button>
+                      </label>
+
+                      <label className="text-sm font-medium text-admin-softText">
                         預約截止 <span className="text-red-300">*</span>
                         <span className="mt-2 grid grid-cols-1 gap-2">
                           <Popover
@@ -1469,7 +1867,7 @@ export function ScheduleManagementPage() {
                               setBookingCloseAtByRule("previous-day-2359")
                             }
                           >
-                            前一天 22:00
+                            前一天 23:59
                           </button>
 
                           <button
@@ -1600,6 +1998,12 @@ export function ScheduleManagementPage() {
                       </dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-4 text-sm">
+                      <dt className="text-admin-softText">開放時間</dt>
+                      <dd className="text-right font-bold text-admin-text">
+                        {scheduleForm.startedAt.replace("T", " ")}
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-4 text-sm">
                       <dt className="text-admin-softText">預約截止</dt>
                       <dd className="text-right font-bold text-admin-text">
                         {scheduleForm.bookingCloseAt.replace("T", " ")}
@@ -1666,7 +2070,7 @@ export function ScheduleManagementPage() {
             </button>
 
             <input
-              accept=".xlsx,.xls"
+              accept=".xlsx"
               className="hidden"
               id="batch-schedule-excel"
               name="batch-schedule-excel"
@@ -1708,16 +2112,7 @@ export function ScheduleManagementPage() {
                     setBatchBookingCloseAtByRule("previous-day-2359")
                   }
                 >
-                  全部改為前一天 22:00
-                </button>
-                <button
-                  className="rounded-adminControl border border-admin-borderStrong px-3 py-1.5 text-xs font-semibold text-admin-softText"
-                  type="button"
-                  onClick={() =>
-                    setBatchBookingCloseAtByRule("previous-day-1800")
-                  }
-                >
-                  全部改為前一天 18:00
+                  全部改為前一天 23:59
                 </button>
               </div>
               <div className="flex items-center gap-2">
@@ -1745,6 +2140,7 @@ export function ScheduleManagementPage() {
                 <col className="w-[150px]" />
                 <col className="w-[130px]" />
                 <col className="w-[300px]" />
+                <col className="w-[300px]" />
                 <col className="w-[120px]" />
               </colgroup>
               <TableHeader className="bg-admin-bg text-admin-muted">
@@ -1753,6 +2149,7 @@ export function ScheduleManagementPage() {
                   <TableHead>班次時間</TableHead>
                   <TableHead>路線編號</TableHead>
                   <TableHead>預約座位</TableHead>
+                  <TableHead>開放時間</TableHead>
                   <TableHead>截止日期</TableHead>
                   <TableHead>操作</TableHead>
                 </TableRow>
@@ -1918,6 +2315,100 @@ export function ScheduleManagementPage() {
                           )
                         }
                       />
+                    </TableCell>
+                    <TableCell className="text-admin-softText">
+                      <span className="flex min-w-[276px] items-center gap-2">
+                        <Popover
+                          open={batchStartedAtCalendarId === item.id}
+                          onOpenChange={(open) =>
+                            setBatchStartedAtCalendarId(open ? item.id : null)
+                          }
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              className="flex h-10 min-w-[138px] items-center justify-between rounded-adminControl border border-admin-borderStrong bg-admin-bg px-3 text-left text-admin-text"
+                              type="button"
+                            >
+                              <span>
+                                {item.startedAt.split("T")[0] || "選擇開放日期"}
+                              </span>
+                              <CalendarIcon
+                                aria-hidden="true"
+                                className="h-4 w-4 text-admin-muted"
+                              />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            align="start"
+                            className="!z-[60] !w-auto !bg-admin-surface !p-2 !text-admin-text"
+                          >
+                            <Calendar
+                              mode="single"
+                              selected={
+                                getDateFromInputValue(
+                                  item.startedAt.split("T")[0],
+                                ) ?? undefined
+                              }
+                              onSelect={(date) =>
+                                setBatchStartedAtDate(item.id, date)
+                              }
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <Input
+                          className="h-10 w-12 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-admin-text placeholder:text-admin-muted"
+                          disabled={!item.startedAt}
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder="HH"
+                          ref={(element) => {
+                            batchInputRefs.current[`${item.id}-started-at-0`] =
+                              element;
+                          }}
+                          value={
+                            item.startedAt.split("T")[1]?.split(":")[0] ?? ""
+                          }
+                          onChange={(event) =>
+                            updateBatchStartedAtTimeSegment(
+                              item,
+                              0,
+                              event.target.value,
+                            )
+                          }
+                        />
+                        <span>:</span>
+                        <Input
+                          className="h-10 w-12 border-admin-borderStrong bg-admin-bg px-1 text-center font-mono text-admin-text placeholder:text-admin-muted"
+                          disabled={!item.startedAt}
+                          inputMode="numeric"
+                          maxLength={2}
+                          placeholder="MM"
+                          ref={(element) => {
+                            batchInputRefs.current[`${item.id}-started-at-1`] =
+                              element;
+                          }}
+                          value={
+                            item.startedAt.split("T")[1]?.split(":")[1] ?? ""
+                          }
+                          onChange={(event) =>
+                            updateBatchStartedAtTimeSegment(
+                              item,
+                              1,
+                              event.target.value,
+                            )
+                          }
+                        />
+                        {item.bookingCloseRule && (
+                          <button
+                            aria-label="重設為預設開放時間"
+                            className="text-xs font-semibold text-admin-muted underline"
+                            type="button"
+                            onClick={() => resetBatchStartedAt(item.id)}
+                          >
+                            重設
+                          </button>
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell className="text-admin-softText">
                       <span className="flex min-w-[276px] items-center gap-2">

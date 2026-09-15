@@ -17,10 +17,12 @@ interface ReservationStop {
   latitude: number | null;
   longitude: number | null;
   sequence: number;
+  arriveAt: number;
 }
 
 export interface UpcomingReservation {
   reservationId: string;
+  dailyOpenScheduleId: string;
   sequenceNo?: number | null;
   routeId: string;
   routeNumber: string;
@@ -69,12 +71,8 @@ export interface CreateReservationResult {
 
 interface CreateReservationParams {
   userId: string;
-  routeId: string;
-  departureTime: string;
-  openDate: string;
+  dailyOpenScheduleId: string;
   pickupStopId: string;
-  name: string;
-  passengerCount: number;
   lineUserId: string;
 }
 
@@ -100,12 +98,8 @@ function getApiErrorMessage(error: unknown, fallback = "預約建立失敗") {
 
 export async function createReservation({
   userId,
-  routeId,
-  departureTime,
-  openDate,
+  dailyOpenScheduleId,
   pickupStopId,
-  name,
-  passengerCount,
   lineUserId,
 }: CreateReservationParams) {
   try {
@@ -113,12 +107,8 @@ export async function createReservation({
       "/api/v1/reservations",
       {
         userId,
-        routeId,
-        departureTime,
-        openDate,
+        dailyOpenScheduleId,
         pickupStopId,
-        name,
-        passengerCount,
       },
       {
         headers: {

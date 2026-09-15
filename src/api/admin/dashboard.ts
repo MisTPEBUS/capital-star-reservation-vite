@@ -18,6 +18,8 @@ export interface DashboardDailyOpenSchedule {
   departureTime: string;
   openDate: string;
   quota: number;
+  startedAt: string;
+  deadline: string;
   reservedCount: number;
   reservedPassengerCount?: number;
   cancelledCount: number;
@@ -52,7 +54,7 @@ interface RawDashboardReservation {
 }
 
 interface RawDashboardScheduleReservations
-  extends Omit<DashboardDailyOpenSchedule, "status"> {
+  extends Omit<DashboardDailyOpenSchedule, "availableSeats" | "status"> {
   status?: DailyOpenScheduleStatus;
   reservations: RawDashboardReservation[];
 }
@@ -77,9 +79,7 @@ export interface CreateAdminReservationParams {
   name: string;
   phone: string;
   passengerCount: number;
-  routeId: string;
-  departureTime: string;
-  openDate: string;
+  dailyOpenScheduleId: string;
   pickupStopId: string;
 }
 
@@ -90,6 +90,18 @@ export interface CreateAdminReservationResult {
   routeNumber: string;
   departureTime: string;
   openDate: string;
+  pickupStop: {
+    stopId: string;
+    stopName: string;
+    stopType: string;
+    address: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    sequence: number;
+    arriveAt: number;
+  };
+  customerName: string;
+  phone: string;
   passengerCount: number;
   sequenceNo: number;
   status: DashboardReservationStatus;
@@ -155,11 +167,14 @@ function toDashboardReservation(
   };
 }
 
-export async function getDashboardDailyOpenSchedules(openDate: string) {
+export async function getDashboardDailyOpenSchedules(
+  openDate: string,
+  routeId?: string,
+) {
   try {
     const response = await apiClient.get<ApiResponse<DashboardDailyOpenSchedule[]>>(
       "/api/v1/admin/dashboard/daily-open-schedules",
-      { params: { openDate } },
+      { params: { openDate, routeId } },
     );
 
     return unwrapResponse(response.data);
@@ -221,6 +236,8 @@ export async function getDashboardScheduleReservations(
         departureTime: data.departureTime,
         openDate: data.openDate,
         quota: data.quota,
+        startedAt: data.startedAt,
+        deadline: data.deadline,
         reservedCount: data.reservedCount,
         reservedPassengerCount: data.reservedPassengerCount ?? data.reservedCount,
         cancelledCount: data.cancelledCount,

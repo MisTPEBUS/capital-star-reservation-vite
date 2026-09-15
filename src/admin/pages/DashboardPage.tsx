@@ -63,6 +63,14 @@ function formatDepartureTime(value: string) {
   return value.slice(0, 5);
 }
 
+function formatStartedAt(value?: string) {
+  if (!value) return "";
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if (!match) return value;
+  const [, , month, day, hour, minute] = match;
+  return `${month}/${day} ${hour}:${minute}`;
+}
+
 function getScheduleDepartureDate(schedule: DashboardDailyOpenSchedule) {
   const dateMatch = schedule.openDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
   const timeMatch = schedule.departureTime.match(/^(\d{1,2}):(\d{2})/);
@@ -533,9 +541,7 @@ export function DashboardPage() {
         name,
         phone,
         passengerCount: newReservation.passengerCount,
-        routeId: selectedSchedule.routeId,
-        departureTime: formatDepartureTime(selectedSchedule.departureTime),
-        openDate: selectedSchedule.openDate,
+        dailyOpenScheduleId: selectedSchedule.dailyOpenScheduleId,
         pickupStopId,
       });
 
@@ -1002,6 +1008,13 @@ export function DashboardPage() {
                           >
                             {schedule.routeName}
                           </p>
+                          {schedule.startedAt && (
+                            <p
+                              className={`mt-1 text-xs font-medium ${isSelected ? "text-white/60" : "text-admin-muted"}`}
+                            >
+                              開放 {formatStartedAt(schedule.startedAt)}
+                            </p>
+                          )}
                         </div>
                         <div className="min-w-[92px] text-right">
                           <p

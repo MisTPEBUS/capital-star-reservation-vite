@@ -19,20 +19,33 @@ interface ScheduleApiItem {
   openDate: string;
   quota: number;
   availableSeats: number;
+  startedAt?: string;
   bookingDeadline?: string;
   deadline?: string;
   userReservation: unknown;
 }
 
+export interface ActiveScheduleReservation {
+  reservationId: string;
+  dailyOpenScheduleId: string;
+  routeId: string;
+  departureTime: string;
+  openDate: string;
+  pickupStopId: string;
+  sequenceNo: number;
+  status: "RESERVED" | "CANCELLED";
+  bookedAt: string;
+}
+
 export interface SchedulesApiData {
   canReserve: boolean;
-  activeReservation: unknown;
+  activeReservation: ActiveScheduleReservation | null;
   schedules: ScheduleApiItem[];
 }
 
 export interface SchedulesResult {
   canReserve: boolean;
-  activeReservation: unknown;
+  activeReservation: ActiveScheduleReservation | null;
   schedules: OpenSchedule[];
 }
 
@@ -70,6 +83,7 @@ function toOpenSchedule(
     quota: schedule.quota,
     reservedCount: Math.max(schedule.quota - schedule.availableSeats, 0),
     availableSeats: schedule.availableSeats,
+    startedAt: schedule.startedAt,
     bookingDeadline,
     userReservation: normalizeReservationStatus(schedule.userReservation),
     note: `剩餘 ${schedule.availableSeats} / ${schedule.quota} 位`,

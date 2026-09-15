@@ -12,11 +12,17 @@ import { initializeLiff } from "./liff/liffClient";
 
 import "./index.css";
 
+function isAdminRoute() {
+  return window.location.hash.startsWith("#/admin");
+}
+
 async function bootstrap() {
-  try {
-    await initializeLiff();
-  } catch (error) {
-    console.error("LIFF_INIT_ERROR:", error);
+  if (!isAdminRoute()) {
+    try {
+      await initializeLiff();
+    } catch (error) {
+      console.error("LIFF_INIT_ERROR:", error);
+    }
   }
 
   ReactDOM.createRoot(document.getElementById("root")!).render(

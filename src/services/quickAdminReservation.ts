@@ -36,9 +36,7 @@ export async function createQuickAdminReservation(
     name: reservation.name.trim(),
     phone: reservation.phone.trim(),
     passengerCount: reservation.passengerCount,
-    routeId: schedule.routeId,
-    departureTime: schedule.departureTime.slice(0, 5),
-    openDate: schedule.openDate,
+    dailyOpenScheduleId: schedule.dailyOpenScheduleId,
     pickupStopId,
   });
 

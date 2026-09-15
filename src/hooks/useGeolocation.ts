@@ -16,7 +16,7 @@ export type GeolocationState =
 const getGeolocationErrorMessage = (error: GeolocationPositionError) => {
   switch (error.code) {
     case error.PERMISSION_DENIED:
-      return "目前無法取得 GPS 位置，請確認裝置已開啟定位功能，並且關閉後重新開啟網頁。";
+      return "目前無法取得位置進行定位核銷，請確認裝置已開啟定位功能，並且點選左上角重新進入頁面。";
     case error.POSITION_UNAVAILABLE:
       return "目前無法取得 GPS 位置，請確認裝置已開啟定位功能。";
     case error.TIMEOUT:
@@ -42,10 +42,10 @@ export function useGeolocation() {
       navigator.geolocation.getCurrentPosition(
         ({ coords }) => {
           const position: GeolocationSuccess = {
-          status: "success",
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: coords.accuracy,
+            status: "success",
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy: coords.accuracy,
           };
           setState(position);
           resolve(position);
