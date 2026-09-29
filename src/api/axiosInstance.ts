@@ -1,5 +1,6 @@
 import axios from "axios";
 import {
+  SUPER_ADMIN_TOKEN_HEADER,
   clearAdminSession,
   getAdminSession,
   hasValidAdminSession,
@@ -15,9 +16,19 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  if (config.url?.startsWith("/api/v1/admin/") && hasValidAdminSession()) {
-    const session = getAdminSession();
-    config.headers.Authorization = `${session?.tokenType || "Bearer"} ${session?.accessToken}`;
+  if (
+    !config.url?.startsWith("/api/v1/admin/") ||
+    config.headers.has(SUPER_ADMIN_TOKEN_HEADER) ||
+    !hasValidAdminSession()
+  ) {
+    return config;
+  }
+
+  const session = getAdminSession();
+  if (session?.authType === "superAdmin") {
+    config.headers.set(SUPER_ADMIN_TOKEN_HEADER, session.superAdminToken);
+  } else if (session) {
+    config.headers.Authorization = `${session.tokenType || "Bearer"} ${session.accessToken}`;
   }
 
   return config;

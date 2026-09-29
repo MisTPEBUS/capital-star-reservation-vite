@@ -6,7 +6,15 @@ interface ApiResponse<T> {
   message: string;
   data: T;
   timestamp: string;
+  errorCode?: string;
   errors?: Record<string, string[]>;
+}
+
+export class ReservationApiError extends Error {
+  constructor(message: string, public readonly errorCode?: string) {
+    super(message);
+    this.name = "ReservationApiError";
+  }
 }
 
 interface ReservationStop {
@@ -119,7 +127,10 @@ export async function createReservation({
 
     return response.data.data;
   } catch (error) {
-    throw new Error(getApiErrorMessage(error));
+    const errorCode = axios.isAxiosError<ApiResponse<unknown>>(error)
+      ? error.response?.data?.errorCode
+      : undefined;
+    throw new ReservationApiError(getApiErrorMessage(error), errorCode);
   }
 }
 

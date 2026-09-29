@@ -1,5 +1,7 @@
 import axios from "axios";
 import apiClient from "../axiosInstance";
+import { getLocalDateValue } from "../../utils/quickReservation";
+import { SUPER_ADMIN_TOKEN_HEADER } from "./session";
 
 interface ApiResponse<T> {
   code: number;
@@ -116,5 +118,40 @@ export async function verifyLoginCode(code: string, userId: string) {
     throw error instanceof Error
       ? error
       : new Error("驗證登入失敗，請稍後再試。");
+  }
+}
+
+// 以唯讀的 Dashboard 查詢確認 Token 能通過後端 Super Admin 驗證。
+export async function verifySuperAdminToken(superAdminToken: string) {
+  if (!superAdminToken) {
+    throw new Error("請輸入 Super Admin Token");
+  }
+
+  try {
+    const response = await apiClient.get<ApiResponse<unknown>>(
+      "/api/v1/admin/dashboard/daily-open-schedules",
+      {
+        params: { openDate: getLocalDateValue() },
+        headers: { [SUPER_ADMIN_TOKEN_HEADER]: superAdminToken },
+      },
+    );
+
+    if (response.data.code !== 0) {
+      throw new Error(response.data.message || "Super Admin 驗證失敗。");
+    }
+  } catch (error) {
+    if (axios.isAxiosError<ApiErrorResponse>(error)) {
+      if (error.response?.status === 401) {
+        throw new Error("Super Admin Token 無效，或後端未啟用 Super Admin 登入。");
+      }
+
+      throw new Error(
+        error.response?.data?.message || "Super Admin 驗證失敗，請稍後再試。",
+      );
+    }
+
+    throw error instanceof Error
+      ? error
+      : new Error("Super Admin 驗證失敗，請稍後再試。");
   }
 }

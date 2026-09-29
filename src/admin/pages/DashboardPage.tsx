@@ -649,28 +649,40 @@ export function DashboardPage() {
       const worksheet = workbook.addWorksheet("當日乘客名單");
 
       worksheet.columns = [
-        { header: "班次", key: "scheduleName", width: 28 },
+        { header: "乘車序號", key: "sequence", width: 12 },
         { header: "發車時間", key: "departureTime", width: 14 },
         { header: "稱謂", key: "name", width: 18 },
-        { header: "識別碼", key: "activeCode", width: 16 },
+        { header: "識別碼/電話", key: "identityAndPhone", width: 30 },
         { header: "上車站", key: "pickupStopName", width: 20 },
-        { header: "搭乘人數", key: "passengerCount", width: 12 },
-
-        { header: "乘車序號/電話", key: "sequence", width: 20 },
       ];
 
       exportReservations.forEach(({ schedule, reservation }) => {
         worksheet.addRow({
-          scheduleName: getScheduleName(schedule),
+          sequence: reservation.sequence,
           departureTime: formatDepartureTime(schedule.departureTime),
           name: reservation.name,
-          sequence: reservation.sequence,
-          activeCode: reservation.activeCode,
-          phone: reservation.phone,
+          identityAndPhone:
+            reservation.activeCode && reservation.activeCode !== "-"
+              ? reservation.activeCode
+              : reservation.phone,
           pickupStopName: reservation.pickupStopName,
-          passengerCount: reservation.passengerCount,
         });
       });
+
+      const totalPassengerCount = exportReservations.reduce(
+        (total, { reservation }) =>
+          reservation.status === "RESERVED"
+            ? total + reservation.passengerCount
+            : total,
+        0,
+      );
+      const spacerRow = worksheet.addRow(["", "", "", "", ""]);
+      spacerRow.height = 14;
+      const footerRow = worksheet.addRow([
+        `乘車序號為乘客上車順序用途，今日搭乘人數 ${totalPassengerCount} 人`,
+      ]);
+      worksheet.mergeCells(footerRow.number, 1, footerRow.number, 5);
+      footerRow.font = { bold: true, size: 14 };
 
       worksheet.views = [{ state: "frozen", ySplit: 1 }];
       worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -682,6 +694,7 @@ export function DashboardPage() {
 
       worksheet.eachRow((row) => {
         row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
+          cell.font = { ...cell.font, size: 14 };
           cell.border = {
             top: { style: "thin", color: { argb: "FF94A3B8" } },
             left: { style: "thin", color: { argb: "FF94A3B8" } },
@@ -689,11 +702,13 @@ export function DashboardPage() {
             right: { style: "thin", color: { argb: "FF94A3B8" } },
           };
           cell.alignment = {
-            horizontal: columnNumber === 4 ? "center" : "left",
+            horizontal:
+              columnNumber === 1 || columnNumber === 4 ? "center" : "left",
             vertical: "middle",
           };
         });
       });
+      footerRow.alignment = { horizontal: "center", vertical: "middle" };
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {

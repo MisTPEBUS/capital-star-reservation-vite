@@ -21,6 +21,7 @@ import {
 } from "./api/auth";
 import {
   createReservation,
+  ReservationApiError,
   getRecentReservations,
   getUpcomingReservations,
   RecentReservation,
@@ -682,7 +683,9 @@ function App() {
     } catch (error) {
       console.error("CREATE_RESERVATION_ERROR:", error);
 
-      const message = error instanceof Error ? error.message : "預約建立失敗";
+      const message = error instanceof ReservationApiError && error.errorCode === "RESERVATION_RESTRICTED"
+        ? "目前無法預約，請洽管理員確認預約限制。"
+        : error instanceof Error ? error.message : "預約建立失敗";
 
       setReservationError(message);
       await loadSchedules();

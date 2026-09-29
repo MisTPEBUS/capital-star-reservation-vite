@@ -9,6 +9,7 @@ type SidebarIconName =
   | "dashboard"
   | "quickReservation"
   | "users"
+  | "blacklist"
   | "dispatch"
   | "schedule"
   | "stop"
@@ -23,6 +24,7 @@ interface SidebarProps {
 export const navigation = [
   { to: "/admin/dashboard", label: "首頁總覽", icon: "dashboard" as const },
   { to: "/admin/employees", label: "使用者權限", icon: "users" as const },
+  { to: "/admin/blacklist", label: "黑名單管理", icon: "blacklist" as const },
   /*  { to: "/admin/settings", label: "系統設定" }, */
 ];
 
@@ -76,6 +78,16 @@ export function SidebarIcon({ name }: { name: SidebarIconName }) {
         <circle cx="9.5" cy="7" r="4" />
         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    );
+  }
+
+  if (name === "blacklist") {
+    return (
+      <svg {...commonProps} aria-hidden="true">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+        <path d="m9 9 6 6" />
+        <path d="m15 9-6 6" />
       </svg>
     );
   }

@@ -68,7 +68,7 @@ export function AvailableTicketsMenu({
         <SectionTitle
           eyebrow="預約紀錄"
           title=""
-          description="顯示最近 24 小時內的出發班次。"
+          description="搭乘前請點選預約班次出示乘車票證。"
         />
       </div>
 

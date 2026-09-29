@@ -5,11 +5,13 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "./AdminLayout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
+import { SuperLoginPage } from "./pages/SuperLoginPage";
 import { ScheduleManagementPage } from "./pages/ScheduleManagementPage";
 import { UserPermissionsPage } from "./pages/UserPermissionsPage";
 import { DispatchManagementPage } from "./pages/DispatchManagementPage";
 import { RouteManagementPage } from "./pages/RouteManagementPage";
 import { StopManagementPage } from "./pages/StopManagementPage";
+import { BookingRestrictionsPage } from "./pages/BookingRestrictionsPage";
 import { TooltipProvider } from "../components/ui/tooltip";
 
 export default function AdminApp() {
@@ -27,9 +29,11 @@ export default function AdminApp() {
       <TooltipProvider>
         <Routes>
       <Route path="login" element={<LoginPage />} />
+      <Route path="super-login" element={<SuperLoginPage />} />
       <Route element={<AdminLayout />}>
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="employees" element={<UserPermissionsPage />} />
+        <Route path="blacklist" element={<BookingRestrictionsPage />} />
         <Route path="schedules" element={<ScheduleManagementPage />} />
         <Route
           path="dispatch/reservations"
