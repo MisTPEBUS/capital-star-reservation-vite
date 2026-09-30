@@ -130,8 +130,13 @@ export function UpcomingReservationPage() {
     );
   }, []);
 
+  const selectedRecentReservation =
+    recentReservations.find(
+      (item) => item.reservationId === reservation?.reservationId,
+    ) ?? null;
+
   const checkInState = useReservationCheckIn({
-    reservations: recentReservations,
+    reservation: selectedRecentReservation,
     isLoading: isRecentReservationsLoading,
     requestPosition: geolocation.requestPosition,
     onCheckedIn: handleCheckedIn,
@@ -150,6 +155,7 @@ export function UpcomingReservationPage() {
           identityCode={identityCode}
           passengerName={passengerName}
           onCancelled={loadReservation}
+          checkedInAt={selectedRecentReservation?.checkIn_at}
           canCancel={upcomingReservations.some(
             (item) => item.reservationId === reservation?.reservationId,
           )}
@@ -200,6 +206,13 @@ export function UpcomingReservationPage() {
                     </p>
                     <p className="mt-1 font-mono text-3xl font-black leading-none tracking-tight text-ink-900">
                       {item.departureTime.slice(0, 5)}
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-ink-700">
+                      {item.status === "CANCELLED"
+                        ? "已取消"
+                        : item.checkIn_at?.trim()
+                          ? "已核銷"
+                          : "未核銷"}
                     </p>
                     <p className="mt-2 text-xs font-bold text-bus-700">
                       {isSelected ? "目前顯示中" : "點選查看乘車憑證"}

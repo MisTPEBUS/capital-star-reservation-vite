@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   checkInReservation,
   type CheckInDevice,
@@ -6,6 +6,7 @@ import {
   type RecentReservation,
 } from "../api/reservations";
 import type { GeolocationSuccess } from "./useGeolocation";
+import { isWithinReservationCheckInWindow } from "../utils/reservationTicketMessage";
 
 const CHECK_IN_INTERVAL_MS = 60_000;
 
@@ -16,23 +17,10 @@ export type ReservationCheckInState =
   | { status: "error"; message: string };
 
 interface UseReservationCheckInOptions {
-  reservations: RecentReservation[];
+  reservation: RecentReservation | null;
   isLoading: boolean;
   requestPosition: () => Promise<GeolocationSuccess>;
   onCheckedIn: (result: CheckInReservationResult) => void;
-}
-
-function getTaiwanDate() {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Taipei",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const getPart = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? "";
-
-  return `${getPart("year")}-${getPart("month")}-${getPart("day")}`;
 }
 
 function getCheckInDevice(): CheckInDevice {
@@ -46,7 +34,7 @@ function getCheckInDevice(): CheckInDevice {
 }
 
 export function useReservationCheckIn({
-  reservations,
+  reservation,
   isLoading,
   requestPosition,
   onCheckedIn,
@@ -54,26 +42,18 @@ export function useReservationCheckIn({
   const [state, setState] = useState<ReservationCheckInState>({
     status: "idle",
   });
-  const latestReservation = useMemo(
-    () =>
-      [...reservations].sort((left, right) =>
-        right.bookedAt.localeCompare(left.bookedAt),
-      )[0] ?? null,
-    [reservations],
-  );
-
   useEffect(() => {
     if (isLoading) return;
 
     if (
-      !latestReservation ||
-      latestReservation.checkIn_at.trim() !== "" ||
-      latestReservation.status !== "RESERVED"
+      !reservation ||
+      reservation.checkIn_at.trim() !== "" ||
+      reservation.status !== "RESERVED"
     ) {
-      if (latestReservation?.checkIn_at.trim()) {
+      if (reservation?.checkIn_at.trim()) {
         setState({
           status: "success",
-          checkedInAt: latestReservation.checkIn_at,
+          checkedInAt: reservation.checkIn_at,
         });
       } else {
         setState({ status: "idle" });
@@ -87,7 +67,7 @@ export function useReservationCheckIn({
     const attemptCheckIn = async () => {
       if (isRequesting) return;
 
-      if (latestReservation.openDate.slice(0, 10) !== getTaiwanDate()) {
+      if (!isWithinReservationCheckInWindow(reservation, new Date())) {
         if (isActive) setState({ status: "idle" });
         return;
       }
@@ -101,7 +81,7 @@ export function useReservationCheckIn({
         if (!isActive) return;
 
         const result = await checkInReservation({
-          reservationId: latestReservation.reservationId,
+          reservationId: reservation.reservationId,
           lat: position.latitude,
           lon: position.longitude,
           checkIn_DEVICE: getCheckInDevice(),
@@ -135,7 +115,7 @@ export function useReservationCheckIn({
       isActive = false;
       window.clearInterval(intervalId);
     };
-  }, [isLoading, latestReservation, onCheckedIn, requestPosition]);
+  }, [isLoading, reservation, onCheckedIn, requestPosition]);
 
   return state;
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 export type GeolocationSuccess = {
   status: "success";
@@ -8,6 +8,7 @@ export type GeolocationSuccess = {
 };
 
 export type GeolocationState =
+  | { status: "idle" }
   | { status: "loading" }
   | { status: "unsupported" }
   | { status: "error"; message: string }
@@ -28,7 +29,7 @@ const getGeolocationErrorMessage = (error: GeolocationPositionError) => {
 
 export function useGeolocation() {
   const [state, setState] = useState<GeolocationState>({
-    status: "loading",
+    status: "idle",
   });
 
   const requestPosition = useCallback((): Promise<GeolocationSuccess> => {
@@ -63,10 +64,6 @@ export function useGeolocation() {
       );
     });
   }, []);
-
-  useEffect(() => {
-    void requestPosition().catch(() => undefined);
-  }, [requestPosition]);
 
   return { state, requestPosition };
 }

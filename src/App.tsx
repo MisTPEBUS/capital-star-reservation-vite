@@ -7,6 +7,7 @@ import {
   type BookingSelectionChangeSource,
 } from "./components/BookingForm";
 import { ReservationDialog } from "./components/ReservationDialog";
+import { ReservationRestrictionDialog } from "./components/ReservationRestrictionDialog";
 import { MemberCard } from "./components/MemberCard";
 import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
@@ -146,6 +147,7 @@ function App() {
     "date" | "time" | "schedules" | null
   >(null);
   const [isReservationDialogOpen, setIsReservationDialogOpen] = useState(false);
+  const [isRestrictionDialogOpen, setIsRestrictionDialogOpen] = useState(false);
   const [reservingScheduleId, setReservingScheduleId] = useState<string | null>(
     null,
   );
@@ -683,11 +685,18 @@ function App() {
     } catch (error) {
       console.error("CREATE_RESERVATION_ERROR:", error);
 
-      const message = error instanceof ReservationApiError && error.errorCode === "RESERVATION_RESTRICTED"
-        ? "目前無法預約，請洽管理員確認預約限制。"
-        : error instanceof Error ? error.message : "預約建立失敗";
-
-      setReservationError(message);
+      if (
+        error instanceof ReservationApiError &&
+        error.errorCode === "RESERVATION_RESTRICTED"
+      ) {
+        setReservationError("");
+        setIsReservationDialogOpen(false);
+        setIsRestrictionDialogOpen(true);
+      } else {
+        setReservationError(
+          error instanceof Error ? error.message : "預約建立失敗",
+        );
+      }
       await loadSchedules();
     } finally {
       setReservingScheduleId(null);
@@ -968,6 +977,10 @@ function App() {
               void handleReserve(selectedSchedule, name, passengerCount);
             }
           }}
+        />
+        <ReservationRestrictionDialog
+          open={isRestrictionDialogOpen}
+          onOpenChange={setIsRestrictionDialogOpen}
         />
       </main>
     </div>

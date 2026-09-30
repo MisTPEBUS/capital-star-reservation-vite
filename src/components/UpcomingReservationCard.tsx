@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   cancelReservation,
   type UpcomingReservation,
 } from "../api/reservations";
 import { Toast, type ToastMessage } from "./Toast";
+import { getReservationTicketMessage } from "../utils/reservationTicketMessage";
 
 interface UpcomingReservationCardProps {
   reservation: UpcomingReservation | null;
@@ -12,6 +13,7 @@ interface UpcomingReservationCardProps {
   passengerName?: string | null;
   onCancelled: () => Promise<void>;
   canCancel?: boolean;
+  checkedInAt?: string | null;
 }
 
 const formatBookedAt = (bookedAt: string) => {
@@ -53,10 +55,17 @@ export function UpcomingReservationCard({
   passengerName,
   onCancelled,
   canCancel = reservation?.status === "RESERVED",
+  checkedInAt,
 }: UpcomingReservationCardProps) {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   if (!reservation) return null;
 
@@ -203,7 +212,7 @@ export function UpcomingReservationCard({
           <div className="absolute -left-3 -top-3 h-6 w-6 rounded-full bg-white" />
           <div className="absolute -right-3 -top-3 h-6 w-6 rounded-full bg-white" />
           <p className="text-xl font-black text-[#C9151E]  text-center">
-            乘車時請出示此畫面，並依預約日期與班次時刻到站候車。
+            {getReservationTicketMessage(reservation, checkedInAt, now)}
           </p>
           <p className="mt-2 text-base font-black text-[#6B5A25] text-center">
             此畫面截圖無效
