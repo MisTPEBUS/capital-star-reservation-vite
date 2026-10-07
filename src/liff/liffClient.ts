@@ -77,6 +77,25 @@ export async function isOfficialAccountFriend(): Promise<boolean> {
 }
 
 /**
+ * 在 LINE 內時，用外部瀏覽器開啟乘車憑證頁。
+ *
+ * reservationId 放在 # 前面的 query string：
+ * liff.openWindow() 會把 hash 內的 query 搬到 # 前面，放在 hash 內會讀不到。
+ *
+ * @returns 已用外部瀏覽器開啟時回傳 true；不在 LINE 內回傳 false，由呼叫端自行導頁。
+ */
+export function openTicketInExternalBrowser(reservationId: string): boolean {
+  if (!liff.isInClient()) return false;
+
+  const url = new URL(import.meta.env.BASE_URL, window.location.origin);
+  url.searchParams.set("reservationId", reservationId);
+  url.hash = "/ticket";
+
+  liff.openWindow({ url: url.toString(), external: true });
+  return true;
+}
+
+/**
  * 開啟首都之星官方 LINE 帳號。
  *
  * 未加入好友：

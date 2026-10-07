@@ -38,6 +38,7 @@ export function UpcomingReservationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const geolocation = useGeolocation();
+  const historyGeolocation = useGeolocation();
   const [userId, setUserId] = useState<string | null>(null);
   const [identityCode, setIdentityCode] = useState<string | null>(null);
   const [passengerName, setPassengerName] = useState<string | null>(null);
@@ -81,7 +82,10 @@ export function UpcomingReservationPage() {
       getUpcomingReservations(profile.userId),
       getRecentReservations(profile.userId),
     ]);
-    const requestedReservationId = searchParams.get("reservationId");
+    // 由外部瀏覽器開啟時，reservationId 位於 # 前面的 query string
+    const requestedReservationId =
+      searchParams.get("reservationId") ??
+      new URLSearchParams(window.location.search).get("reservationId");
     const nextReservation = requestedReservationId
       ? (upcomingReservations.find(
           (item) => item.reservationId === requestedReservationId,
@@ -161,11 +165,43 @@ export function UpcomingReservationPage() {
           )}
         />
         <section className="mt-6 rounded-panel bg-white p-4 shadow-card ring-1 ring-bus-100/80 md:p-5">
-          <div className="mb-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="mt-1 text-2xl font-black text-ink-900">
               歷史預約紀錄
             </h2>
+            <button
+              type="button"
+              disabled={historyGeolocation.state.status === "loading"}
+              onClick={() => {
+                void historyGeolocation.requestPosition().catch(() => {
+                  // useGeolocation 已將失敗原因存入 state，顯示在下方。
+                });
+              }}
+              className="min-h-11 rounded-xl bg-bus-700 px-4 text-base font-black text-white transition hover:bg-bus-900 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-bus-100 disabled:cursor-wait disabled:opacity-60"
+            >
+              {historyGeolocation.state.status === "loading"
+                ? "定位中…"
+                : "取得目前 GPS 位置"}
+            </button>
           </div>
+          {historyGeolocation.state.status === "success" && (
+            <p
+              role="status"
+              className="mb-4 rounded-xl bg-bus-50 p-3 text-sm font-bold text-bus-900 ring-1 ring-bus-100"
+            >
+              定位成功：緯度 {historyGeolocation.state.latitude.toFixed(6)}
+              、經度 {historyGeolocation.state.longitude.toFixed(
+                6,
+              )}（精確度約 {Math.round(historyGeolocation.state.accuracy)}{" "}
+              公尺）
+            </p>
+          )}
+          {(historyGeolocation.state.status === "error" ||
+            historyGeolocation.state.status === "unsupported") && (
+            <div className="mb-4">
+              <GpsCoordinatesCard state={historyGeolocation.state} />
+            </div>
+          )}
           {isRecentReservationsLoading ? (
             <p className="py-8 text-center text-base font-bold text-ink-500">
               正在讀取歷史預約紀錄…

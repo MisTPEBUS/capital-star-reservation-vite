@@ -4,6 +4,7 @@ import {
   type UpcomingReservation,
 } from "../api/reservations";
 import { Toast, type ToastMessage } from "./Toast";
+import { UsedStamp } from "./UsedStamp";
 import { getReservationTicketMessage } from "../utils/reservationTicketMessage";
 
 interface UpcomingReservationCardProps {
@@ -110,8 +111,13 @@ export function UpcomingReservationCard({
       {/* <SectionTitle eyebrow="" title="預約乘車憑證" description="" /> */}
       <article
         aria-label="預約乘車憑證"
-        className="mt-4 overflow-hidden rounded-[22px] border-2 border-[#D7B94A] bg-[#FFF3B0] shadow-[0_20px_45px_rgba(107,90,37,0.22)]"
+        className="relative mt-4 overflow-hidden rounded-[22px] border-2 border-[#D7B94A] bg-[#FFF3B0] shadow-[0_20px_45px_rgba(107,90,37,0.22)]"
       >
+        {checkedInAt?.trim() && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+            <UsedStamp />
+          </div>
+        )}
         <div
           className="relative px-4 pt-4 md:px-5 md:pt-5"
           style={{

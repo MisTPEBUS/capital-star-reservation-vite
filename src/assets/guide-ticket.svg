@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="720" viewBox="0 0 1080 720" role="img" aria-label="查看乘車憑證">
+  <rect width="1080" height="720" rx="28" fill="#fff8e6"/>
+  <circle cx="90" cy="90" r="125" fill="#fff3b8"/>
+  <circle cx="1010" cy="650" r="155" fill="#fff3b8"/>
+  <rect x="177" y="64" width="726" height="592" rx="32" fill="#fff" stroke="#ffe169" stroke-width="3"/>
+  <rect x="177" y="64" width="726" height="118" rx="32" fill="#072b50"/>
+  <path d="M177 146h726v36H177z" fill="#072b50"/>
+  <text x="221" y="132" fill="#fff" font-family="sans-serif" font-size="34" font-weight="700">首都之星預約</text>
+  <circle cx="540" cy="276" r="54" fill="#fff3b8"/>
+  <path d="m516 278 17 18 33-39" fill="none" stroke="#074f80" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="540" y="374" text-anchor="middle" fill="#072b50" font-family="sans-serif" font-size="36" font-weight="700">預約成功</text>
+  <rect x="230" y="414" width="620" height="138" rx="18" fill="#eaf7ff" stroke="#cfefff" stroke-width="2"/>
+  <text x="260" y="459" fill="#64748b" font-family="sans-serif" font-size="21">乘車憑證</text>
+  <text x="260" y="513" fill="#072b50" font-family="sans-serif" font-size="31" font-weight="700">請於上車時出示此畫面</text>
+  <text x="540" y="612" text-anchor="middle" fill="#074f80" font-family="sans-serif" font-size="22" font-weight="700">可於近期預約紀錄再次查看</text>
+</svg>

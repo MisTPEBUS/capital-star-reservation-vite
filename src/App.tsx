@@ -43,6 +43,7 @@ import {
   initLiff,
   isOfficialAccountFriend,
   openOfficialAccount,
+  openTicketInExternalBrowser,
   LiffProfile,
 } from "./liff/liffClient";
 import axios from "axios";
@@ -828,11 +829,15 @@ function App() {
             <AvailableTicketsMenu
               reservations={recentReservations}
               isLoading={recentReservationsLoading}
-              onSelect={(reservation) =>
+              onSelect={(reservation) => {
+                if (openTicketInExternalBrowser(reservation.reservationId)) {
+                  return;
+                }
+
                 navigate(
                   `/ticket?reservationId=${encodeURIComponent(reservation.reservationId)}`,
-                )
-              }
+                );
+              }}
             />
 
             {authProfileError && (

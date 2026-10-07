@@ -33,9 +33,10 @@ function DialogOverlay({
 function DialogContent({
   className,
   closeButtonClassName,
+  showCloseButton = true,
   children,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & { closeButtonClassName?: string }) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & { closeButtonClassName?: string; showCloseButton?: boolean }) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -48,7 +49,7 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close
+        {showCloseButton && <DialogPrimitive.Close
           className={cn(
             "absolute right-4 top-4 rounded-sm p-2 text-ink-500 transition hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bus-500",
             closeButtonClassName,
@@ -56,7 +57,7 @@ function DialogContent({
           aria-label="關閉"
         >
           <X className="size-5" />
-        </DialogPrimitive.Close>
+        </DialogPrimitive.Close>}
       </DialogPrimitive.Content>
     </DialogPortal>
   );

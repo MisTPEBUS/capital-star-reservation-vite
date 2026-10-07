@@ -1,22 +1,30 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import App from "./App";
 import AdminApp from "./admin/AdminApp";
-import { UpcomingReservationPage } from "./pages/UpcomingReservationPage";
 import { FaqPage } from "./pages/FaqPage";
 import { FrontendUIKitPage } from "./pages/FrontendUIKitPage";
-import { RegisterProfilePage } from "./pages/RegisterProfilePage";
-import { initializeLiff } from "./liff/liffClient";
+import { SystemGuideDemoPage } from "./pages/SystemGuideDemoPage";
 
 import "./index.css";
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION;
 const APP_VERSION_KEY = "capital_star_app_version";
+const App = lazy(() => import("./App"));
+const RegisterProfilePage = lazy(() =>
+  import("./pages/RegisterProfilePage").then((module) => ({ default: module.RegisterProfilePage })),
+);
+const UpcomingReservationPage = lazy(() =>
+  import("./pages/UpcomingReservationPage").then((module) => ({ default: module.UpcomingReservationPage })),
+);
 
 function isAdminRoute() {
   return window.location.hash.startsWith("#/admin");
+}
+
+function isDialogDemoRoute() {
+  return window.location.hash.split("?")[0] === "#/dialog-demo";
 }
 
 function handleAppVersion() {
@@ -41,10 +49,13 @@ function handleAppVersion() {
 }
 
 async function bootstrap() {
-  handleAppVersion();
+  const isDemo = isDialogDemoRoute();
 
-  if (!isAdminRoute()) {
+  if (!isDemo) handleAppVersion();
+
+  if (!isAdminRoute() && !isDemo) {
     try {
+      const { initializeLiff } = await import("./liff/liffClient");
       await initializeLiff();
     } catch (error) {
       console.error("LIFF_INIT_ERROR:", error);
@@ -54,15 +65,18 @@ async function bootstrap() {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <HashRouter>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/register" element={<RegisterProfilePage />} />
-          <Route path="/ticket" element={<UpcomingReservationPage />} />
-          <Route path="/faq" element={<FaqPage />} />
-          <Route path="/ui-kit" element={<FrontendUIKitPage />} />
-          <Route path="/admin/*" element={<AdminApp />} />
-          <Route path="*" element={<Navigate replace to="/" />} />
-        </Routes>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/register" element={<RegisterProfilePage />} />
+            <Route path="/ticket" element={<UpcomingReservationPage />} />
+            <Route path="/faq" element={<FaqPage />} />
+            <Route path="/ui-kit" element={<FrontendUIKitPage />} />
+            <Route path="/dialog-demo" element={<SystemGuideDemoPage />} />
+            <Route path="/admin/*" element={<AdminApp />} />
+            <Route path="*" element={<Navigate replace to="/" />} />
+          </Routes>
+        </Suspense>
       </HashRouter>
     </React.StrictMode>,
   );
