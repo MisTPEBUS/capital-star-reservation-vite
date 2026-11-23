@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 export interface ToastMessage {
   type: "success" | "error" | "info";
@@ -9,6 +10,8 @@ interface ToastProps {
   toast: ToastMessage | null;
   onClose: () => void;
   duration?: number;
+  /** 調整位置，例如頁面有固定底部操作列時改為 bottom-24 */
+  className?: string;
 }
 
 const toastStyles: Record<ToastMessage["type"], string> = {
@@ -17,7 +20,12 @@ const toastStyles: Record<ToastMessage["type"], string> = {
   info: "border-bus-100 bg-bus-50 text-bus-800",
 };
 
-export function Toast({ toast, onClose, duration = 3000 }: ToastProps) {
+export function Toast({
+  toast,
+  onClose,
+  duration = 3000,
+  className,
+}: ToastProps) {
   useEffect(() => {
     if (!toast) return;
 
@@ -28,7 +36,12 @@ export function Toast({ toast, onClose, duration = 3000 }: ToastProps) {
   if (!toast) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] w-[calc(100%-2rem)] max-w-sm">
+    <div
+      className={cn(
+        "fixed bottom-4 right-4 z-[60] w-[calc(100%-2rem)] max-w-sm",
+        className,
+      )}
+    >
       <div
         className={`flex items-start justify-between gap-3 rounded-2xl border p-3 shadow-soft ${toastStyles[toast.type]}`}
         role="status"

@@ -30,6 +30,10 @@ export default {
         },
         cream: "#FFF8E6",
         coral: "#FF7A45",
+        cardFace: {
+          green: "#3AAA35",
+          pink: "#F4A7C0",
+        },
         admin: {
           bg: "#355766",
           surface: "#426979",
@@ -58,6 +62,24 @@ export default {
         card: "0 16px 38px rgba(8, 120, 190, 0.12)",
         lift: "0 16px 28px rgba(7, 43, 80, 0.20)",
         adminPanel: "0 22px 44px -18px rgb(28 56 67 / 0.42)",
+      },
+      backgroundImage: {
+        "card-silver":
+          "radial-gradient(circle at 35% 30%, #F8FAFC 0%, #D9DEE5 55%, #B8C0CA 100%)",
+      },
+      keyframes: {
+        "sheet-up": {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+      },
+      animation: {
+        "sheet-up": "sheet-up 220ms ease-out",
+        "fade-in": "fade-in 160ms ease-out",
       },
       fontFamily: {
         sans: ["Inter", "Noto Sans TC", "system-ui", "sans-serif"],

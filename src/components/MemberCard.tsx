@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { PassengerProfile, RouteInfo } from "../types/reservation";
 import { SectionTitle } from "./SectionTitle";
 
@@ -5,12 +6,15 @@ interface MemberCardProps {
   passenger: PassengerProfile;
   route: RouteInfo;
   onEditProfile?: () => void;
+  /** 顯示在會員識別卡下方的內容，例如「我的乘車卡」入口 */
+  footer?: ReactNode;
 }
 
 export function MemberCard({
   passenger,
   route,
   onEditProfile,
+  footer,
 }: MemberCardProps) {
   return (
     <section className="rounded-panel bg-white p-4 shadow-card ring-1 ring-bus-100/80 md:p-5">
@@ -57,6 +61,7 @@ export function MemberCard({
           </div>
         </div>
       </div>
+      {footer}
     </section>
   );
 }

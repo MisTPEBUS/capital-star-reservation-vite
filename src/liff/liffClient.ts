@@ -61,6 +61,20 @@ export async function initLiff(): Promise<LiffProfile | null> {
 }
 
 /**
+ * 取得目前 LIFF 的 ID token，供需要 X-Line-Id-Token 的 API 使用。
+ * 未登入或取不到 token 時回傳 null。
+ */
+export async function getLiffIdToken(): Promise<string | null> {
+  await initializeLiff();
+
+  if (!liff.isLoggedIn()) {
+    return null;
+  }
+
+  return liff.getIDToken();
+}
+
+/**
  * 判斷目前使用者是否已加入
  * LINE Login Channel 綁定的官方帳號。
  */
@@ -107,6 +121,33 @@ export function openTicketInExternalBrowser(reservationId: string): boolean {
 /**
  * 顯示 LINE 官方的加入好友 / 解除封鎖視窗。
  */
-export function openOfficialAccount(): void {
+/* export function openOfficialAccount(): void {
   window.location.href = "https://line.me/R/ti/p/%40280suimv";
+} */
+
+/**
+ * 顯示 LINE 官方帳號加入好友視窗。
+ *
+ * LIFF 內：使用 requestFriendship()
+ * 外部瀏覽器：開啟官方帳號連結
+ */
+export async function openOfficialAccount(): Promise<void> {
+  const basicId = import.meta.env.VITE_LINE_OA_BASIC_ID?.trim();
+
+  if (!basicId) {
+    throw new Error("VITE_LINE_OA_BASIC_ID 尚未設定");
+  }
+
+  await initializeLiff();
+
+  // LINE LIFF 內優先使用官方好友視窗
+  if (liff.isInClient() && liff.isLoggedIn()) {
+    await liff.requestFriendship();
+    return;
+  }
+
+  // 外部瀏覽器備援
+  const url = `https://line.me/R/ti/p/${encodeURIComponent(basicId)}`;
+
+  window.location.assign(url);
 }
