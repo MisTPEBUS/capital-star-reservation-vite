@@ -13,6 +13,10 @@ import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
 import { UpcomingReservationCard } from "./components/UpcomingReservationCard";
 import { AvailableTicketsMenu } from "./components/AvailableTicketsMenu";
+import { UserCardEntry } from "./components/features/userCards/UserCardEntry";
+import { UserCardGuideDialog } from "./components/features/userCards/UserCardGuideDialog";
+import { useUserCards } from "./hooks/useUserCards";
+import { useUserCardGuide } from "./hooks/useUserCardGuide";
 import {
   AuthProfile,
   getPreferredProfileName,
@@ -115,6 +119,11 @@ function App() {
   const [liffError, setLiffError] = useState("");
   const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
   const [authProfileError, setAuthProfileError] = useState("");
+  // 會員資料就緒後才讀取乘車卡，避免未註冊會員打到卡片 API
+  const userCards = useUserCards({ enabled: Boolean(authProfile?.userId) });
+  const userCardGuide = useUserCardGuide(
+    userCards.status === "success" && userCards.cards.length === 0,
+  );
   const [upcomingReservations, setUpcomingReservations] = useState<
     UpcomingReservation[]
   >([]);
@@ -810,6 +819,15 @@ function App() {
                   state: { returnTo: "/" },
                 })
               }
+              footer={
+                authProfile ? (
+                  <UserCardEntry
+                    status={userCards.status}
+                    cardCount={userCards.cards.length}
+                    onRetry={() => void userCards.reload()}
+                  />
+                ) : null
+              }
             />
             {/*    <UpcomingReservationCard
               reservation={activeUpcomingReservation}
@@ -986,6 +1004,14 @@ function App() {
         <ReservationRestrictionDialog
           open={isRestrictionDialogOpen}
           onOpenChange={setIsRestrictionDialogOpen}
+        />
+        <UserCardGuideDialog
+          open={userCardGuide.isOpen}
+          onDismiss={userCardGuide.dismiss}
+          onGoToCards={() => {
+            userCardGuide.dismiss();
+            navigate("/cards");
+          }}
         />
       </main>
     </div>

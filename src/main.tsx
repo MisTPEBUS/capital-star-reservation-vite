@@ -18,6 +18,9 @@ const RegisterProfilePage = lazy(() =>
 const UpcomingReservationPage = lazy(() =>
   import("./pages/UpcomingReservationPage").then((module) => ({ default: module.UpcomingReservationPage })),
 );
+const UserCardsPage = lazy(() =>
+  import("./pages/UserCardsPage").then((module) => ({ default: module.UserCardsPage })),
+);
 
 function isAdminRoute() {
   return window.location.hash.startsWith("#/admin");
@@ -70,6 +73,7 @@ async function bootstrap() {
             <Route path="/" element={<App />} />
             <Route path="/register" element={<RegisterProfilePage />} />
             <Route path="/ticket" element={<UpcomingReservationPage />} />
+            <Route path="/cards" element={<UserCardsPage />} />
             <Route path="/faq" element={<FaqPage />} />
             <Route path="/ui-kit" element={<FrontendUIKitPage />} />
             <Route path="/dialog-demo" element={<SystemGuideDemoPage />} />
