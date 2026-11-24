@@ -18,17 +18,19 @@ export function MemberCard({
 }: MemberCardProps) {
   return (
     <section className="rounded-panel bg-white p-4 shadow-card ring-1 ring-bus-100/80 md:p-5">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <SectionTitle
-          eyebrow="乘客會員資訊"
-          title=""
-          description="識別碼是乘客預約與現場核對的主要識別資料。"
-        />
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-[1_1_16rem]">
+          <SectionTitle
+            eyebrow="乘客會員資訊"
+            title=""
+            description="識別碼是乘客預約與現場核對的主要識別資料。"
+          />
+        </div>
         {onEditProfile ? (
           <button
             type="button"
             onClick={onEditProfile}
-            className="h-10 shrink-0 rounded-xl border border-bus-100 bg-white px-4 text-sm font-black text-bus-700 transition hover:bg-bus-50"
+            className="ml-auto min-h-10 shrink-0 rounded-xl border border-bus-100 bg-white px-4 py-2 text-sm font-black text-bus-700 transition hover:bg-bus-50"
           >
             修改資料
           </button>

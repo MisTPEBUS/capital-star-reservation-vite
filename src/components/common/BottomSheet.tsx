@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
 interface BottomSheetProps {
@@ -25,6 +25,8 @@ export function BottomSheet({
   role = "dialog",
   children,
 }: BottomSheetProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && !dismissible) return;
     onOpenChange(nextOpen);
@@ -35,6 +37,13 @@ export function BottomSheet({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 animate-fade-in bg-bus-900/55" />
         <DialogPrimitive.Content
+          ref={contentRef}
+          onOpenAutoFocus={(event) => {
+            // 不自動聚焦第一個欄位，避免手機一開啟就彈出鍵盤；
+            // 焦點改放在面板本身，鍵盤與螢幕閱讀器操作仍留在面板內
+            event.preventDefault();
+            contentRef.current?.focus();
+          }}
           role={role}
           // 沒有說明文字時明確關閉 aria-describedby，避免 Radix 警告
           {...(description ? {} : { "aria-describedby": undefined })}

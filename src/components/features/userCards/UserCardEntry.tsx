@@ -81,7 +81,7 @@ export function UserCardEntry({ status, cardCount, onRetry }: UserCardEntryProps
             hasCards ? "text-ink-500" : "text-amber-700",
           )}
         >
-          {hasCards ? "查看與管理已綁定卡片" : "尚未綁定乘車卡"}
+          {hasCards ? "查看與管理已綁定卡片" : "尚未綁定"}
         </span>
       </span>
       <ChevronRight className="size-6 shrink-0 text-ink-500" aria-hidden="true" />

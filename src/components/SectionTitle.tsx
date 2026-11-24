@@ -11,7 +11,7 @@ export function SectionTitle({
 }: SectionTitleProps) {
   return (
     <div className="mb-3">
-      <p className="text-base font-black uppercase tracking-[0.28em] text-bus-600">
+      <p className="text-base font-black uppercase tracking-[0.08em] text-bus-600 sm:tracking-[0.28em]">
         {eyebrow}
       </p>
       <h2 className="mt-1 text-2xl font-black tracking-tight text-ink-900">

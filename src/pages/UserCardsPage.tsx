@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toast, type ToastMessage } from "../components/Toast";
 import { AddUserCardSheet } from "../components/features/userCards/AddUserCardSheet";
@@ -34,12 +34,19 @@ export function UserCardsPage() {
   const { cards, status, error, reload, addCard, removeCard } = useUserCards();
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
   const [cardToDelete, setCardToDelete] = useState<UserCard | null>(null);
-  const [recentlyAddedCardId, setRecentlyAddedCardId] = useState<string | null>(null);
+  const [recentlyAddedCardId, setRecentlyAddedCardId] = useState<string | null>(
+    null,
+  );
   const [toast, setToast] = useState<ToastMessage | null>(null);
   // Toast 以 onClose 作為計時 effect 的依賴，需維持穩定參照
   const closeToast = useCallback(() => setToast(null), []);
 
   const isFull = cards.length >= MAX_USER_CARDS;
+
+  // 與其他頁面一致：頁面標題顯示在 LINE 的頁首
+  useEffect(() => {
+    document.title = "我的乘車卡 — Capital Star";
+  }, []);
 
   const handleCardAdded = (card: UserCard) => {
     setIsAddSheetOpen(false);
@@ -64,26 +71,20 @@ export function UserCardsPage() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] text-ink-900">
-      <header className="sticky top-0 z-30 border-b border-bus-100 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-[820px] items-center gap-1 pl-1.5 pr-3">
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            aria-label="返回首頁"
-            className="grid size-11 place-items-center rounded-[14px] text-bus-700 hover:bg-bus-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bus-500"
-          >
-            <ChevronLeft className="size-7" aria-hidden="true" />
-          </button>
-          <h1 className="text-xl font-black">我的乘車卡</h1>
-        </div>
-      </header>
-
       <div className="mx-auto flex w-full max-w-[820px] flex-col gap-3 px-3 pb-28 pt-3">
-        {status === "idle" || status === "loading" ? <UserCardsSkeleton /> : null}
+        {/* 標題由 LINE 頁首（document.title）顯示，這裡只保留給螢幕閱讀器 */}
+        <h1 className="sr-only">我的乘車卡</h1>
+
+        {status === "idle" || status === "loading" ? (
+          <UserCardsSkeleton />
+        ) : null}
 
         {status === "error" ? (
           <UserCardsLoadError
-            feedback={getUserCardErrorFeedback(error, "請檢查網路連線後再試一次。")}
+            feedback={getUserCardErrorFeedback(
+              error,
+              "請檢查網路連線後再試一次。",
+            )}
             onRetry={reload}
           />
         ) : null}

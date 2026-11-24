@@ -74,6 +74,18 @@ export async function getLiffIdToken(): Promise<string | null> {
   return liff.getIDToken();
 }
 
+export async function getLiffDecodedIdToken(): Promise<
+  ReturnType<typeof liff.getDecodedIDToken>
+> {
+  await initializeLiff();
+
+  if (!liff.isLoggedIn()) {
+    return null;
+  }
+
+  return liff.getDecodedIDToken();
+}
+
 /**
  * 判斷目前使用者是否已加入
  * LINE Login Channel 綁定的官方帳號。
