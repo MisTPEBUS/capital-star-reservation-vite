@@ -1,6 +1,7 @@
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 export type ReservationStatus = 'RESERVED' | 'CANCELLED' | null;
 export type TimePeriod = 'ALL' | 'MORNING' | 'AFTERNOON' | 'EVENING';
+export type BookingSelectionChangeSource = 'pickup' | 'date' | 'time';
 
 export interface PassengerProfile {
   userId: string;

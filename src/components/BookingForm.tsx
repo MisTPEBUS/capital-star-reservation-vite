@@ -1,11 +1,10 @@
 import type {
   BookingSelection,
+  BookingSelectionChangeSource,
   PickupStop,
   TimePeriod,
 } from "../types/reservation";
 import { SectionTitle } from "./SectionTitle";
-
-export type BookingSelectionChangeSource = "pickup" | "date" | "time";
 
 interface BookingFormProps {
   stops: PickupStop[];

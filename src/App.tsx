@@ -1,56 +1,34 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import busHero from "./assets/bus-main.png";
-import busSide from "./assets/bus-side.png";
-import {
-  BookingForm,
-  type BookingSelectionChangeSource,
-} from "./components/BookingForm";
+import { BookingForm } from "./components/BookingForm";
 import { ReservationDialog } from "./components/ReservationDialog";
 import { ReservationRestrictionDialog } from "./components/ReservationRestrictionDialog";
 import { MemberCard } from "./components/MemberCard";
 import { ScheduleList } from "./components/ScheduleList";
 import { SuccessModal } from "./components/SuccessModal";
-import { UpcomingReservationCard } from "./components/UpcomingReservationCard";
 import { AvailableTicketsMenu } from "./components/AvailableTicketsMenu";
+import { ReservationActionBar } from "./components/features/reservation/ReservationActionBar";
+import { MemberSessionStatus } from "./components/features/reservation/MemberSessionStatus";
 import { UserCardEntry } from "./components/features/userCards/UserCardEntry";
 import { UserCardGuideDialog } from "./components/features/userCards/UserCardGuideDialog";
+import { useMemberSession } from "./hooks/useMemberSession";
+import { usePickupStops } from "./hooks/usePickupStops";
+import { useBookingSelection } from "./hooks/useBookingSelection";
+import { useBookingSchedules } from "./hooks/useBookingSchedules";
+import { useReservationHistory } from "./hooks/useReservationHistory";
+import { useCreateReservation } from "./hooks/useCreateReservation";
 import { useUserCards } from "./hooks/useUserCards";
 import { useUserCardGuide } from "./hooks/useUserCardGuide";
+import { openTicketInExternalBrowser } from "./liff/liffClient";
 import {
-  AuthProfile,
-  getPreferredProfileName,
-  getSexTitle,
-  getAuthProfile,
-  isProfileRegistrationRequired,
-} from "./api/auth";
-import {
-  createReservation,
-  ReservationApiError,
-  getRecentReservations,
-  getUpcomingReservations,
-  RecentReservation,
-  UpcomingReservation,
-} from "./api/reservations";
-import { getSchedules } from "./api/schedules";
-import { type AdminStop, getStops } from "./api/admin/stops";
-import { getAvailableDates, passengerProfile } from "./data/mockData";
+  getDisplayPassengerProfile,
+  getReservationPassengerName,
+} from "./utils/memberProfile";
 import type {
   BookingSelection,
-  OpenSchedule,
-  PickupStop,
-  ReservationResult,
+  BookingSelectionChangeSource,
   RouteInfo,
-  TimePeriod,
 } from "./types/reservation";
-import {
-  initLiff,
-  isOfficialAccountFriend,
-  openOfficialAccount,
-  openTicketInExternalBrowser,
-  LiffProfile,
-} from "./liff/liffClient";
-import axios from "axios";
 
 const route: RouteInfo = {
   routeId: "route_yilan_wujie",
@@ -60,726 +38,114 @@ const route: RouteInfo = {
   stops: [],
 };
 
-const toPickupStop = (stop: AdminStop): PickupStop => ({
-  stopId: stop.stopId,
-  stopName: stop.stopName,
-  stopType: stop.stopType === "STATION" ? "MAIN_STATION" : "ROADSIDE",
-  address: stop.address ?? "",
-  shortLabel: stop.stopName,
-});
-
-const getPeriod = (time: string): TimePeriod => {
-  const hour = Number(time.split(":")[0]);
-
-  if (hour < 12) return "MORNING";
-  if (hour < 18) return "AFTERNOON";
-  return "EVENING";
-};
-
-const formatDateTime = (value: string | Date) => {
-  return new Intl.DateTimeFormat("zh-TW", {
-    dateStyle: "short",
-    timeStyle: "short",
-    hour12: false,
-  }).format(new Date(value));
-};
-
-const getReservationDepartureTimestamp = (reservation: UpcomingReservation) => {
-  const dateMatch = reservation.openDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  const timeMatch = reservation.departureTime.match(/^(\d{1,2}):(\d{2})/);
-
-  if (!dateMatch || !timeMatch) return Number.NaN;
-
-  const [, year, month, day] = dateMatch;
-  const [, hour, minute] = timeMatch;
-
-  return new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hour),
-    Number(minute),
-  ).getTime();
-};
-
 function App() {
   const navigate = useNavigate();
-  const availableDates = useMemo(() => getAvailableDates(), []);
-  const requestedStopId = useMemo(
-    () =>
-      new URLSearchParams(window.location.search).get("stopId")?.trim() ?? "",
-    [],
+  const member = useMemberSession();
+  const pickupStops = usePickupStops();
+  const booking = useBookingSelection(
+    route.routeId,
+    pickupStops.stops,
+    pickupStops.status,
+    member.liffStatus === "success",
   );
-  const hasAppliedInitialStop = useRef(false);
-  const hasScrolledToRequestedStop = useRef(false);
-  const hasOpenedOfficialAccount = useRef(false);
-
-  const [liffProfile, setLiffProfile] = useState<LiffProfile | null>(null);
-  const [liffLoading, setLiffLoading] = useState(true);
-  const [liffError, setLiffError] = useState("");
-  const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
-  const [authProfileError, setAuthProfileError] = useState("");
-  // 會員資料就緒後才讀取乘車卡，避免未註冊會員打到卡片 API
-  const userCards = useUserCards({ enabled: Boolean(authProfile?.userId) });
+  const schedules = useBookingSchedules({
+    lineUserId: member.liffProfile?.lineUserId ?? null,
+    openDate: booking.selection.openDate,
+    pickupStopId: booking.selection.pickupStopId,
+    timePeriod: booking.selection.timePeriod,
+  });
+  const history = useReservationHistory(member.authProfile?.userId ?? null);
+  const reservation = useCreateReservation({
+    lineUserId: member.liffProfile?.lineUserId ?? null,
+    userId: member.authProfile?.userId ?? null,
+    pickupStopId: booking.selection.pickupStopId,
+    activeCode: member.authProfile?.activeCode ?? "",
+  });
+  const userCards = useUserCards({
+    enabled: Boolean(member.authProfile?.userId),
+  });
   const userCardGuide = useUserCardGuide(
     userCards.status === "success" && userCards.cards.length === 0,
   );
-  const [upcomingReservations, setUpcomingReservations] = useState<
-    UpcomingReservation[]
-  >([]);
-  const [upcomingReservationsLoading, setUpcomingReservationsLoading] =
-    useState(false);
-  const [recentReservations, setRecentReservations] = useState<
-    RecentReservation[]
-  >([]);
-  const [recentReservationsLoading, setRecentReservationsLoading] =
-    useState(false);
-  const [pickupStops, setPickupStops] = useState<PickupStop[]>([]);
-  const [pickupStopsLoading, setPickupStopsLoading] = useState(true);
-  const [pickupStopsError, setPickupStopsError] = useState("");
-  const [pickupStopsRetryKey, setPickupStopsRetryKey] = useState(0);
-
-  const [selection, setSelection] = useState<BookingSelection>({
-    routeId: route.routeId,
-    pickupStopId: "",
-    openDate: availableDates[0].value,
-    timePeriod: "ALL",
-  });
-  const [schedules, setSchedules] = useState<OpenSchedule[]>([]);
-  const [schedulesLoading, setSchedulesLoading] = useState(false);
-  const [schedulesError, setSchedulesError] = useState("");
-  const [canReserve, setCanReserve] = useState(true);
-  const [reservationError, setReservationError] = useState("");
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
-    null,
-  );
-  const [pendingScrollTarget, setPendingScrollTarget] = useState<
-    "date" | "time" | "schedules" | null
-  >(null);
-  const [isReservationDialogOpen, setIsReservationDialogOpen] = useState(false);
-  const [isRestrictionDialogOpen, setIsRestrictionDialogOpen] = useState(false);
-  const [reservingScheduleId, setReservingScheduleId] = useState<string | null>(
-    null,
-  );
-
-  const [reservationResult, setReservationResult] =
-    useState<ReservationResult | null>(null);
 
   useEffect(() => {
     document.title = "預約首頁 — Capital Star";
   }, []);
 
-  const displayRoute = useMemo<RouteInfo>(
-    () => ({
-      ...route,
-      stops: pickupStops,
-    }),
-    [pickupStops],
-  );
-
-  const filteredSchedules = useMemo(() => {
-    return schedules
-      .filter(
-        (schedule) =>
-          selection.timePeriod === "ALL" ||
-          getPeriod(schedule.departureTime) === selection.timePeriod,
-      )
-      .sort((a, b) => a.departureTime.localeCompare(b.departureTime));
-  }, [schedules, selection.timePeriod]);
-
-  const activeUpcomingReservation = useMemo(() => {
-    const now = Date.now();
-
-    return (
-      upcomingReservations.find(
-        (reservation) =>
-          reservation.status === "RESERVED" &&
-          getReservationDepartureTimestamp(reservation) > now,
-      ) ?? null
-    );
-  }, [upcomingReservations]);
-
-  const hasReservationOnSelectedDate = useMemo(
-    () =>
-      upcomingReservations.some(
-        (reservation) =>
-          reservation.status === "RESERVED" &&
-          reservation.openDate.slice(0, 10) === selection.openDate,
-      ),
-    [selection.openDate, upcomingReservations],
-  );
-
-  const selectedSchedule = useMemo(
-    () =>
-      filteredSchedules.find(
-        (schedule) => schedule.dailyOpenScheduleId === selectedScheduleId,
-      ) ?? null,
-    [filteredSchedules, selectedScheduleId],
-  );
-
   useEffect(() => {
-    if (
-      selectedScheduleId &&
-      !filteredSchedules.some(
-        (schedule) => schedule.dailyOpenScheduleId === selectedScheduleId,
-      )
-    ) {
-      setSelectedScheduleId(null);
-    }
-  }, [filteredSchedules, selectedScheduleId]);
-
-  useEffect(() => {
-    if (!pendingScrollTarget || schedulesLoading) return;
+    const target = booking.pendingScrollTarget;
+    if (!target || schedules.status === "loading") return;
 
     const hasSchedules =
-      pendingScrollTarget === "time" || pendingScrollTarget === "date"
-        ? schedules.length > 0
-        : filteredSchedules.length > 0;
-
-    if (!schedulesError && hasSchedules) {
-      const targetId =
-        pendingScrollTarget === "date"
-          ? "booking-date"
-          : pendingScrollTarget === "time"
-            ? "booking-time"
-            : "schedule-list";
-
-      window.setTimeout(() => {
-        document
-          .getElementById(targetId)
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 0);
-    }
-
-    setPendingScrollTarget(null);
-  }, [
-    filteredSchedules.length,
-    pendingScrollTarget,
-    schedules.length,
-    schedulesError,
-    schedulesLoading,
-  ]);
-
-  const displayPassengerProfile = {
-    ...passengerProfile,
-    userId: authProfile?.userId ?? passengerProfile.userId,
-    displayName: authProfile
-      ? getPreferredProfileName(
-          authProfile,
-          liffProfile?.displayName ?? passengerProfile.displayName,
-        )
-      : (liffProfile?.displayName ?? passengerProfile.displayName),
-    firstName: authProfile?.firstName ?? null,
-    sex: authProfile?.sex ?? null,
-    pictureUrl: liffProfile?.pictureUrl ?? "",
-    lineUserId: liffProfile?.lineUserId ?? passengerProfile.userId,
-    activeCode: authProfile?.activeCode ?? "",
-    phoneNumber: authProfile?.phone ?? passengerProfile.phoneNumber,
-    email: authProfile?.email ?? passengerProfile.email,
-    status: authProfile?.status ?? passengerProfile.status,
-  };
-
-  const reservationPassengerName =
-    authProfile?.firstName?.trim() && getSexTitle(authProfile.sex)
-      ? `${authProfile.firstName.trim()}${getSexTitle(authProfile.sex)}`
-      : "";
-
-  useEffect(() => {
-    async function bootLiff() {
-      try {
-        const profile = await initLiff();
-
-        if (profile) {
-          setLiffProfile(profile);
-        }
-      } catch (error) {
-        console.error("LIFF_INIT_ERROR:", error);
-
-        const message =
-          error instanceof Error ? error.message : "LINE LIFF 初始化失敗";
-
-        setLiffError(message);
-      } finally {
-        setLiffLoading(false);
-      }
-    }
-
-    bootLiff();
-  }, []);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    async function loadPickupStops() {
-      try {
-        setPickupStopsLoading(true);
-        setPickupStopsError("");
-
-        const stops = await getStops();
-        const activeStops = stops
-          .filter((stop) => stop.status === "ACTIVE")
-          .map(toPickupStop);
-        const requestedStopExists = activeStops.some(
-          (stop) => stop.stopId === requestedStopId,
-        );
-
-        if (!isCurrent) return;
-
-        setPickupStops(activeStops);
-        setSelection((current) => {
-          const hasCurrentStop = activeStops.some(
-            (stop) => stop.stopId === current.pickupStopId,
-          );
-
-          const pickupStopId = !hasAppliedInitialStop.current
-            ? requestedStopExists
-              ? requestedStopId
-              : (activeStops[0]?.stopId ?? "")
-            : hasCurrentStop
-              ? current.pickupStopId
-              : (activeStops[0]?.stopId ?? "");
-
-          if (activeStops.length > 0) {
-            hasAppliedInitialStop.current = true;
-          }
-
-          return {
-            ...current,
-            pickupStopId,
-          };
-        });
-
-        if (requestedStopExists && !hasScrolledToRequestedStop.current) {
-          hasScrolledToRequestedStop.current = true;
-          window.setTimeout(() => {
+      target === "schedules"
+        ? schedules.filteredSchedules.length > 0
+        : schedules.schedules.length > 0;
+    const targetId =
+      target === "date"
+        ? "booking-date"
+        : target === "time"
+          ? "booking-time"
+          : "schedule-list";
+    const timer =
+      schedules.status === "success" && hasSchedules
+        ? window.setTimeout(() => {
             document
-              .getElementById("booking-pickup")
+              .getElementById(targetId)
               ?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }, 0);
-        }
-      } catch (error) {
-        if (!isCurrent) return;
+          }, 0)
+        : null;
 
-        console.error("PICKUP_STOPS_ERROR:", error);
-
-        const message =
-          error instanceof Error ? error.message : "上車站資料讀取失敗";
-
-        setPickupStops([]);
-        setSelection((current) => ({ ...current, pickupStopId: "" }));
-        setPickupStopsError(message);
-      } finally {
-        if (isCurrent) {
-          setPickupStopsLoading(false);
-        }
-      }
-    }
-
-    loadPickupStops();
-
+    booking.clearPendingScrollTarget();
     return () => {
-      isCurrent = false;
-    };
-  }, [pickupStopsRetryKey, requestedStopId]);
-
-  useEffect(() => {
-    async function loadAuthProfile() {
-      if (!liffProfile?.lineUserId) return;
-
-      try {
-        setAuthProfileError("");
-
-        const profile = await getAuthProfile(liffProfile.lineUserId);
-
-        if (isProfileRegistrationRequired(profile)) {
-          navigate("/register", {
-            replace: true,
-            state: { returnTo: "/" },
-          });
-          return;
-        }
-
-        // 沒有識別碼
-        if (!profile.activeCode?.trim()) {
-          console.log("[AUTH] activeCode missing");
-
-          const isFriend = await isOfficialAccountFriend();
-
-          console.log("[LIFF] friendFlag:", isFriend);
-
-          // 尚未加入官方 LINE
-          if (!isFriend) {
-            if (!hasOpenedOfficialAccount.current) {
-              hasOpenedOfficialAccount.current = true;
-
-              console.log("[LIFF] open official account");
-
-              await openOfficialAccount();
-            }
-
-            return;
-          }
-
-          // 已經是好友，卻沒有 activeCode
-          // 代表問題在後端資料，不要再跳官方 LINE
-          setAuthProfile(profile);
-          setAuthProfileError("會員識別碼尚未建立，請稍後再試。");
-          return;
-        }
-
-        // activeCode 正常
-        setAuthProfile(profile);
-      } catch (error) {
-        console.error("AUTH_PROFILE_ERROR:", error);
-
-        // 只有 404 才導向官方 LINE
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
-          if (!hasOpenedOfficialAccount.current) {
-            hasOpenedOfficialAccount.current = true;
-
-            console.log("[AUTH] profile not found, open official account");
-
-            openOfficialAccount();
-          }
-
-          return;
-        }
-
-        // 401 / 403 / 500 / timeout 等其他錯誤
-        const message =
-          error instanceof Error ? error.message : "會員資料讀取失敗";
-
-        setAuthProfileError(message);
-      }
-    }
-
-    loadAuthProfile();
-  }, [liffProfile?.lineUserId, navigate]);
-
-  const loadUpcomingReservations = async (userId: string) => {
-    try {
-      const reservations = await getUpcomingReservations(userId);
-      setUpcomingReservations(reservations);
-    } catch (error) {
-      console.error("UPCOMING_RESERVATIONS_ERROR:", error);
-      setUpcomingReservations([]);
-    }
-  };
-
-  const loadRecentReservations = async (userId: string) => {
-    try {
-      const reservations = await getRecentReservations(userId);
-      setRecentReservations(reservations);
-    } catch (error) {
-      console.error("RECENT_RESERVATIONS_ERROR:", error);
-      setRecentReservations([]);
-    }
-  };
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    async function loadCurrentUpcomingReservations() {
-      if (!authProfile?.userId) {
-        setUpcomingReservations([]);
-        setUpcomingReservationsLoading(false);
-        return;
-      }
-
-      try {
-        setUpcomingReservationsLoading(true);
-        const reservations = await getUpcomingReservations(authProfile.userId);
-
-        if (isCurrent) {
-          setUpcomingReservations(reservations);
-        }
-      } catch (error) {
-        if (!isCurrent) return;
-
-        console.error("UPCOMING_RESERVATIONS_ERROR:", error);
-        setUpcomingReservations([]);
-      } finally {
-        if (isCurrent) {
-          setUpcomingReservationsLoading(false);
-        }
-      }
-    }
-
-    loadCurrentUpcomingReservations();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [authProfile?.userId]);
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    async function loadCurrentRecentReservations() {
-      if (!authProfile?.userId) {
-        setRecentReservations([]);
-        setRecentReservationsLoading(false);
-        return;
-      }
-
-      try {
-        setRecentReservationsLoading(true);
-        const reservations = await getRecentReservations(authProfile.userId);
-
-        if (isCurrent) {
-          setRecentReservations(reservations);
-        }
-      } catch (error) {
-        if (!isCurrent) return;
-
-        console.error("RECENT_RESERVATIONS_ERROR:", error);
-        setRecentReservations([]);
-      } finally {
-        if (isCurrent) {
-          setRecentReservationsLoading(false);
-        }
-      }
-    }
-
-    loadCurrentRecentReservations();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [authProfile?.userId]);
-
-  const loadSchedules = async () => {
-    if (liffLoading || !liffProfile?.lineUserId || !selection.pickupStopId) {
-      setSchedules([]);
-      setCanReserve(false);
-      return;
-    }
-
-    try {
-      setSchedulesLoading(true);
-      setSchedulesError("");
-
-      const result = await getSchedules({
-        date: selection.openDate,
-        pickupStopId: selection.pickupStopId,
-        lineUserId: liffProfile.lineUserId,
-      });
-
-      setSchedules(result.schedules);
-      setCanReserve(result.canReserve);
-    } catch (error) {
-      console.error("SCHEDULES_ERROR:", error);
-
-      const message =
-        error instanceof Error ? error.message : "班次資料讀取失敗";
-
-      setSchedules([]);
-      setCanReserve(false);
-      setSchedulesError(message);
-    } finally {
-      setSchedulesLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    async function loadCurrentSchedules() {
-      if (liffLoading || !liffProfile?.lineUserId || !selection.pickupStopId) {
-        setSchedules([]);
-        setCanReserve(false);
-        return;
-      }
-
-      try {
-        setSchedulesLoading(true);
-        setSchedulesError("");
-
-        const result = await getSchedules({
-          date: selection.openDate,
-          pickupStopId: selection.pickupStopId,
-          lineUserId: liffProfile.lineUserId,
-        });
-
-        if (!isCurrent) return;
-
-        setSchedules(result.schedules);
-        setCanReserve(result.canReserve);
-      } catch (error) {
-        if (!isCurrent) return;
-
-        console.error("SCHEDULES_ERROR:", error);
-
-        const message =
-          error instanceof Error ? error.message : "班次資料讀取失敗";
-
-        setSchedules([]);
-        setCanReserve(false);
-        setSchedulesError(message);
-      } finally {
-        if (isCurrent) {
-          setSchedulesLoading(false);
-        }
-      }
-    }
-
-    loadCurrentSchedules();
-
-    return () => {
-      isCurrent = false;
+      if (timer !== null) window.clearTimeout(timer);
     };
   }, [
-    liffLoading,
-    liffProfile?.lineUserId,
-    selection.openDate,
-    selection.pickupStopId,
+    booking.pendingScrollTarget,
+    booking.clearPendingScrollTarget,
+    schedules.status,
+    schedules.schedules.length,
+    schedules.filteredSchedules.length,
   ]);
 
-  const handleReserve = async (
-    schedule: OpenSchedule,
-    name: string,
-    passengerCount: number,
-  ) => {
-    if (!liffProfile?.lineUserId) {
-      setReservationError("無法取得 LINE 使用者資料，請重新開啟頁面。");
-      return;
-    }
+  const displayRoute: RouteInfo = { ...route, stops: pickupStops.stops };
+  const displayPassengerProfile = getDisplayPassengerProfile(
+    member.authProfile,
+    member.liffProfile,
+  );
+  const reservationPassengerName = getReservationPassengerName(
+    member.authProfile,
+  );
+  const hasReservationOnSelectedDate = history.upcoming.some(
+    (item) =>
+      item.status === "RESERVED" &&
+      item.openDate.slice(0, 10) === booking.selection.openDate,
+  );
 
-    if (!authProfile?.userId) {
-      setReservationError("會員資料尚未載入完成，請稍後再試。");
-      return;
-    }
-
-    if (!name.trim()) {
-      setReservationError("請填寫稱呼後再預約。");
-      return;
-    }
-
-    if (!Number.isInteger(passengerCount) || passengerCount < 1) {
-      setReservationError("乘車人數至少為 1 人。");
-      return;
-    }
-
-    try {
-      setReservationError("");
-      setReservingScheduleId(schedule.dailyOpenScheduleId);
-
-      const reservation = await createReservation({
-        userId: authProfile.userId,
-        dailyOpenScheduleId: schedule.dailyOpenScheduleId,
-        pickupStopId: selection.pickupStopId,
-        lineUserId: liffProfile.lineUserId,
-      });
-
-      setReservationResult({
-        reservationId: reservation.reservationId,
-        scheduleCode: `${reservation.routeNumber}`,
-        departureTime: reservation.departureTime.slice(0, 5),
-        openDate: reservation.openDate,
-        pickupStopName: reservation.pickupStop.stopName,
-        activeCode: displayPassengerProfile.activeCode,
-        passengerName: name.trim(),
-        passengerCount,
-        bookedAt: formatDateTime(reservation.bookedAt),
-        qrCode: reservation.qrCode,
-      });
-
-      setSelectedScheduleId(null);
-      setIsReservationDialogOpen(false);
-
-      await Promise.all([
-        loadSchedules(),
-        loadUpcomingReservations(authProfile.userId),
-        loadRecentReservations(authProfile.userId),
-      ]);
-    } catch (error) {
-      console.error("CREATE_RESERVATION_ERROR:", error);
-
-      if (
-        error instanceof ReservationApiError &&
-        error.errorCode === "RESERVATION_RESTRICTED"
-      ) {
-        setReservationError("");
-        setIsReservationDialogOpen(false);
-        setIsRestrictionDialogOpen(true);
-      } else {
-        setReservationError(
-          error instanceof Error ? error.message : "預約建立失敗",
-        );
-      }
-      await loadSchedules();
-    } finally {
-      setReservingScheduleId(null);
-    }
-  };
-
-  const handleBookingSelectionChange = (
+  function handleBookingSelectionChange(
     nextSelection: BookingSelection,
     source: BookingSelectionChangeSource,
-  ) => {
-    const hasScheduleQueryChanged =
-      nextSelection.openDate !== selection.openDate ||
-      nextSelection.pickupStopId !== selection.pickupStopId;
-
-    setSelectedScheduleId(null);
-    if (hasScheduleQueryChanged) {
-      setSchedules([]);
-      setSchedulesLoading(true);
-    }
-    setPendingScrollTarget(
-      source === "pickup"
-        ? "date"
-        : source === "date"
-          ? "time"
-          : source === "time"
-            ? "schedules"
-            : null,
-    );
-    setSelection(nextSelection);
-  };
-
-  const isReserveButtonDisabled =
-    hasReservationOnSelectedDate ||
-    !selectedSchedule ||
-    !canReserve ||
-    reservingScheduleId !== null;
-
-  const reserveButtonText = hasReservationOnSelectedDate
-    ? "已預約"
-    : reservingScheduleId
-      ? "處理中"
-      : "預約";
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  if (liffLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-bus-50 px-5 text-center">
-        <div className="rounded-panel bg-white p-6 shadow-card ring-1 ring-bus-100">
-          <p className="text-lg font-black text-ink-900">
-            正在啟動 LINE 會員資料
-          </p>
-          <p className="mt-2 text-sm font-bold text-ink-500">請稍候</p>
-        </div>
-      </div>
-    );
+  ) {
+    schedules.clearSelected();
+    booking.onChange(nextSelection, source);
   }
 
-  if (liffError) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-bus-50 px-5 text-center">
-        <div className="rounded-panel bg-white p-6 shadow-card ring-1 ring-coral/20">
-          <p className="text-lg font-black text-coral">
-            無法載入，請透過 LINE 重新開啟此頁面。
-          </p>
-          <p className="mt-2 text-sm font-bold text-ink-500">
-            若問題持續發生，請聯繫客服。
-          </p>
-        </div>
-      </div>
+  async function handleConfirm(name: string, passengerCount: number) {
+    if (!schedules.selectedSchedule) return;
+    const outcome = await reservation.submit(
+      schedules.selectedSchedule,
+      name,
+      passengerCount,
     );
+    if (outcome === "success") {
+      schedules.clearSelected();
+      await Promise.all([schedules.reload(), history.reload()]);
+    } else if (outcome === "error" || outcome === "restricted") {
+      await schedules.reload();
+    }
+  }
+
+  if (member.liffStatus !== "success") {
+    return <MemberSessionStatus status={member.liffStatus} />;
   }
 
   return (
@@ -801,26 +167,18 @@ function App() {
       <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#d7f3ff_0,#f7fbff_35%,#fff8e6_100%)] px-3 py-3 text-ink-900 md:px-4 md:py-5">
         <div className="mx-auto w-full max-w-[820px]">
           <div className="mt-4 grid gap-3 pb-32 md:gap-4">
-            <section className=" rounded-panel border-2 border-star-300 bg-[#FFF8D6] p-4 shadow-card md:p-5">
-              <p className="text-xl font-black text-[#9A3412] md:text-lg">
-                預約須知
-              </p>
+            <section className="rounded-panel border-2 border-star-300 bg-[#FFF8D6] p-4 shadow-card md:p-5">
+              <h1 className="text-xl font-black text-[#9A3412] md:text-lg">預約須知</h1>
               <p className="mt-2 text-base font-bold leading-6 text-ink-800 md:text-base">
-                每日13:00
-                後開放預約隔日班次(不開放當日預約)，每人每日限一筆；累計未搭乘達
-                3 次停權 14 天。
+                每日13:00 後開放預約隔日班次(不開放當日預約)，每人每日限一筆；累計未搭乘達 3 次停權 14 天。
               </p>
             </section>
             <MemberCard
               passenger={displayPassengerProfile}
               route={displayRoute}
-              onEditProfile={() =>
-                navigate("/register", {
-                  state: { returnTo: "/" },
-                })
-              }
+              onEditProfile={() => navigate("/register", { state: { returnTo: "/" } })}
               footer={
-                authProfile ? (
+                member.authProfile ? (
                   <UserCardEntry
                     status={userCards.status}
                     cardCount={userCards.cards.length}
@@ -829,181 +187,97 @@ function App() {
                 ) : null
               }
             />
-            {/*    <UpcomingReservationCard
-              reservation={activeUpcomingReservation}
-              userId={authProfile?.userId ?? null}
-              identityCode={displayPassengerProfile.activeCode}
-              passengerName={displayPassengerProfile.displayName}
-              onCancelled={async () => {
-                if (authProfile?.userId) {
-                  await Promise.all([
-                    loadUpcomingReservations(authProfile.userId),
-                    loadRecentReservations(authProfile.userId),
-                    loadSchedules(),
-                  ]);
-                }
-              }}
-            /> */}
-            <AvailableTicketsMenu
-              reservations={recentReservations}
-              isLoading={recentReservationsLoading}
-              onSelect={(reservation) => {
-                if (openTicketInExternalBrowser(reservation.reservationId)) {
-                  return;
-                }
-
-                navigate(
-                  `/ticket?reservationId=${encodeURIComponent(reservation.reservationId)}`,
-                );
-              }}
-            />
-
-            {authProfileError && (
-              <div className="rounded-panel bg-white p-3 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20 md:p-4">
-                {authProfileError}
+            <div id="available-tickets">
+              <AvailableTicketsMenu
+                reservations={history.recent}
+                isLoading={history.recentStatus === "loading"}
+                errorMessage={history.recentError}
+                onRetry={() => void history.reload()}
+                onSelect={(item) => {
+                  if (openTicketInExternalBrowser(item.reservationId)) return;
+                  navigate(`/ticket?reservationId=${encodeURIComponent(item.reservationId)}`);
+                }}
+              />
+            </div>
+            {member.authError && (
+              <div role="alert" className="rounded-panel bg-white p-3 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20 md:p-4">
+                {member.authError}
               </div>
             )}
-
-            <section className="hidden overflow-hidden rounded-panel bg-white shadow-card ring-1 ring-bus-100/80">
-              <div className="grid md:grid-cols-[180px_1fr] md:items-center">
-                <img
-                  src={busSide}
-                  alt="Capital Star 車側視覺"
-                  className="h-40 w-full object-cover md:h-full"
-                />
-                <div className="p-5 md:p-6">
-                  <p className="text-xs font-black uppercase tracking-[0.28em] text-bus-600">
-                    Route Preview
-                  </p>
-                  <h2 className="mt-1 text-xl font-black text-ink-900">
-                    {displayRoute.routeName}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-ink-500">
-                    {displayRoute.description}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {displayRoute.stops.map((stop) => (
-                      <span
-                        key={stop.stopId}
-                        className="rounded-full bg-bus-50 px-3 py-1 text-xs font-black text-bus-700 ring-1 ring-bus-100"
-                      >
-                        {stop.shortLabel}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+            {history.upcomingError && (
+              <div role="alert" className="rounded-panel bg-white p-3 text-sm font-bold text-coral shadow-card ring-1 ring-coral/20 md:p-4">
+                <p>{history.upcomingError}</p>
+                <button
+                  type="button"
+                  onClick={() => void history.reload()}
+                  className="mt-2 rounded-xl border border-coral px-3 py-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-coral/30"
+                >
+                  重新載入預約資料
+                </button>
               </div>
-            </section>
-
+            )}
             <BookingForm
-              stops={pickupStops}
-              dates={availableDates}
-              selection={selection}
+              stops={pickupStops.stops}
+              dates={booking.availableDates}
+              selection={booking.selection}
               onChange={handleBookingSelectionChange}
-              isStopsLoading={pickupStopsLoading}
-              stopsError={pickupStopsError}
-              onRetryStops={() =>
-                setPickupStopsRetryKey((current) => current + 1)
-              }
+              isStopsLoading={pickupStops.status === "loading"}
+              stopsError={pickupStops.error}
+              onRetryStops={pickupStops.retry}
             />
-
             <ScheduleList
-              schedules={filteredSchedules}
-              isLoading={schedulesLoading}
-              errorMessage={schedulesError}
-              reservationErrorMessage={reservationError}
-              canReserve={canReserve && !hasReservationOnSelectedDate}
+              schedules={schedules.filteredSchedules}
+              isLoading={schedules.status === "loading"}
+              errorMessage={schedules.error}
+              reservationErrorMessage={reservation.error}
+              canReserve={schedules.canReserve && !hasReservationOnSelectedDate}
               unavailableReason={
                 hasReservationOnSelectedDate ? "ACTIVE_RESERVATION" : "UNOPENED"
               }
-              reservingScheduleId={reservingScheduleId}
-              selectedScheduleId={selectedScheduleId}
-              onRetry={loadSchedules}
-              onSelect={(schedule) =>
-                setSelectedScheduleId(schedule.dailyOpenScheduleId)
-              }
+              reservingScheduleId={reservation.reservingScheduleId}
+              selectedScheduleId={schedules.selectedScheduleId}
+              onRetry={() => void schedules.reload()}
+              onSelect={schedules.selectSchedule}
             />
           </div>
         </div>
 
-        <button
-          type="button"
-          aria-label="回到頁面頂端"
-          onClick={scrollToTop}
-          className="fixed bottom-24 right-4 z-40 grid h-12 w-12 place-items-center rounded-full border border-bus-100 bg-white text-2xl font-black leading-none text-bus-700 shadow-lift transition hover:bg-bus-50"
-        >
-          ↑
-        </button>
-
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-bus-100 bg-white/95 px-4 py-3 shadow-[0_-12px_30px_rgba(7,43,80,0.12)] backdrop-blur">
-          {hasReservationOnSelectedDate ? (
-            <button
-              type="button"
-              disabled
-              className="mx-auto block h-12 w-full max-w-[820px] cursor-not-allowed rounded-2xl bg-ink-100 px-4 text-lg font-black text-ink-400"
-            >
-              已預約
-            </button>
-          ) : (
-            <div className="mx-auto grid w-full max-w-[820px] grid-cols-[1fr_132px] items-center gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-black text-ink-500">已選班次</p>
-                <p className="truncate text-lg font-black text-ink-900">
-                  {selectedSchedule
-                    ? `${selectedSchedule.openDate} ${selectedSchedule.departureTime}`
-                    : "請選擇搭乘時間"}
-                </p>
-              </div>
-              <button
-                type="button"
-                disabled={isReserveButtonDisabled}
-                onClick={() => {
-                  if (selectedSchedule) {
-                    setIsReservationDialogOpen(true);
-                  }
-                }}
-                className={`h-12 rounded-2xl px-4 text-lg font-black outline-none transition focus-visible:ring-4 focus-visible:ring-bus-100 ${
-                  isReserveButtonDisabled
-                    ? "cursor-not-allowed bg-ink-100 text-ink-400"
-                    : "bg-bus-900 text-white shadow-card hover:bg-bus-700 active:scale-[0.98]"
-                }`}
-              >
-                {reserveButtonText}
-              </button>
-            </div>
-          )}
-        </div>
-
+        <ReservationActionBar
+          selectedSchedule={schedules.selectedSchedule}
+          hasReservationOnSelectedDate={hasReservationOnSelectedDate}
+          canReserve={schedules.canReserve}
+          reservingScheduleId={reservation.reservingScheduleId}
+          onReserveClick={reservation.openDialog}
+        />
         <SuccessModal
-          result={reservationResult}
+          result={reservation.result}
           onClose={() => {
-            setReservationResult(null);
+            reservation.closeResult();
             window.setTimeout(() => {
               document
-                .getElementById("upcoming-reservation")
+                .getElementById("available-tickets")
                 ?.scrollIntoView({ behavior: "smooth", block: "start" });
             }, 0);
           }}
         />
         <ReservationDialog
-          open={isReservationDialogOpen}
-          schedule={selectedSchedule}
+          open={reservation.isDialogOpen}
+          schedule={schedules.selectedSchedule}
           pickupStopName={
-            pickupStops.find((stop) => stop.stopId === selection.pickupStopId)
-              ?.stopName ?? ""
+            pickupStops.stops.find(
+              (stop) => stop.stopId === booking.selection.pickupStopId,
+            )?.stopName ?? ""
           }
           passengerName={reservationPassengerName}
-          isSubmitting={reservingScheduleId !== null}
-          onOpenChange={setIsReservationDialogOpen}
+          isSubmitting={reservation.reservingScheduleId !== null}
+          onOpenChange={reservation.setIsDialogOpen}
           onConfirm={(name, passengerCount) => {
-            if (selectedSchedule) {
-              void handleReserve(selectedSchedule, name, passengerCount);
-            }
+            void handleConfirm(name, passengerCount);
           }}
         />
         <ReservationRestrictionDialog
-          open={isRestrictionDialogOpen}
-          onOpenChange={setIsRestrictionDialogOpen}
+          open={reservation.isRestrictionOpen}
+          onOpenChange={reservation.setIsRestrictionOpen}
         />
         <UserCardGuideDialog
           open={userCardGuide.isOpen}
@@ -1014,15 +288,6 @@ function App() {
           }}
         />
       </main>
-    </div>
-  );
-}
-
-function HeroMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-white/15">
-      <p className="text-[11px] font-bold text-bus-100">{label}</p>
-      <p className="mt-1 text-lg font-black text-star-300">{value}</p>
     </div>
   );
 }

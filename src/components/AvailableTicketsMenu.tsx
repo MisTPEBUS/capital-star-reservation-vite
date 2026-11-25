@@ -6,6 +6,8 @@ import { Button } from "./ui/button";
 interface AvailableTicketsMenuProps {
   reservations: UpcomingReservation[];
   isLoading: boolean;
+  errorMessage?: string;
+  onRetry?: () => void;
   onSelect: (reservation: UpcomingReservation) => void;
 }
 
@@ -46,6 +48,8 @@ export function isTicketUsable(
 export function AvailableTicketsMenu({
   reservations,
   isLoading,
+  errorMessage,
+  onRetry,
   onSelect,
 }: AvailableTicketsMenuProps) {
   const recentReservationItems = [...reservations]
@@ -77,6 +81,19 @@ export function AvailableTicketsMenu({
           <p className="py-8 text-center text-sm font-medium text-ink-500">
             正在讀取預約紀錄…
           </p>
+        ) : errorMessage ? (
+          <div role="alert" className="rounded-card bg-coral/10 px-4 py-6 text-center text-coral">
+            <p className="text-sm font-bold">{errorMessage}</p>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="mt-3 rounded-xl border border-coral bg-white px-4 py-2 text-sm font-black transition hover:bg-coral hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-coral/30"
+              >
+                重新載入
+              </button>
+            )}
+          </div>
         ) : recentReservationItems.length === 0 ? (
           <div className="rounded-card bg-ink-50 px-4 py-8 text-center">
             <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-bus-50 text-xl text-bus-600">
