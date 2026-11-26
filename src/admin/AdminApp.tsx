@@ -12,6 +12,7 @@ import { DispatchManagementPage } from "./pages/DispatchManagementPage";
 import { RouteManagementPage } from "./pages/RouteManagementPage";
 import { StopManagementPage } from "./pages/StopManagementPage";
 import { BookingRestrictionsPage } from "./pages/BookingRestrictionsPage";
+import { UserCardReviewPage } from "./pages/UserCardReviewPage";
 import { TooltipProvider } from "../components/ui/tooltip";
 
 export default function AdminApp() {
@@ -51,6 +52,7 @@ export default function AdminApp() {
           path="dispatch/schedules"
           element={<ScheduleManagementPage />}
         />
+        <Route path="review/cards" element={<UserCardReviewPage />} />
       </Route>
       <Route path="*" element={<Navigate replace to="login" />} />
         </Routes>

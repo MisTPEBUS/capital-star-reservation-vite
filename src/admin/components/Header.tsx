@@ -20,6 +20,7 @@ export const adminPageTitles: Record<string, string> = {
   "/admin/dispatch/stops": "站位設定",
   "/admin/dispatch/routes": "路線設定",
   "/admin/dispatch/schedules": "班次設定",
+  "/admin/review/cards": "乘車卡審核",
 };
 
 export function getAdminPageTitle(pathname: string) {
