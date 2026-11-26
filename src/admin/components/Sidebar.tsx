@@ -1,4 +1,10 @@
 import { useState } from "react";
+import {
+  ClipboardCheck,
+  CreditCard,
+  ShieldX,
+  type LucideIcon,
+} from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { SidebarTrigger } from "../../components/ui/sidebar";
 import packageInfo from "../../../package.json";
@@ -13,7 +19,15 @@ type SidebarIconName =
   | "dispatch"
   | "schedule"
   | "stop"
-  | "route";
+  | "route"
+  | "review"
+  | "card";
+
+interface SidebarNavItem {
+  to: string;
+  label: string;
+  icon: SidebarIconName;
+}
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -24,7 +38,6 @@ interface SidebarProps {
 export const navigation = [
   { to: "/admin/dashboard", label: "首頁總覽", icon: "dashboard" as const },
   { to: "/admin/employees", label: "使用者權限", icon: "users" as const },
-  { to: "/admin/blacklist", label: "黑名單管理", icon: "blacklist" as const },
   /*  { to: "/admin/settings", label: "系統設定" }, */
 ];
 
@@ -39,7 +52,37 @@ export const dispatchNavigation = [
   { to: "/admin/dispatch/routes", label: "路線設定", icon: "route" as const },
 ];
 
+export const reviewNavigation: SidebarNavItem[] = [
+  { to: "/admin/review/cards", label: "乘車卡", icon: "card" },
+  { to: "/admin/blacklist", label: "黑名單", icon: "blacklist" },
+];
+
+/** 目前路徑以這些字首開頭時，對應的選單群組視為使用中 */
+export const dispatchPathPrefixes = ["/admin/dispatch/"];
+export const reviewPathPrefixes = ["/admin/review/", "/admin/blacklist"];
+
+export function isPathInGroup(pathname: string, pathPrefixes: string[]) {
+  return pathPrefixes.some((prefix) => pathname.startsWith(prefix));
+}
+
+const LUCIDE_SIDEBAR_ICONS: Partial<Record<SidebarIconName, LucideIcon>> = {
+  review: ClipboardCheck,
+  card: CreditCard,
+  blacklist: ShieldX,
+};
+
 export function SidebarIcon({ name }: { name: SidebarIconName }) {
+  const LucideSidebarIcon = LUCIDE_SIDEBAR_ICONS[name];
+  if (LucideSidebarIcon) {
+    return (
+      <LucideSidebarIcon
+        aria-hidden="true"
+        className="h-[20px] w-[20px] shrink-0"
+        strokeWidth={2}
+      />
+    );
+  }
+
   const commonProps = {
     className: "h-[20px] w-[20px] shrink-0",
     fill: "none",
@@ -82,15 +125,6 @@ export function SidebarIcon({ name }: { name: SidebarIconName }) {
     );
   }
 
-  if (name === "blacklist") {
-    return (
-      <svg {...commonProps} aria-hidden="true">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-        <path d="m9 9 6 6" />
-        <path d="m15 9-6 6" />
-      </svg>
-    );
-  }
 
   if (name === "dispatch") {
     return (
@@ -135,17 +169,104 @@ export function SidebarIcon({ name }: { name: SidebarIconName }) {
   );
 }
 
+interface SidebarNavGroupProps {
+  menuId: string;
+  label: string;
+  icon: SidebarIconName;
+  /** 目前路徑符合任一字首時，群組視為使用中並保持展開 */
+  pathPrefixes: string[];
+  items: ReadonlyArray<SidebarNavItem>;
+  isCollapsed: boolean;
+  onCollapsedChange: (isCollapsed: boolean) => void;
+}
+
+/** 可展開的選單群組（派班管理、審核管理） */
+function SidebarNavGroup({
+  menuId,
+  label,
+  icon,
+  pathPrefixes,
+  items,
+  isCollapsed,
+  onCollapsedChange,
+}: SidebarNavGroupProps) {
+  const location = useLocation();
+  const isGroupActive = isPathInGroup(location.pathname, pathPrefixes);
+  const [isOpen, setIsOpen] = useState(isGroupActive);
+  const showChildren = !isCollapsed && (isOpen || isGroupActive);
+
+  return (
+    <div className="shrink-0 lg:py-1">
+      <button
+        aria-controls={menuId}
+        aria-expanded={showChildren}
+        className={`w-full items-center rounded-adminControl px-3 py-2.5 text-left text-sm font-semibold transition ${
+          isCollapsed
+            ? "flex gap-3 lg:justify-center"
+            : "grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3"
+        } ${
+          isGroupActive
+            ? "bg-admin-elevated text-adminStatus-enabled"
+            : "text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
+        }`}
+        title={isCollapsed ? label : undefined}
+        type="button"
+        onClick={() => {
+          if (isCollapsed) {
+            onCollapsedChange(false);
+            setIsOpen(true);
+            return;
+          }
+
+          setIsOpen((open) => !open);
+        }}
+      >
+        <SidebarIcon name={icon} />
+        <span
+          className={`min-w-0 truncate ${isCollapsed ? "lg:hidden" : ""}`}
+        >
+          {label}
+        </span>
+        <span
+          aria-hidden="true"
+          className={`shrink-0 text-xs leading-none ${isCollapsed ? "lg:hidden" : ""}`}
+        >
+          {showChildren ? "⌃" : "⌄"}
+        </span>
+      </button>
+
+      {showChildren && (
+        <div
+          className="mt-1 flex gap-1 pl-2 lg:block lg:space-y-1 lg:border-l lg:border-admin-border lg:py-1"
+          id={menuId}
+        >
+          {items.map((item) => (
+            <NavLink
+              key={item.to}
+              className={({ isActive }) =>
+                `flex shrink-0 items-center gap-3 rounded-adminControl px-3 py-2 text-sm transition ${
+                  isActive
+                    ? "bg-adminStatus-enabled/10 font-bold text-adminStatus-enabled"
+                    : "text-admin-muted hover:bg-admin-elevated hover:text-admin-text"
+                }`
+              }
+              to={item.to}
+            >
+              <SidebarIcon name={item.icon} />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Sidebar({
   isCollapsed,
   onCollapsedChange,
   onOpenQuickReservation,
 }: SidebarProps) {
-  const location = useLocation();
-  const isDispatchActive = location.pathname.startsWith("/admin/dispatch/");
-  const [isDispatchOpen, setIsDispatchOpen] = useState(isDispatchActive);
-  const showDispatchChildren =
-    !isCollapsed && (isDispatchOpen || isDispatchActive);
-
   return (
     <aside
       className={`hidden border-r border-admin-border bg-admin-surface transition-[width] duration-200 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto ${
@@ -210,69 +331,25 @@ export function Sidebar({
           </NavLink>
         ))}
 
-        <div className="shrink-0 lg:py-1">
-          <button
-            aria-controls="dispatch-management-menu"
-            aria-expanded={showDispatchChildren}
-            className={`w-full items-center rounded-adminControl px-3 py-2.5 text-left text-sm font-semibold transition ${
-              isCollapsed
-                ? "flex gap-3 lg:justify-center"
-                : "grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3"
-            } ${
-              isDispatchActive
-                ? "bg-admin-elevated text-adminStatus-enabled"
-                : "text-admin-softText hover:bg-admin-elevated hover:text-admin-text"
-            }`}
-            title={isCollapsed ? "派班管理" : undefined}
-            type="button"
-            onClick={() => {
-              if (isCollapsed) {
-                onCollapsedChange(false);
-                setIsDispatchOpen(true);
-                return;
-              }
+        <SidebarNavGroup
+          menuId="dispatch-management-menu"
+          label="派班管理"
+          icon="dispatch"
+          pathPrefixes={dispatchPathPrefixes}
+          items={dispatchNavigation}
+          isCollapsed={isCollapsed}
+          onCollapsedChange={onCollapsedChange}
+        />
 
-              setIsDispatchOpen((open) => !open);
-            }}
-          >
-            <SidebarIcon name="dispatch" />
-            <span
-              className={`min-w-0 truncate ${isCollapsed ? "lg:hidden" : ""}`}
-            >
-              派班管理
-            </span>
-            <span
-              aria-hidden="true"
-              className={`shrink-0 text-xs leading-none ${isCollapsed ? "lg:hidden" : ""}`}
-            >
-              {showDispatchChildren ? "⌃" : "⌄"}
-            </span>
-          </button>
-
-          {showDispatchChildren && (
-            <div
-              className="mt-1 flex gap-1 pl-2 lg:block lg:space-y-1 lg:border-l lg:border-admin-border lg:py-1"
-              id="dispatch-management-menu"
-            >
-              {dispatchNavigation.map((item) => (
-                <NavLink
-                  key={item.to}
-                  className={({ isActive }) =>
-                    `flex shrink-0 items-center gap-3 rounded-adminControl px-3 py-2 text-sm transition ${
-                      isActive
-                        ? "bg-adminStatus-enabled/10 font-bold text-adminStatus-enabled"
-                        : "text-admin-muted hover:bg-admin-elevated hover:text-admin-text"
-                    }`
-                  }
-                  to={item.to}
-                >
-                  <SidebarIcon name={item.icon} />
-                  <span>{item.label}</span>
-                </NavLink>
-              ))}
-            </div>
-          )}
-        </div>
+        <SidebarNavGroup
+          menuId="review-management-menu"
+          label="審核管理"
+          icon="review"
+          pathPrefixes={reviewPathPrefixes}
+          items={reviewNavigation}
+          isCollapsed={isCollapsed}
+          onCollapsedChange={onCollapsedChange}
+        />
 
         {navigation.slice(1).map((item) => (
           <NavLink

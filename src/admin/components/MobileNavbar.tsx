@@ -33,7 +33,15 @@ import {
   SheetTitle,
 } from "../../components/ui/sheet";
 import { getAdminPageTitle } from "./Header";
-import { dispatchNavigation, navigation, SidebarIcon } from "./Sidebar";
+import {
+  dispatchNavigation,
+  dispatchPathPrefixes,
+  isPathInGroup,
+  navigation,
+  reviewNavigation,
+  reviewPathPrefixes,
+  SidebarIcon,
+} from "./Sidebar";
 
 interface MobileNavbarProps {
   fontSize: number;
@@ -81,6 +89,34 @@ function MobileNavLink({
   );
 }
 
+interface MobileNavGroupProps {
+  title: string;
+  isActive: boolean;
+  items: ReadonlyArray<Omit<Parameters<typeof MobileNavLink>[0], "onNavigate">>;
+  onNavigate: () => void;
+}
+
+/** 有分組標題的選單區塊；目前頁面在此群組時顯示「使用中」 */
+function MobileNavGroup({ title, isActive, items, onNavigate }: MobileNavGroupProps) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between px-3 pb-1">
+        <p className="text-sm font-bold tracking-[0.18em] text-admin-muted">
+          {title}
+        </p>
+        {isActive && (
+          <span className="rounded-full bg-adminStatus-enabled/15 px-2.5 py-1 text-xs font-bold text-adminStatus-enabled">
+            使用中
+          </span>
+        )}
+      </div>
+      {items.map((item) => (
+        <MobileNavLink key={item.to} {...item} onNavigate={onNavigate} />
+      ))}
+    </div>
+  );
+}
+
 export function MobileNavbar({
   fontSize,
   canDecreaseFontSize,
@@ -95,7 +131,6 @@ export function MobileNavbar({
   const session = getAdminSession();
   const displayName = session?.displayName || session?.userId || "管理者";
   const pageTitle = getAdminPageTitle(pathname);
-  const isDispatchActive = pathname.startsWith("/admin/dispatch/");
 
   const handleLogout = () => {
     clearAdminSession();
@@ -193,25 +228,19 @@ export function MobileNavbar({
                   ))}
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between px-3 pb-1">
-                    <p className="text-sm font-bold tracking-[0.18em] text-admin-muted">
-                      派班管理
-                    </p>
-                    {isDispatchActive && (
-                      <span className="rounded-full bg-adminStatus-enabled/15 px-2.5 py-1 text-xs font-bold text-adminStatus-enabled">
-                        使用中
-                      </span>
-                    )}
-                  </div>
-                  {dispatchNavigation.map((item) => (
-                    <MobileNavLink
-                      key={item.to}
-                      {...item}
-                      onNavigate={() => setIsOpen(false)}
-                    />
-                  ))}
-                </div>
+                <MobileNavGroup
+                  title="派班管理"
+                  isActive={isPathInGroup(pathname, dispatchPathPrefixes)}
+                  items={dispatchNavigation}
+                  onNavigate={() => setIsOpen(false)}
+                />
+
+                <MobileNavGroup
+                  title="審核管理"
+                  isActive={isPathInGroup(pathname, reviewPathPrefixes)}
+                  items={reviewNavigation}
+                  onNavigate={() => setIsOpen(false)}
+                />
 
                 <div className="space-y-1">
                   <p className="px-3 pb-1 text-sm font-bold tracking-[0.18em] text-admin-muted">
